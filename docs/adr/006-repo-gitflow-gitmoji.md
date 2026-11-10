@@ -36,6 +36,13 @@ changelog e artefato.
 para projeto solo — aceito conscientemente); `dist/` versionado é um artefato
 gerado dentro do repo.
 
+**Correção na aplicação:** a política inicialmente exigia "1 aprovação" em
+cada PR. O GitHub **proíbe auto-aprovação** (`Can not approve your own pull
+request`), o que trancaria o repo num projeto de uma pessoa só. A exigência
+foi reduzida a **0 aprovações**: a barreira real é a CI verde + PR aberto. A
+regra continua valendo como norma de time (`CONTRIBUTING.md`), não como
+lock automático.
+
 ## Alternativas rejeitadas
 
 - **Gitflow simplificado (sem `develop`)** — menos atrito, mas perde o estágio

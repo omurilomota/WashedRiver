@@ -93,9 +93,14 @@ Checklist do PR:
 
 ## 5. Revisão
 
-- PR precisa de **1 aprovação** e **CI verde** para entrar em `develop`.
+- PR precisa de **CI verde** para entrar em `develop`.
 - `main` só muda por `release/*` (ou `hotfix/*`).
 - Discussão no PR, não no DM. Comentário de revisão pede mudança concreta.
+
+**Sobre aprovação:** a branch não exige aprovação de terceiro. O GitHub
+**proíbe auto-aprovar o próprio PR** (`Can not approve your own pull
+request`), então exigir 1 aprovação trancaria o repo num projeto solo.
+Quem tiver Time, revise normalmente — mas o merge não depende disso.
 
 ## 6. Release
 
