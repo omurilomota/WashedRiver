@@ -1,0 +1,240 @@
+/* =====================================================================
+   content.js — os seis mapas, o rádio, as personagens, os finais
+   e os modificadores do desafio diário. Texto aqui, mecânica em game.js.
+   ===================================================================== */
+
+// Cada mapa muda paleta, clima, recurso, estruturas, bichos e chefe.
+// laneNames: o corredor nasce do cenário, não de um grid.
+const MAPS=[
+  {
+    id:'barra', nome:'BARRA SUJA', sub:'o lar do Zé e de mais ninguém',
+    res:'sucata', resShort:'SUCATA', resMult:1, weather:'rain', track:'barra',
+    lanes:['PÍER','RUA','CANAL'],
+    pal:{sky1:'#5a3a22',sky2:'#2c3a36',sun:'#e08a3a',water:'#0d2a2e',ground:'#33352f',
+         strip:'#55524a',accent:'#d1713a',haze:'rgba(120,80,40,.10)'},
+    estruturas:[
+      [{id:'barco',nome:'Barco Esperança II',msg:'O BARCO AFUNDOU. O ZÉ NÃO VIU.'},
+       {id:'galpao',nome:'Galpão do Píer',msg:'O GALPÃO DO PÍER DESABOU.'}],
+      [{id:'poste',nome:'Poste da Rua',msg:'O POSTE CAIU. SEM LUZ.'},
+       {id:'casa',nome:'Casa da Dona Lú',msg:'A CASA DA DONA LÚ DESABOU.'}],
+      [{id:'comporta',nome:'Comporta',msg:'A COMPORTA ESTOUROU. CHEIRO PIOROU.'},
+       {id:'barraco',nome:'Barraco do Canal',msg:'O BARRACO DO CANAL AFUNDOU.'}]
+    ],
+    pool:['baiacu','enguia','caranguejo','ova','bomba','gaivota','tatu','fantasma','lata','polvo','piranha'],
+    extra:['polvo','piranha'],
+    boss:'bento',
+    intro:'A maré subiu e devolveu tudo que a vila jogou nela. De novo.',
+    bossLine:'O SEU BENTO VOLTOU. ELE COMEU O SEU BENTO.',
+    bio:'Píer podre, rua rachada, canal a céu aberto. A Barra Suja é o que sobrou depois que a fábrica foi embora e deixou os peixes.'
+  },
+  {
+    id:'farol', nome:'FAROL DO FIM', sub:'onde a luz é defesa e é isca',
+    res:'óleo', resShort:'ÓLEO', resMult:1.1, weather:'fog', track:'farol',
+    lanes:['CAMINHO DE PEDRA','ESCADARIA','RESTINGA'],
+    pal:{sky1:'#14262e',sky2:'#0a161c',sun:'#d8e6b0',water:'#0b1e24',ground:'#4a4a44',
+         strip:'#66665a',accent:'#c8d890',haze:'rgba(160,190,180,.14)'},
+    estruturas:[
+      [{id:'lanterna',nome:'Lanterna do Farol',msg:'A LANTERNA DO FAROL CAIU NO MAR.'},
+       {id:'portal',nome:'Portal de Pedra',msg:'O PORTAL DE PEDRA RACHAXOU.'}],
+      [{id:'escada',nome:'Escada de Pedra',msg:'A ESCADA DESABOU.'},
+       {id:'poco',nome:'Poço do Faroleiro',msg:'O POÇO SECOU.'}],
+      [{id:'bote',nome:'Bote de Salvação',msg:'O BOTE SUMIU NA MARÉ.'},
+       {id:'cruz',nome:'Cruz de Pedra',msg:'A CRUZ DE PEDRA TOMBOU.'}]
+    ],
+    pool:['mariposa','agua','gaivota','enguia','polvo','sapo','fantasma','tatu','baiacu'],
+    extra:['mariposa','agua'],
+    boss:'faroleiro',
+    intro:'Dizem que o faroleiro não desce da torre desde o apagão. Dizem. Ele desceu.',
+    bossLine:'A LUZ DO FAROL APAGOU. NÃO É A LÂMPADA.',
+    bio:'O farol ilumina a costa e atrai o que não devia. O recurso aqui é óleo: a luz queima, a luz consome. Escolha.'
+  },
+  {
+    id:'estacao', nome:'ESTAÇÃO AFOGADA', sub:'o trilho que ninguém desliga',
+    res:'vapor', resShort:'VAPOR', resMult:1.2, weather:'storm', track:'estacao',
+    lanes:['TRILHO NORTE','PLATAFORMA','TRILHO CEGO'],
+    pal:{sky1:'#2e3640',sky2:'#1a2126',sun:'#c8d8d0',water:'#1a3030',ground:'#3a3f3c',
+         strip:'#7a7a6a',accent:'#a8c0b0',haze:'rgba(140,170,160,.12)'},
+    estruturas:[
+      [{id:'sinaleira',nome:'Sinaleira',msg:'A SINELEIRA CAIU. TRILHO LIVRE.'},
+       {id:'guarita',nome:'Guarita',msg:'A GUARITA DA ESTAÇÃO DESABOU.'}],
+      [{id:'bilheteria',nome:'Bilheteria',msg:'A BILHETERIA FOI AO CHÃO.'},
+       {id:'relogio',nome:'Relógio da Estação',msg:'O RELÓGIO PAROU. ERA 3H.'}],
+      [{id:'caixa',nome:'Caixa d’Água',msg:'A CAIXA D’ÁGUA ESTOUROU.'},
+       {id:'armazem',nome:'Armazém',msg:'O ARMAZÉM CEDEU.'}]
+    ],
+    pool:['passageiro','lata','tatu','piranha','gaivota_r','bomba','enguia','caranguejo'],
+    extra:['passageiro','gaivota_r'],
+    boss:'maquinista',
+    intro:'O trem ainda passa. Ninguém sabe de onde. Ninguém quer saber pra onde.',
+    bossLine:'O TRILHO TREMEU. NÃO É TREM. AINDA.',
+    bio:'Trilhos submersos e uma locomotiva que apita sozinha. Aqui a vila defende a estação que já afundou.'
+  },
+  {
+    id:'feira', nome:'FEIRA DO PEIXE', sub:'defenda o que ainda dá pra comer',
+    res:'peixe fresco', resShort:'PEIXE', resMult:1.15, weather:'heat', track:'feira',
+    lanes:['CORREDOR DE BARRACAS','CALÇADA DO PEIXE','DESCARGA'],
+    pal:{sky1:'#7a4a22',sky2:'#c07a3a',sun:'#ffd070',water:'#2a4a3a',ground:'#5a4a32',
+         strip:'#8a7a5a',accent:'#e8a040',haze:'rgba(255,180,80,.12)'},
+    estruturas:[
+      [{id:'tenda',nome:'Tenda de Peixe',msg:'A TENDA TOMBOU. O PEIXE ESPALHOU.'},
+       {id:'gelo',nome:'Caixa de Gelo',msg:'O GELO DERRETEU DE VEZ.'}],
+      [{id:'balanca',nome:'Balança',msg:'A BALANÇA FOI LEVADA.'},
+       {id:'caixa2',nome:'Caixa Registradora',msg:'A CAIXA ABRIU. NINGUÉM VIU NADA.'}],
+      [{id:'caminhao',nome:'Caminhão de Descarga',msg:'O CAMINHÃO TOMBOU.'},
+       {id:'fogao',nome:'Fogão de Óleo',msg:'O FOGÃO APAGOU. CHEIRO FICOU.'}]
+    ],
+    pool:['baiacu','sapo','caranguejo_m','piranha','polvo','pescador','lata','enguia','gaivota'],
+    extra:['pescador','caranguejo_m'],
+    boss:'peixe_mae',
+    intro:'A feira ainda abre. O peixe é fresco. O peixe não é peixe. O peixe é fresco.',
+    bossLine:'A PEIXE-MÃE SENTIU O CHEIRO DO BAIACU.',
+    bio:'Barracas, gelo e gente gritando preço. O recurso é a comida que você defende. Cada peça que cai é uma boca a menos.'
+  },
+  {
+    id:'fabrica', nome:'FÁBRICA PODRE', sub:'a origem tem expediente até domingo',
+    res:'energia', resShort:'ENERGIA', resMult:1.25, weather:'ash', track:'fabrica',
+    lanes:['ESTEIRA','CORREDOR DE CANOS','VALA QUÍMICA'],
+    pal:{sky1:'#3a1e18',sky2:'#1a1412',sun:'#ff7030',water:'#3a4020',ground:'#3a342c',
+         strip:'#6a5040',accent:'#e05a20',haze:'rgba(255,90,30,.12)'},
+    estruturas:[
+      [{id:'caldeira',nome:'Caldeira',msg:'A CALDEIRA EXPLODIU. FIM DO TURNO.'},
+       {id:'chamine',nome:'Chaminé',msg:'A CHAMINÉ CAIU. CÉU MELHOROU.'}],
+      [{id:'painel',nome:'Painel de Controle',msg:'O PAINEL PEGOU FOGO.'},
+       {id:'refeitorio',nome:'Refeitório',msg:'O REFEITÓRIO DESABOU. COMIDA ACABOU.'}],
+      [{id:'valvula',nome:'Válvula Principal',msg:'A VÁLVULA ABRIU. NÃO FECHA MAIS.'},
+       {id:'escritorio',nome:'Escritório do Gerente',msg:'O ESCRITÓRIO DO GERENTE CEDEU. ELE TAMBÉM.'}]
+    ],
+    pool:['lata','polvo','fantasma','agua','piranha','sapo','bomba','caranguejo','mariposa'],
+    extra:['polvo','agua'],
+    boss:'gerente',
+    intro:'A fábrica fechou há vinte anos e ainda tem gente trabalhando. Alguma coisa tem gente trabalhando.',
+    bossLine:'REUNIÃO EXTRAORDINÁRIA. PAUTA: VOCÊS.',
+    bio:'A fábrica despejava no mar o que agora volta com dente. Aqui o recurso é energia e o chão não é confiável.'
+  },
+  {
+    id:'cemiterio', nome:'CEMITÉRIO DE BARCOS', sub:'o fim da costa e o começo do mar',
+    res:'tudo', resShort:'TUDO', resMult:1.4, weather:'gale', track:'cemiterio',
+    lanes:['CONVÉS APODRECIDO','CAIS QUEBRADO','ÁGUA RASA'],
+    pal:{sky1:'#1c242c',sky2:'#0a1014',sun:'#c8d0c0',water:'#0e2226',ground:'#2e3538',
+         strip:'#4a5450',accent:'#8aa8a0',haze:'rgba(120,150,150,.16)'},
+    estruturas:[
+      [{id:'navio',nome:'Navio-Mãe',msg:'O NAVIO-MÃE ADERNOU. VIROU CEMITÉRIO.'},
+       {id:'mastro',nome:'Mastro do Norte',msg:'O MASTRO DO NORTE CAIU.'}],
+      [{id:'balsa',nome:'Balsa da Dona Lú',msg:'A BALSA DA DONA LÚ SE SOLTOU.'},
+       {id:'guinda',nome:'Guindaste',msg:'O GUINDASTE AFUNDOU NO CONVÉS.'}],
+      [{id:'boia',nome:'Boia Grande',msg:'A BOIA GRANDE AFUNDOU. IRONIA.'},
+       {id:'caverna',nome:'Caverna de Carcaça',msg:'A CARCAÇA ABRIU.'}]
+    ],
+    pool:['baiacu','enguia','polvo','agua','gaivota_r','piranha','fantasma','pescador','caranguejo_m','baleia'],
+    extra:['pescador','baleia'],
+    boss:'mare',
+    intro:'Toda a sucata do mundo encalha aqui. Inclusive a que ainda se mexe.',
+    bossLine:'A MARÉ SUBIU. ELA NÃO VAI DESCER.',
+    bio:'O último mapa. Navios encalhados, a maré subindo e a resposta que ninguém queria. Não se defende uma vila: decide-se o que fazer com ela.'
+  }
+];
+
+// ---------- rádio: fio condutor ----------
+// A Voz do Rádio fala por cima da tensão. Algumas são verdade, outras são isca.
+const RADIO=[
+  {map:0,wave:1,txt:'...posto de escuta da Barra Suja. Se alguém ouvir: a maré subiu três metros e não desceu.'},
+  {map:0,wave:2,txt:'Dizem que é a fábrica. Não é a fábrica. A fábrica só emprestou a coragem.'},
+  {map:0,wave:3,txt:'Zé da Barra Suja. Eu sei que você está aí. Ainda tem gente no farol.'},
+  {map:1,wave:1,txt:'O faroleiro apagou a luz pra não ver o que subia. Depois esqueceu de acender.'},
+  {map:1,wave:2,txt:'Meu nome? Faz tempo que ninguém pergunta. Pode me chamar de Voz.'},
+  {map:1,wave:3,txt:'A mariposa não vem pela luz. Vem pelo calor de alguém que ainda está vivo.'},
+  {map:2,wave:1,txt:'O trem não tem condutor. Ele tem um acordo com o trilho.'},
+  {map:2,wave:2,txt:'Toquinho, se você estiver ouvindo: não desce na estação. Não desce.'},
+  {map:2,wave:3,txt:'Eu estava no trem quando afundou. Eu conto isso do jeito que eu lembro, não do jeito que foi.'},
+  {map:3,wave:1,txt:'Não defenda a feira por comida. Defenda por causa do cheiro de gente.'},
+  {map:3,wave:2,txt:'O Pescador ainda fala o seu nome. Não mata o Pescador. Não foi ele que escolheu.'},
+  {map:3,wave:3,txt:'A Peixe-Mãe é a única mãe aqui. Repare que ninguém estava protegendo os filhotes dela.'},
+  {map:4,wave:1,txt:'A fábrica pagava por hora extra. O Gerente nunca mais foi embora, mesmo quando foi embora.'},
+  {map:4,wave:2,txt:'Todos os canos que eles enterraram estão voltando. Devagar. Com juros.'},
+  {map:4,wave:3,txt:'Se você chegou até aqui, você já sabe o que eu sou. Ainda finge que não.'},
+  {map:5,wave:1,txt:'Dona Lú quer ir embora. Ela falou isso em voz alta um dia desses. Eu ouvi.'},
+  {map:5,wave:2,txt:'As três coisas que você pode fazer daqui pra frente não têm nome bonito. Eu vou dizer os nomes.'},
+  {map:5,wave:3,txt:'A podridão não é um monstro. É o mar reagindo. O sintoma é a gente.'}
+];
+
+const ZE_FALAS=[
+  'Isso aí já foi tainha.','A torradeira era da minha sogra.','Esse tem olho demais.','O mar tá devolvendo o troco.',
+  'Se afundar o barco, eu nem ligo mais.','Dona Lú, entra pra dentro.','Cheiro de ovo. Não é ovo.',
+  'Eu vi um com dente no rabo.','O rádio só pega AM e lamento.','Esse aí veio com nota fiscal.',
+  'Não pisa no óleo. Esbarra, mas não pisa.','Já pesquei um desses. Ele pescou de volta.',
+  'Onze anos. Onze anos de diário.','Toquinho, sai daí, menino.','Eu ainda ligo. Não é pra você saber.',
+  'O Bento não era pra estar ali. Nem o peixe.','Se sobrar um, a gente come. Se sobrar dois, a gente negocia.'
+];
+const ZE_RARO='Meu irmão foi no barco. Ele não voltou. O peixe voltou com o boné dele. Eu não contei isso pra ninguém.';
+const LU_LINES=[
+  'A casa é minha, mas a vista é do mar. Quem quer ficar com uma vista dessa?',
+  'Eu quero ir embora, Zé. Não é coragem, é pé. Eu tenho perna e tenho idade.',
+  'Eu fico. Alguém tem que lavar a toalha do Toquinho.',
+  'Toda noite eu fecho a janela. Toda noite alguém bate do lado de fora.',
+  'Você já reparou que o rádio fala o seu nome antes de você pensar nele?'
+];
+const TOQ_LINES=[
+  'Eu vou ser pescador igual você, Zé!','Pega ele! Pega! Pega!','Dona Lú disse que eu tenho que dormir. Eu não tenho.',
+  'Eu vi o bicho com olho na barriga. Ele piscou pra mim.','Se eu jogar a lata longe, ele vai atrás?',
+  'Eu não tenho medo. Eu tenho um pouco, mas eu tenho mais de ser pescador.'
+];
+const VOZ_LINES=[
+  'Boa noite, costa podre. Você está ouvindo a Voz da Maré.',
+  'Não sou gravação. Gravação não erra o seu nome.',
+  'Eu era gente. Isso não é um pedido de desculpa, é informação.',
+  'O mar não odeia vocês. O mar só carrega. Carregar cansa.',
+  'Amanhã, às seis, a maré vira. Escolha antes.'
+];
+
+// Cartazes e bilhetes espalhados pelo cenário (só visíveis, sem menu).
+const CARTAZES={
+  barra:['NÃO É PEIXE. NÃO COMA.','PEIXE FRESCO??','O MAR NÃO DEVOLVE. O MAR COBRA.','FIADO SÓ PRA AMIGO'],
+  farol:['APAGUE A LUZ ANTES DE SAIR.','O FAROLEIRO ESTÁ NA TORRE (RISCADO)','NÃO ACENE PARA O MAR.','DIA 400 SEM CARTA'],
+  estacao:['NÃO CORRA NO TRILHO.','TREM DAS 3H: SEM CONFIRMAÇÃO','TOQUINHO, CASA.','SERVIÇO SUSPENSO DESDE 1998'],
+  feira:['PEIXE DO DIA. DIA INCERTO.','NÃO PERGUNTE DE ONDE VEIO','GELO NOVO SÓ NA TERÇA','3 POR 10. NÃO RECLAMA'],
+  fabrica:['META: 40 TONELADAS','SEGURANÇA PRIMEIRO (EXCETO HOJE)','NÃO RESPIRE NO SETOR 4.','O MAR É O DESTINO FINAL'],
+  cemiterio:['AQUI JAZ O QUE O MAR NÃO QUIS','DONA LÚ, 3º NAVIO','TOQUINHO: EU TE ENSINEI A AMARRAR','A MARÉ VAI VOLTAR. ELA SEMPRE VOLTA']
+};
+
+// ---------- finais: nenhum é certo ----------
+const ENDINGS=[
+  {
+    id:'farol', titulo:'ACENDER O FAROL',
+    escolha:'Acender o farol e apontar a luz pro mar',
+    txt:'A vila acendeu o farol. Não como desculpa: como aviso. A luz entrou na água e o mar foi descendo, devagar, como quem se retira de uma conversa. Barra Suja não afundou. Ficou mais longe da costa. O peixe voltou a ter um olho só. Não todo peixe.',
+    ze:'A gente acendeu. Não consertou nada. Mas dá pra ver o horizonte, e isso já é uma diferença.',
+    lu:'Eu vou ficar na casa. Com a luz acesa, a vista até que presta.',
+    toq:'O farol tem uma manivela. Se eu girar sozinho, ele fica aceso a noite inteira?',
+    voz:'A Voz do Rádio não falou mais depois daquela noite.'
+  },
+  {
+    id:'fechar', titulo:'FECHAR A BAÍA',
+    escolha:'Fechar a baía com os navios e os escombros',
+    txt:'A vila fechou a baía com o que existia: barcaça, pneu, portão de galpão, duas geladeiras. Parou de chegar. Também parou de sair. Barra Suja virou uma tampa. O peixe dentro apodreceu. O que restou de gente aprendeu a viver de pé, no escuro, com a água no tornozelo.',
+    ze:'Fechou. Pronto. Não tem mar, não tem peixe, não tem problema. Só tem a gente, que é o problema.',
+    lu:'Tem uma toalha no varal que nunca mais secou. Umidade.',
+    toq:'Eu ainda escuto o peixe batendo do outro lado. Ele quer entrar. Ou quer que eu saia?',
+    voz:'A Voz do Rádio ficou do lado de fora. Repetia nomes. Nunca os mesmos.'
+  },
+  {
+    id:'ouvir', titulo:'RESPONDER AO RÁDIO',
+    escolha:'Responder a Voz do Rádio e aceitar o que ela é',
+    txt:'A vila respondeu ao rádio. A Voz agradeceu. O mar não ficou limpo: ficou quieto. A maré entrou sem quebrar nada, cobriu a rua, a casa, o barco, tudo, e ficou. Debaixo da água, a vila continua igual, e o peixe passa entre as portas sem comer o que não é peixe. Quem escuta o rádio de madrugada diz que a Voz agora lê uma lista de nomes. O primeiro é o irmão do Zé.',
+    ze:'Ela não mentiu. O mar só carregava. Agora ele tem com quem falar. É diferente.',
+    lu:'Eu fui embora. Não da vila. Da costa. Ainda abro a janela. A água tem a mesma cor de antes.',
+    toq:'A Voz disse meu nome certo. Do jeito que a minha mãe dizia. Eu não tenho medo.',
+    voz:'A Voz do Rádio não era o mar. Era uma mulher que o mar carregou e nunca devolveu. Ela só queria responder.'
+  }
+];
+
+// ---------- modificadores do desafio diário ----------
+const DAILY_MODS=[
+  {id:'sem_gelo',nome:'SEM GELADEIRA',desc:'Geladeira e Geladeira-Bomba fora de estoque hoje.',ban:['geladeira','geladeira_bomba']},
+  {id:'so_baiacu',nome:'SÓ BAIACU',desc:'Todas as criaturas são baiacu. Todos. Sem exceção.',pool:['baiacu']},
+  {id:'sucata_inf',nome:'SUCATA DEMAIS',desc:'Começa com 999 de sucata e recursos dobrados.',scrap:999,res:2},
+  {id:'turbo',nome:'TUDO RÁPIDO',desc:'Criaturas 30% mais rápidas. A paciência também.',speed:1.3},
+  {id:'vidro',nome:'PEÇAS DE VIDRO',desc:'Máquinas com metade da vida. Não balance o gancho.',machHp:.5},
+  {id:'maré',nome:'MARÉ CHEIA',desc:'Recurso dobra. Bicho também tem o dobro de vida.',res:2,enemyHp:1.5},
+  {id:'chefes',nome:'CHEFE ANTES DA HORA',desc:'A onda 2 vem com o chefe do mapa. Boa sorte.',bossEarly:true},
+  {id:'escuridao',nome:'NOITE PERMANENTE',desc:'O mapa fica no escuro. Holofote e estilingue pagam o aluguel.',dark:true}
+];
