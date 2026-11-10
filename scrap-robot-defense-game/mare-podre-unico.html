@@ -461,6 +461,9 @@ const MACH={
   torradeira:{nome:'Torradeira',cost:100,cd:6,hp:120,unlock:true,
     desc:'Era da sogra do Zé. Cospe torrada quente em linha reta.',
     sin:'com Holofote: atira mais longe. Com Geladeira na frente: ninguém passa.'},
+  lancador_lata:{nome:'Canhão de Lata',cost:120,cd:7,hp:110,unlock:false,
+    desc:'Cospe latas amassadas em linha reta. Mais lento que a torradeira, mas dói mais.',
+    sin:'com Holofote: alcance firme. Com Ímã: munição extra de sucata.'},
   ventilador:{nome:'Ventilador',cost:75,cd:8,hp:100,unlock:true,
     desc:'Sopra de volta, derruba o que voa. Não move o Seu Bento quase nada.',
     sin:'com Rádio: hipnotiza e empurra. Com Pneu em chamas: espalha o fogo.'},
@@ -511,13 +514,14 @@ const MACH={
     sin:'com o Zé: discussão.'}
 };
 const SHOP_BASE=['boia','torradeira','ventilador','geladeira','bujao','holofote','ima','radio','remover'];
-const MACH_ORDER=['boia','torradeira','ventilador','geladeira','bujao','holofote','ima','radio',
+const MACH_ORDER=['boia','torradeira','lancador_lata','ventilador','geladeira','bujao','holofote','ima','radio',
   'estilingue','aspirador','batedeira','espelho','pneu','aranha','geladeira_bomba','cachorro','coisa_ze','remover'];
 
 // 3 níveis de upgrade por peça, TODOS visíveis no desenho.
 const UPG={
   boia:['rede dupla','hélice de lata','antena de cobre'],
   torradeira:['fita isolante','torrada dupla','resistor de fogão'],
+  lancador_lata:['mola reforçada','cano duplo','lata incendiária'],
   ventilador:['hélices duplas','motor de liquidificador','vento de furacão'],
   geladeira:['ímã extra','porta reforçada','isopor por dentro'],
   bujao:['fita e arame','registro aberto','bujão extra'],
@@ -683,8 +687,9 @@ const TREE=[
 
 // desbloqueios de máquina por progresso de campanha (além da árvore)
 const MAP_UNLOCKS=[
+  {map:1,machs:['lancador_lata','aspirador']},
   {map:2,machs:['estilingue','batedeira']},
-  {map:3,machs:['espelho','pneu']},
+  {map:3,machs:['espelho','pneu','cachorro']},
   {map:4,machs:['aranha']},
   {map:5,machs:['geladeira_bomba']}
 ];
@@ -1782,6 +1787,15 @@ function drawMachine(m){
     ctx.strokeStyle='#222';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-24,-12);
     ctx.quadraticCurveTo([-38,-44,-32][f],[-4,-2,2][f],[-38,-30,-36][f],4);ctx.stroke();
     ctx.fillStyle='#ff6020';ctx.beginPath();ctx.arc([-38,-30,-36][f],4,2,0,7);ctx.fill();
+  }else if(k==='lancador_lata'){
+    const st=act?1:0;
+    ctx.fillStyle='#4a4a42';ctx.fillRect(-18,-8,36,8);
+    ctx.fillStyle='#6a6a60';rr(-22,-34,44,28,4);ctx.fill();
+    ctx.fillStyle='#8a8a7a';ctx.fillRect(10,-30,18,8);
+    ctx.fillStyle='#3a3a34';ctx.fillRect(-20,-32,20,20);
+    ctx.fillStyle='#9aa8a0';ctx.beginPath();ctx.arc(24+st*6,-26,6,0,7);ctx.fill();
+    ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-18,-10);ctx.lineTo(-30,4);ctx.stroke();
+    if(hurt){ctx.fillStyle='#555';ctx.fillRect(-10,-28,8,6);}
   }else if(k==='ventilador'){
     ctx.fillStyle='#6a6a62';rr(-14,-20,28,20,3);ctx.fill();ctx.fillStyle='#2a2a2a';ctx.beginPath();ctx.arc(0,-40,24,0,7);ctx.fill();
     ctx.fillStyle='#3a3a3a';ctx.beginPath();ctx.arc(0,-40,20,0,7);ctx.fill();
@@ -1911,6 +1925,7 @@ function drawProjectile(p){
   if(p.kind==='can'){ctx.fillStyle='#9aa8a0';rr(-7,-7,14,14,3);ctx.fill();ctx.fillStyle='#6a7870';ctx.fillRect(-7,-7,14,3);}
   else if(p.kind==='mirror'){ctx.fillStyle='#c8e0e0';ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(7,0);ctx.lineTo(0,8);ctx.lineTo(-7,0);ctx.fill();}
   else if(p.kind==='scrap'){ctx.fillStyle='#c0503a';ctx.fillRect(-6,-6,12,12);ctx.fillStyle='#8a9a8a';ctx.fillRect(-6,-6,12,3);}
+  else if(p.kind==='lata_proj'){ctx.fillStyle='#9aa8a0';rr(-8,-6,16,12,3);ctx.fill();ctx.fillStyle='#7a8a80';ctx.fillRect(-8,-6,16,3);ctx.fillStyle='#c0c8c0';ctx.fillRect(-2,-2,4,4);}
   else{const enemy=p.enemy;ctx.fillStyle=enemy?'#8aa0a8':'#a8743a';rr(-8,-8,16,16,4);ctx.fill();
     ctx.fillStyle=enemy?'#d8e8f0':'#e0b878';rr(-6,-6,12,12,3);ctx.fill();}
   ctx.restore();
@@ -3436,6 +3451,14 @@ function updateMachines(dt){
       if(tgt&&m.timer>rate){m.timer=0;m.anim=.3;m.act=.35;SFX.shoot();
         const n=1+(up>=2?1:0);
         for(let i=0;i<n;i++)G.projs.push({x:m.x+16+i*8,y:gy(m.lane)-38,lane:m.lane,vx:330*(G.map.weather==='fog'?.86:1),dmg:(20+5*up)*(1+G.dmgBonus),rot:0,kind:'toast',enemy:false});
+      }
+    }else if(kind==='lancador_lata'){
+      const reach=W;
+      const tgt=G.enemies.some(e=>e.lane===m.lane&&e.x>m.x+10&&e.x<reach+10&&isTargetable(e));
+      const rate=2.0-.15*up;
+      if(tgt&&m.timer>rate){m.timer=0;m.anim=.4;m.act=.4;SFX.metal();
+        const n=1+(up>=2?1:0);
+        for(let i=0;i<n;i++)G.projs.push({x:m.x+18+i*10,y:gy(m.lane)-40,lane:m.lane,vx:280,dmg:(35+8*up)*(1+G.dmgBonus),rot:0,kind:'lata_proj',enemy:false});
       }
     }else if(kind==='ventilador'){
       if(m.timer>3-.25*up){
