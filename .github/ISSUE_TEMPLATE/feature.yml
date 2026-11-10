@@ -1,0 +1,39 @@
+name: Feature / ideia
+description: Ideia de gameplay, conteúdo ou tooling
+title: "✨ "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: intent
+    attributes:
+      label: A intenção de jogo
+      description: O que o jogador vai sentir ou poder fazer diferente. Não é a implementação — é o porquê.
+      placeholder: "Quero mais espaço vertical para plantar, sem apertar o HUD."
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Hoje, como funciona
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativasconsidered
+      description: Outras formas de resolver que você já pensou.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Escopo
+      options:
+        - label: Gameplay
+        - label: Conteúdo (criaturas, engenhocas, mapas, finais)
+        - label: Arte / tipografia
+        - label: Economia
+        - label: Tooling / repo / docs

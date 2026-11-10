@@ -1,0 +1,77 @@
+name: Publicar release
+
+# Dispara quando a release do GitHub é publicada (tag vX.Y.Z):
+#  - anexa o zip do itch.io na release
+#  - publica o dist/ no GitHub Pages
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  itch:
+    name: Pacote do itch.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Empacotar
+        run: npm run package:itch
+
+      - name: Smoke test
+        run: node tools/smoke.mjs
+
+      - name: Anexar o zip na release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.zip
+          generate_release_notes: true
+
+  pages:
+    name: GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Publicar
+        id: deployment
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
