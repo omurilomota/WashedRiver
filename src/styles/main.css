@@ -1,0 +1,77 @@
+/*
+ * main.css — tokens e escala de base.
+ *
+ * Paleta: alcatrão, ferrugem, osso, verde-de-esgoto, amarelo de farol.
+ * Sem fontes externas: Impact/Arial Black e monospace do sistema.
+ */
+
+:root {
+  --bg: #0a0c0b;
+  --ink: #e6dcc0;
+  --dim: #8d907c;
+  --rust: #a4552a;
+  --rust2: #d1713a;
+  --sea: #2f5b52;
+  --acid: #a5b45a;
+  --bone: #d9cba0;
+  --tar: #151918;
+  --card: #1b201d;
+  --line: #3a4038;
+  --danger: #b3392c;
+  --gold: #e8c84a;
+
+  /* Escala de fonte controlada pelas opções. O padrão é legível. */
+  --fs: 1.15;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Courier New", Courier, monospace;
+  overflow: hidden;
+}
+
+body {
+  background: radial-gradient(1200px 700px at 50% 40%, #1a2320 0%, #0a0c0b 62%, #050605 100%);
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #050807;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#cv {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  /* 1280 × 846 — as lanes novas mudaram a proporção. */
+  aspect-ratio: 1280 / 846;
+  display: block;
+  image-rendering: crisp-edges;
+  cursor: crosshair;
+}
+
+.hidden {
+  display: none !important;
+}
