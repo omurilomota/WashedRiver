@@ -1,0 +1,76 @@
+{
+  "cz-git": {
+    "types": {
+      "feat": {
+        "description": "Nova mecânica, arte, tela ou conteúdo",
+        "emoji": "✨"
+      },
+      "fix": {
+        "description": "Correção de bug",
+        "emoji": "🐛"
+      },
+      "refactor": {
+        "description": "Reorganização de código sem mudar comportamento",
+        "emoji": "♻️"
+      },
+      "perf": {
+        "description": "Ganho de performance",
+        "emoji": "⚡️"
+      },
+      "style": {
+        "description": "Aparência e tipografia",
+        "emoji": "🎨"
+      },
+      "docs": {
+        "description": "Documentação",
+        "emoji": "📝"
+      },
+      "test": {
+        "description": "Testes",
+        "emoji": "🧪"
+      },
+      "build": {
+        "description": "Build, dependências, empacotamento",
+        "emoji": "📦"
+      },
+      "ci": {
+        "description": "GitHub Actions e automação",
+        "emoji": "🤖"
+      },
+      "chore": {
+        "description": "Tarefas de manutenção que não afetam src nem dist",
+        "emoji": "🧹"
+      },
+      "revert": {
+        "description": "Reverte um commit anterior",
+        "emoji": "⏪️"
+      }
+    },
+    "scope_enums": {
+      "lanes": "lanes",
+      "sprites": "sprites",
+      "creatures": "creatures",
+      "content": "content",
+      "game": "game",
+      "ui": "ui",
+      "audio": "audio",
+      "save": "save",
+      "balance": "balance",
+      "enemies": "enemies",
+      "src": "src",
+      "build": "build",
+      "deps": "deps",
+      "repo": "repo",
+      "release": "release",
+      "github": "github",
+      "docs": "docs",
+      "ci": "ci",
+      "readme": "readme",
+      "contributing": "contributing"
+    },
+    "skip_empty": true,
+    "subject_pattern": "^(.)(.+?)$",
+    "subject_pattern_error": "A descrição precisa começar com maiúscula e ter no mínimo 2 caracteres.",
+    "update_changelog": "CHANGELOG.md"
+  }
+}

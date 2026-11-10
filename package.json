@@ -1,0 +1,46 @@
+{
+  "name": "mare-podre",
+  "version": "0.3.0",
+  "description": "MARÉ PODRE — tower defense de sucata numa costa podre. Canvas 2D + TypeScript, build single-file para web/itch.io.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Murilo Mota",
+  "homepage": "https://github.com/omurilomota/WashedRiver",
+  "keywords": ["game", "canvas", "typescript", "tower-defense", "itch.io"],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tools tests --no-error-on-unmatched-pattern",
+    "lint:fix": "eslint src tools tests --no-error-on-unmatched-pattern --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build && node tools/smoke.mjs && git diff --exit-code HEAD -- dist",
+    "precommit": "npm run typecheck && npm run lint && npm run test",
+    "package:itch": "node tools/package-itch.mjs",
+    "icon": "node tools/make-icon.mjs",
+    "commit": "cz",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "^21.2.4",
+    "@eslint/js": "^9.39.5",
+    "commitlint": "^21.2.4",
+    "cz-git": "^1.14.0",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
+    "husky": "^9.1.7",
+    "jsdom": "^31.0.0",
+    "release-please": "^17.11.2",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.7",
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^4.1.9"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
