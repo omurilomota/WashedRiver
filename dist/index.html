@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MARÉ PODRE — a costa não perdoa</title>
+    <meta name="description" content="Tower defense de sucata numa costa que devolve tudo que a vila jogou nela." />
+    <link rel="icon" href="./icon.png" />
+    <script type="module">var e=1280,t=document.getElementById(`cv`);if(!t)throw Error(`canvas #cv não encontrado no documento`);function n(e){let t=e.getContext(`2d`);if(!t)throw Error(`contexto 2D indisponível`);return t}var r=n(t),i=2;t.width=e*i,t.height=846*i,t.style.width=`100%`,t.style.height=`100%`,r.scale(i,i);var a={sky1:`#2c3a36`,sky2:`#0a0c0b`,ground:`#33352f`,strip:`#55524a`,sea:`#0d2a2e`};function o(){let t=r.createLinearGradient(0,0,0,90);t.addColorStop(0,a.sky1),t.addColorStop(1,a.sky2),r.fillStyle=t,r.fillRect(0,0,e,90),r.fillStyle=a.sea,r.fillRect(930,90,e-930,756);for(let t=0;t<6;t++){let n=90+t*126;r.fillStyle=a.ground,r.fillRect(0,n,e,126),r.fillStyle=a.strip,r.fillRect(0,n,e,4),r.strokeStyle=`rgba(0,0,0,.25)`,r.lineWidth=1;for(let e=0;e<=5;e++){let t=170+e*152;r.beginPath(),r.moveTo(t,n+6),r.lineTo(t,n+126),r.stroke()}}r.fillStyle=`rgba(0,0,0,.35)`,r.fillRect(926,90,4,756),r.fillStyle=`#d9cba0`,r.font=`bold 22px "Courier New", monospace`,r.textAlign=`center`,r.fillText(`MARÉ PODRE — esqueleto em construção`,e/2,53)}o();</script>
+    <style rel="stylesheet" crossorigin>:root{--bg:#0a0c0b;--ink:#e6dcc0;--dim:#8d907c;--rust:#a4552a;--rust2:#d1713a;--sea:#2f5b52;--acid:#a5b45a;--bone:#d9cba0;--tar:#151918;--card:#1b201d;--line:#3a4038;--danger:#b3392c;--gold:#e8c84a;--fs:1.15}*{box-sizing:border-box}html,body{background:var(--bg);height:100%;color:var(--ink);margin:0;font-family:Courier New,Courier,monospace;overflow:hidden}body{background:radial-gradient(1200px 700px at 50% 40%,#1a2320 0%,#0a0c0b 62%,#050605 100%)}#app{justify-content:center;align-items:center;height:100%;display:flex}#stage{background:#050807;justify-content:center;align-items:center;width:100vw;height:100vh;display:flex;position:relative;overflow:hidden}#cv{aspect-ratio:1280/846;width:auto;max-width:100%;height:auto;max-height:100%;image-rendering:crisp-edges;cursor:crosshair;display:block}.hidden{display:none!important}
+/*$vite$:1*/</style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage">
+        <canvas id="cv" width="1280" height="846"></canvas>
+      </div>
+    </div>
+  </body>
+</html>
