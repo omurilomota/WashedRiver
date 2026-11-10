@@ -1,4 +1,19 @@
+# dependências
 node_modules/
-.DS_Store
+
+# build
+release/
+coverage/
+*.tsbuildinfo
+
+# logs e sujeira
 *.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.cache/
 tmp/

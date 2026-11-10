@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+
+# artefato gerado pelo build — legível, mas não é fonte
+dist/** linguist-generated=true
