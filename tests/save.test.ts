@@ -128,6 +128,24 @@ describe('save', () => {
     expect(SaveDB.data.slots).toHaveLength(3);
   });
 
+  it('letra padrão nova é 1.15 em save recém-criado', async () => {
+    const { SaveDB } = await freshSave();
+    expect(SaveDB.options.font).toBe(1.15);
+  });
+
+  it('save v3 mantém a escolha de letra do jogador (versão do save não muda)', async () => {
+    const { KEY } = await freshSave();
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({ v: 3, active: 0, options: { font: 1.3 }, slots: [{}, {}, {}] }),
+    );
+
+    vi.resetModules();
+    const { SaveDB } = await import('../src/save/storage');
+    expect(SaveDB.data.v).toBe(3);
+    expect(SaveDB.options.font).toBe(1.3);
+  });
+
   it('conquista só conta se existir na lista', async () => {
     const { SaveDB } = await freshSave();
     expect(SaveDB.achievement('pirata')).toBe(true);

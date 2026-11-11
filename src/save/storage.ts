@@ -79,7 +79,7 @@ export interface TreeEffects {
 const SLOT_COUNT = 3;
 
 function defaultOptions(): Options {
-  return { master: 0.9, music: 0.62, sfx: 0.85, shake: 1, cb: 0, font: 1, mute: 0 };
+  return { master: 0.9, music: 0.62, sfx: 0.85, shake: 1, cb: 0, font: 1.15, mute: 0 };
 }
 
 /** Um slot novo. Todo campo tem fallback em `ensure()`. */
