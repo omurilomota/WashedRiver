@@ -69,6 +69,19 @@ export function structuresAlive(): number {
   return G.structures.flat().filter((s) => s.alive).length;
 }
 
+/**
+ * Imposto dos moradores, cobrado no fim de cada onda.
+ *
+ * A conta é do dado (`ECONOMIA.imposto`), não de número solto: base do
+ * round + tanto por peça plantada + tanto por onda já aguentada. Quanto
+ * mais arma na rua, mais a Dona Lú cobra — é o sumidouro que falta numa
+ * partida com sucata sobrando.
+ */
+export function impostoDoRound(pecas: number, onda: number): number {
+  const i = ECONOMIA.imposto;
+  return Math.max(0, Math.round(i.base + i.porPeca * Math.max(0, pecas) + i.porOnda * Math.max(0, onda)));
+}
+
 /** A engenhoca que está naquele slot? */
 export function machineAt(lane: number, col: number): Machine | undefined {
   return G.machines.find((m) => m.lane === lane && m.col === col);

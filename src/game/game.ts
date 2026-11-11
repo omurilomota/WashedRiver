@@ -41,7 +41,9 @@ import {
   ECONOMIA,
   ENDINGS,
   ENEMY,
+  LU_CLICKS,
   LU_LINES,
+  DOG_LINES,
   MACH,
   MACH_ORDER,
   MAPS,
@@ -56,7 +58,7 @@ import { SFX, Snd } from '../audio/audio';
 import { UI, openBossIntro } from '../ui/ui';
 import { drawField } from '../render/scene';
 import { deathDur } from '../render/creatures';
-import { availableMachines, eff, isMachUnlocked, machCost, machineAt, structuresAlive } from './economy';
+import { availableMachines, eff, impostoDoRound, isMachUnlocked, machCost, machineAt, structuresAlive } from './economy';
 
 
 
@@ -65,6 +67,46 @@ import { availableMachines, eff, isMachUnlocked, machCost, machineAt, structures
 // ---------------------------------------------------------------------
 function announce(text: string, kind?: string): void {
   UI.toast(kind || 'story', text);
+}
+
+/**
+ * Autosave de progresso.
+ *
+ * Salva o metadado (mapa liberado, sucata velha, recordes) e marca a
+ * hora. Não serializa a onda no meio: retomar uma partida interrompida
+ * dentro do corredor nunca foi promessa do jogo. O que a pausa promete
+ * agora é isto — o progresso não se perde ao fechar a aba.
+ */
+function autosave(): void {
+  if (!G || Game.screen === 'title') return;
+  G.lastSave = Date.now();
+  G.savedT = 2.4;
+  SaveDB.slot.lastPlayed = Date.now();
+  SaveDB.save();
+}
+
+/**
+ * A Dona Lú cobra o imposto do round: base + por peça + por onda.
+ *
+ * Sem sucata suficiente, ela leva o que tem e anota o resto. A dívida
+ * volta no próximo round — ninguém aqui perdoa nada.
+ */
+function cobrarImposto(): number {
+  if (G.sandbox) return 0;
+  const conta = impostoDoRound(G.machines.length, G.survived) + (G.impostoDevido || 0);
+  const disponivel = Math.max(0, Math.floor(G.scrap));
+  const pago = Math.min(disponivel, conta);
+  G.scrap -= pago;
+  G.impostoDevido = conta - pago;
+  if (conta > 0) {
+    announce(
+      'DONA LÚ COBROU ' + pago + ' DE IMPOSTO (' + G.machines.length + ' PEÇAS).' +
+        (G.impostoDevido > 0 ? ' FICOU DEVENDO ' + G.impostoDevido + '. ELA ANOTOU.' : ''),
+      'story',
+    );
+    if (G.luAtWindow) G.luTalking = G.impostoDevido > 0 ? 'Anotei. Você paga.' : 'Obrigada. Não é de graça.';
+  }
+  return pago;
 }
 
 // ---------------------------------------------------------------------
@@ -104,7 +146,7 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     mods,daily,sandbox:mode==='sandbox',dailyMods,
     phases:[],waves:[],weekSeed:0,newSeen:[],
     weather:map.weather,lastSave:Date.now(),
-    endingChoice:null
+    endingChoice:null,impostoDevido:0,savedT:0
   };
   st.waves=makeWaves(st,daily);
   st.phases=buildPhases(st);
@@ -302,7 +344,7 @@ function nextPhase(): void {
     }
     announceWave(ph.n||0);
   }
-  if(ph.type==='break'){openShop();}
+  if(ph.type==='break'){cobrarImposto();autosave();openShop();}
   if(ph.type==='bossIntro'){openBossIntro();}
   if(ph.type==='boss'){spawnBoss(G.map.boss,undefined,true);}
 }
@@ -392,6 +434,8 @@ function baseEnemy(o: {
     lit: 0,
     revealed: 0,
     reflectT: 0,
+    reflectMax: 0,
+    reflects: 0,
     hypno: 0,
     flee: false,
     carry: 0,
@@ -437,6 +481,9 @@ export function spawnEnemy(type: string, lane: number, x?: number, scale?: numbe
   e.air = !!d.air;
   e.neutral = !!d.neutral;
   e.human = !!d.human;
+  // O Peixe-Lata devolve algumas torradas e cansa. Sem esse teto, uma
+  // torradeira nunca vencia uma lata — e o jogador não tinha como saber.
+  e.reflectMax = d.reflect || 0;
   G.enemies.push(e);
   SFX.enter(type);
   if (!SaveDB.slot.seenB[type]) {
@@ -478,12 +525,19 @@ function spawnBoss(id: string, lane?: number, noIntro?: boolean): void {
   announce((B.nome)+' — '+B.hint,'story');
   SaveDB.seenEnemy(id);
 }
-export function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean): boolean {
+/**
+ * O bicho pode ser alvo?
+ *
+ * `airPierce` é a resposta do Canhão de Lata e do Estilingue: projétil
+ * pesado acerta voador sem precisar do holofote. Voador nunca é imune —
+ * só exige a ferramenta certa (política de combate justo, AGENTS.md).
+ */
+export function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean, airPierce?: boolean): boolean {
   if(!e||e.burrow>0)return false;
   if(e.boss)return true;
   if(ENEMY[e.type]&&ENEMY[e.type].human)return false;
   if(e.neutral)return false;
-  if(e.air&&e.lit<=0&&e.grounded<=0)return false;
+  if(e.air&&e.lit<=0&&e.grounded<=0&&!airPierce)return false;
   if(e.type==='enguia'&&e.dived&&e.lit<=0)return false;
   if(e.type==='fantasma'&&!e.revealed&&e.lit<=0&&!allowHidden)return false;
   if(e.flee)return false;
@@ -622,6 +676,7 @@ export function update(dt: number){
   if(G.toqSayT>0)G.toqSayT-=dt;
   G.toqBoost=Math.sin(G.t*.8)*10;
   G.shake*=Math.exp(-6*dt);G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
+  if(G.savedT>0)G.savedT-=dt;if(G.dogSay>0)G.dogSay-=dt;
 
   if(Game.screen!=='play'||Game.paused)return;
   if(Game.bossIntro&&Game.bossIntro.t<Game.bossIntro.dur){Game.bossIntro.t+=dt;if(Game.bossIntro.t>=Game.bossIntro.dur){Game.bossIntro=null;if(currentPhase().type==='bossIntro'){G.phaseIdx++;G.phaseT=0;spawnBoss(G.map.boss,undefined,true);}}return;}
@@ -702,11 +757,11 @@ function updateMachines(dt: number): void {
       }
     }else if(kind==='lancador_lata'){
       const reach=W;
-      const tgt=G.enemies.some(e=>e.lane===m.lane&&e.x>m.x+10&&e.x<reach+10&&isTargetable(e));
+      const tgt=G.enemies.some(e=>e.lane===m.lane&&e.x>m.x+10&&e.x<reach+10&&isTargetable(e,false,!!MACH.lancador_lata.air));
       const rate=2.0-.15*up;
       if(tgt&&m.timer>rate){m.timer=0;m.anim=.4;m.act=.4;SFX.metal();
         const n=1+(up>=2?1:0);
-        for(let i=0;i<n;i++)G.projs.push({x:m.x+18+i*10,y:plantY(m.lane)-40,lane:m.lane,vx:280,dmg:(35+8*up)*(1+G.dmgBonus),rot:0,kind:'lata_proj',enemy:false});
+        for(let i=0;i<n;i++)G.projs.push({x:m.x+18+i*10,y:plantY(m.lane)-40,lane:m.lane,vx:280,dmg:(35+8*up)*(1+G.dmgBonus),rot:0,kind:'lata_proj',enemy:false,airPierce:!!MACH.lancador_lata.air});
       }
     }else if(kind==='ventilador'){
       if(m.timer>3-.25*up){
@@ -714,6 +769,14 @@ function updateMachines(dt: number): void {
         if(ahead.length){m.timer=0;m.anim=.8;m.act=.8;SFX.gust();
           const doubled=nearMach(m,'radio');
           for(const e of ahead){
+            // A baleia é visita, não bicho: o vento a espanta de volta pro
+            // mar. É a resposta jogável pra "não morre", sem HP mágico.
+            if(e.type==='baleia'){
+              e.spooked=true;e.flee=true;e.act=1;
+              announce('O VENTILADOR ESPANTOU A BALEIA. ELA VAI EMBORA.','story');
+              addText(e.x,plantY(e.lane)-e.r-18,'ELA NÃO QUERIA ISSO','#e8d9a8');
+              continue;
+            }
             if(e.air){e.air=false;e.grounded=4;e.act=.6;burst(e.x,plantY(e.lane)-40,8,'#b8b0a0',120,400,3,.6);}
             const f=e.boss?60:(360+120*up)*(e.hypno>0?2:1);e.kb+=f;e.slow=1.3;
             if(doubled&&!e.boss&&e.type!=='pescador'){e.hypno=Math.max(e.hypno,.8);}
@@ -735,8 +798,8 @@ function updateMachines(dt: number): void {
         }
       }
     }else if(kind==='estilingue'){
-      if(m.timer>3.2-.3*up){const tgt=G.enemies.find(e=>e.lane===m.lane&&e.x>m.x+20&&isTargetable(e)&&Math.abs(e.x-m.x)<W);
-        if(tgt){m.timer=0;m.act=.5;SFX.can();G.projs.push({x:m.x+10,y:plantY(m.lane)-52,lane:m.lane,vx:520,dmg:(45+12*up)*(1+G.dmgBonus),rot:0,kind:'can',silent:true,enemy:false});}}
+      if(m.timer>3.2-.3*up){const tgt=G.enemies.find(e=>e.lane===m.lane&&e.x>m.x+20&&isTargetable(e,false,!!MACH.estilingue.air)&&Math.abs(e.x-m.x)<W);
+        if(tgt){m.timer=0;m.act=.5;SFX.can();G.projs.push({x:m.x+10,y:plantY(m.lane)-52,lane:m.lane,vx:520,dmg:(45+12*up)*(1+G.dmgBonus),rot:0,kind:'can',silent:true,enemy:false,airPierce:!!MACH.estilingue.air});}}
     }else if(kind==='aspirador'){
       if(m.timer>2.6){const cand=G.enemies.filter(e=>!e.boss&&e.type!=='pescador'&&e.burrow<=0&&e.x>m.x&&e.x<m.x+2*COLW&&ENEMY[e.type]&&ENEMY[e.type].hp<150&&!e.neutral);
         if(cand.length){m.timer=0;m.act=.7;SFX.gust();
@@ -790,6 +853,12 @@ function updateEnemies(dt: number): void {
     e.revealed=Math.max(0,e.revealed-dt);e.grounded=Math.max(0,e.grounded-dt);e.reflectT=Math.max(0,e.reflectT-dt);
     if(e.jump!==undefined&&e.jump>0)e.jump=Math.max(0,e.jump-dt);
     if(e.boss){updateBossBase(e,dt);continue;}
+    if(e.type==='baleia'&&e.spooked){
+      e.x+=e.speed*1.4*dt;
+      if(e.x>SPAWN_X){G.enemies.splice(n,1);G.ze.say='Ela voltou. Bom.';G.ze.sayT=4;
+        announce('A BALEIA-FILHOTE FOI EMBORA. NINGUÉM PIOROU.','radio');SaveDB.achievement('baleia_ok');}
+      continue;
+    }
     if(e.type==='enguia'){e.diveT+=dt;e.dived=e.lit<=0&&(e.diveT%3.5)>2.2;}
     if(e.type==='caranguejo')e.buff=G.enemies.some(o=>o!==e&&o.type==='caranguejo'&&o.lane===e.lane&&Math.abs(o.x-e.x)<240);
     if(e.rage>0){e.rage-=dt;}
@@ -887,7 +956,10 @@ function updateBossSpecials(dt: number): void {
     if(G.darkT<=0&&G.dark&&e.phase<3)G.dark=false;
     if(e.actT<=0){e.actT=e.phase>=2?4:6;SFX.enter('mariposa');
       spawnEnemy(pick(['mariposa','agua','gaivota']),randLane(),SPAWN_X,1);
-      if(e.phase>=2){const l=randLane();e.lane=l;e.x=SPAWN_X-20;burst(e.x,plantY(l),10,'rgba(255,240,180,.5)',100,0,3,.6);}
+      // Ele troca de lane e fica parado na fase 2+. O destino precisa
+      // caber no campo: em `SPAWN_X-20` ele ficava fora do alcance de
+      // qualquer peça (x > W) e virava um chefe literalmente imortal.
+      if(e.phase>=2){const l=randLane();e.lane=l;e.x=W-60;burst(e.x,plantY(l),10,'rgba(255,240,180,.5)',100,0,3,.6);}
     }
   }else if(e.b==='maquinista'){
     e.actT-=dt;
@@ -921,13 +993,15 @@ function updateProjectiles(dt: number): void {
       }
       continue;
     }
-    const hit=G.enemies.find(e=>e.lane===p.lane&&Math.abs(e.x-p.x)<e.r*.95&&isTargetable(e,p.silent));
+    const hit=G.enemies.find(e=>e.lane===p.lane&&Math.abs(e.x-p.x)<e.r*.95&&isTargetable(e,p.silent,!!p.airPierce));
     if(hit){
       G.projs.splice(i,1);
-      if(hit.type==='lata'&&p.kind==='toast'){
-        hit.reflectT=.6;hit.act=.6;
+      const lataCansada=(hit.reflects||0)>=(hit.reflectMax||0);
+      if(hit.type==='lata'&&p.kind==='toast'&&!lataCansada){
+        hit.reflects=(hit.reflects||0)+1;hit.reflectT=.6;hit.act=.6;
         G.projs.push({x:hit.x-10,y:p.y,lane:p.lane,vx:-300,dmg:p.dmg,kind:'toast',enemy:true,rot:0});
         SFX.reflect();addText(hit.x,p.y-20,'DEVOLVO','#c8e0e8');burst(hit.x,p.y,6,'#d8e8f0',160,300,3,.4);
+        if(hit.reflects===hit.reflectMax)addText(hit.x,p.y-36,'CHEGA DE DEVOLVER','#c8e0e8');
       }else{
         damageEnemy(hit,p.dmg, p.kind==='can'?'can':'toast');SFX.hit();burst(p.x,p.y,5,p.kind==='can'?'#9aa8a0':'#d8a85a',120,400,2,.3);
         if(G.mode==='boss'||hit.boss)SFX.hit();
@@ -952,6 +1026,9 @@ function updatePickups(dt: number): void {
     if(p.fly){const tx=56,ty=42,dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);
       if(d<18){G.scrap+=p.v;G.collected+=p.v;G.pickups.splice(i,1);continue;}
       p.x+=dx/d*950*dt;p.y+=dy/d*950*dt;continue;}
+    // Passar o mouse por cima cata. O clique continua valendo (e o Ímã
+    // faz isso sozinho); agora não precisa acertar o pixel da sucata.
+    if(Game.mouse&&Math.hypot(p.x-Game.mouse.x,p.y-Game.mouse.y)<28){collect(p);continue;}
     if(p.auto){p.vy+=400*dt;p.y+=p.vy*dt;if(p.t>.6)collect(p);continue;}
     p.x-=4*dt;p.life-=dt;
     if(p.life<=0){G.pickups.splice(i,1);burst(p.x,p.y,4,'#6a8a8a',60,200,2,.4);}
@@ -1113,10 +1190,10 @@ Game.buyShopItem=function(id){
   else if(id==='recarga'){for(const k in G.cds)G.cds[k]=0;announce('TODAS AS PEÇAS RECARREGADAS. VAI COM TUDO.','story');}
   SFX.cash();UI.shop();
 };
-Game.pause=function(){if(Game.screen!=='play')return;Game.paused=true;Game.screen='pause';Snd.pauseDuck(true);UI.pause();};
+Game.pause=function(){if(Game.screen!=='play')return;Game.paused=true;Game.screen='pause';Snd.pauseDuck(true);autosave();UI.pause();};
 Game.resume=function(){if(Game.screen!=='pause')return;Game.paused=false;Game.screen='play';Snd.pauseDuck(false);UI.hideOverlays();};
 Game.restart=function(){if(Game.runOpts)Game.startFromOpts(Game.runOpts);else Game.quitToTitle();};
-Game.quitToTitle=function(){Game.screen='title';Game.paused=false;Snd.pauseDuck(false);Snd.setIntensity(1);
+Game.quitToTitle=function(){autosave();Game.screen='title';Game.paused=false;Snd.pauseDuck(false);Snd.setIntensity(1);
   Game.titleBackdrop();UI.title();Snd.setTrack('barra');};
 Game.startFromOpts=function(o){
   if(o.kind==='campaign')Game.startCampaign(o.map);
@@ -1154,6 +1231,16 @@ Game.toqClick=function(){
   if(G.toqClicks>=10){SaveDB.achievement('toquinho_viu');G.toqSay='Eu vi tudo.';G.toqSayT=6;announce('CONQUISTA: TOQUINHO VIU TUDO. ELE NÃO CONTA O QUÊ.','ach');}
   else{G.toqSay=pick(TOQ_LINES);G.toqSayT=3;G.toqBoost=4;}
 };
+Game.luClick=function(){
+  if(!G)return;G.luClicks=(G.luClicks||0)+1;
+  G.luTalking=pick(LU_CLICKS);
+  setTimeout(()=>{if(G)G.luTalking='';},3600);
+  if(G.impostoDevido>0)announce('DONA LÚ: "Devendo, meu filho. A conta não some porque você olhou."','story');
+};
+Game.dogClick=function(){
+  if(!G)return;G.dogClicks=(G.dogClicks||0)+1;
+  G.dogSay=1.4;addText(94,plantY(2)-30,pick(DOG_LINES),'#e8d9a8');
+};
 Game.bootsClick=function(){
   if(!G||!G.props.length)return;
   G.botaClicks=(G.botaClicks||0)+1;
@@ -1186,6 +1273,9 @@ function onCanvasDown(ev: MouseEvent): void {
   if(Math.hypot(p.x-46,p.y-(plantY(1)-50))<30){Game.zeClick();return;}
   if(G.toqAlive&&Math.hypot(p.x-(70+Math.sin(G.t*.6)*22),p.y-(plantY(2)-24))<26){Game.toqClick();return;}
   if(G.props.length&&Math.hypot(p.x-G.props[0].x,p.y-plantY(G.props[0].lane))<34){Game.bootsClick();return;}
+  // Dona Lú na janela e o cachorro da vila: todo morador responde.
+  if(G.luAtWindow&&Math.hypot(p.x-124,p.y-(plantY(1)-76))<32){Game.luClick();return;}
+  if(Math.hypot(p.x-(94+Math.sin(G.t*1.3)*8),p.y-(plantY(2)+4))<26){Game.dogClick();return;}
   // sucata primeiro
   for(const k of G.pickups){if(!k.fly&&!k.auto&&Math.hypot(k.x-p.x,k.y-p.y)<30){collect(k);return;}}
   // cartas
@@ -1207,10 +1297,13 @@ function onCanvasDown(ev: MouseEvent): void {
   }
 }
 window.addEventListener('keydown',ev=>{
+  // ESC pausa (e despausa). Cancelar a peça escolhida é o botão direito:
+  // apertar ESC com uma carta na mão era a forma mais fácil de perder a
+  // peça e não pausar.
   if(ev.key==='Escape'){
     if(Game.screen==='shop')return;
-    if(Game.screen==='play'&&G)G.selected=null;
     if(Game.screen==='pause')Game.resume();
+    else if(Game.screen==='play')Game.pause();
     return;
   }
   if(ev.key==='p'||ev.key==='P'){if(Game.screen==='play')Game.pause();else if(Game.screen==='pause')Game.resume();return;}
@@ -1222,7 +1315,19 @@ window.addEventListener('keydown',ev=>{
 });
 canvas.addEventListener('contextmenu',ev=>ev.preventDefault());
 canvas.addEventListener('mousedown',onCanvasDown);
-canvas.addEventListener('mousemove',ev=>{const p=canvasPos(ev);Game.mouse=p;});
+canvas.addEventListener('mousemove',ev=>{const p=canvasPos(ev);Game.mouse=p;canvas.style.cursor=hoverTarget(p)?'pointer':'default';});
+
+/** O ponteiro está sobre algo que responde ao clique? */
+function hoverTarget(p:{x:number;y:number}):boolean{
+  if(!G||Game.screen!=='play'||Game.paused)return false;
+  if(Math.hypot(p.x-46,p.y-(plantY(1)-50))<30)return true;
+  if(G.toqAlive&&Math.hypot(p.x-(70+Math.sin(G.t*.6)*22),p.y-(plantY(2)-24))<26)return true;
+  if(G.luAtWindow&&Math.hypot(p.x-124,p.y-(plantY(1)-76))<32)return true;
+  if(Math.hypot(p.x-(94+Math.sin(G.t*1.3)*8),p.y-(plantY(2)+4))<26)return true;
+  if(G.props.length&&Math.hypot(p.x-G.props[0].x,p.y-plantY(G.props[0].lane))<34)return true;
+  if(G.pickups.some(k=>!k.fly&&!k.auto&&Math.hypot(k.x-p.x,k.y-p.y)<30))return true;
+  return p.y<86&&!!UI.cardAt(p.x,p.y);
+}
 
 /**
  * Desenha um quadro: o campo, depois a HUD e os overlays de tela.

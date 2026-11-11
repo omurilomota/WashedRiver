@@ -17,6 +17,8 @@ export interface MachineDef {
   sin: string;
   /** Peça única da partida, montada pelo Zé. */
   special?: boolean;
+  /** Projétil pesado o bastante para acertar voador sem holofote. */
+  air?: boolean;
 }
 
 /**
@@ -41,6 +43,17 @@ export interface EconomiaDef {
     reparoDuplo: number;
     tabua: number;
     recarga: number;
+  };
+  /**
+   * Imposto dos moradores, cobrado no fim de cada onda.
+   *
+   * Arma na rua não é de graça: quanto mais peça plantada, mais a Dona Lú
+   * cobra. `porOnda` encarece a conta conforme a partida avança.
+   */
+  imposto: {
+    base: number;
+    porPeca: number;
+    porOnda: number;
   };
   /** Recompensa de sucata velha no fim da partida. */
   meta: {
@@ -70,6 +83,11 @@ export interface EnemyDef {
   neutral?: boolean;
   /** Era gente. Não morre. */
   human?: boolean;
+  /**
+   * Quantas vezes o bicho aguenta devolver tiro antes de cansar.
+   * Sem isso, uma peça que reflete vira parede eterna contra a torradeira.
+   */
+  reflect?: number;
 }
 
 export interface BossDef {

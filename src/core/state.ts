@@ -58,6 +58,9 @@ export interface Enemy {
   revealed: number;
   hypno: number;
   reflectT: number;
+  /** Quantas torradas o Peixe-Lata ainda aguenta devolver. */
+  reflectMax: number;
+  reflects: number;
   air: boolean;
   /** Não é bicho: não é alvo e não toma dano (ver ADR 004). */
   neutral: boolean;
@@ -336,6 +339,10 @@ export interface GameState {
   weather: string;
   lastSave: number;
   endingChoice: string | null;
+  /** Imposto dos moradores que ficou em aberto pro próximo round. */
+  impostoDevido: number;
+  /** Segundos restantes do aviso "SALVO" no HUD. */
+  savedT: number;
 
   /** Multiplicadores de partida (noite infinita, mods do dia). */
   speedMult?: number;
@@ -466,6 +473,8 @@ function emptyState(): GameState {
     weather: 'rain',
     lastSave: Date.now(),
     endingChoice: null,
+    impostoDevido: 0,
+    savedT: 0,
   };
 }
 

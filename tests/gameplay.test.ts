@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { beforeAll, describe, expect, it } from 'vitest';
-import { DAILY_MODS, MACH, MAPS } from '../src/data';
-import { STRUCTURES } from '../src/core/constants';
+import { DAILY_MODS, ECONOMIA, MACH, MAPS } from '../src/data';
+import { STRUCTURES, VX, W } from '../src/core/constants';
+import { KEY } from '../src/save/storage';
 
 /**
  * Regressão do gameplay.
@@ -244,5 +245,131 @@ describe('desafio diário: os mods fazem o que prometem', () => {
   it('MARÉ CHEIA: o bicho também tem o dobro de vida', () => {
     state.Game.startDaily([mod('MARÉ CHEIA')]);
     expect(state.G.enemyHpMult).toBe(1.5);
+  });
+});
+
+describe('sucata por hover', () => {
+  it('passar o mouse por cima cata a sucata', () => {
+    state.Game.startCampaign(0);
+    state.G.pickups.push({ x: 500, y: 300, v: 33, auto: false, life: 14, t: 0, fly: false, vy: 0, bob: 0 });
+    state.Game.mouse = { x: 505, y: 302 };
+    game.update(0.05);
+    expect(state.G.pickups[0].fly).toBe(true);
+    for (let i = 0; i < 40 && state.G.pickups.length; i++) game.update(0.05);
+    expect(state.G.collected).toBeGreaterThanOrEqual(33);
+  });
+
+  it('sucata longe do mouse continua boiando', () => {
+    state.Game.startCampaign(0);
+    state.G.pickups.push({ x: 500, y: 300, v: 33, auto: false, life: 14, t: 0, fly: false, vy: 0, bob: 0 });
+    state.Game.mouse = { x: 60, y: 60 };
+    game.update(0.05);
+    expect(state.G.pickups[0].fly).toBe(false);
+  });
+});
+
+describe('ESC e autosave', () => {
+  it('ESC pausa e despausa', () => {
+    state.Game.startCampaign(0);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(state.Game.screen).toBe('pause');
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(state.Game.screen).toBe('play');
+  });
+
+  it('pausar grava o progresso no localStorage', () => {
+    state.Game.startCampaign(0);
+    state.Game.pause();
+    expect(state.G.savedT).toBeGreaterThan(0);
+    const raw = localStorage.getItem(KEY);
+    expect(raw).toBeTruthy();
+    const saved = JSON.parse(raw!) as { active: number; slots: { lastPlayed: number }[] };
+    expect(saved.slots[saved.active].lastPlayed).toBeGreaterThan(0);
+  });
+});
+
+describe('imposto dos moradores', () => {
+  it('cresce com peça na rua e com onda vencida', async () => {
+    const economia = await import('../src/game/economy');
+    const { base, porPeca, porOnda } = ECONOMIA.imposto;
+    expect(economia.impostoDoRound(0, 0)).toBe(base);
+    expect(economia.impostoDoRound(3, 2)).toBe(base + 3 * porPeca + 2 * porOnda);
+  });
+
+  it('é cobrado no fim da onda, sem zerar a sucata', async () => {
+    state.Game.startCampaign(0);
+    state.G.scrap = 500;
+    expect(game.placeMachine('boia', 0, 0, true)).toBe(true);
+    state.G.phases = [{ type: 'wave', n: 0 }, { type: 'break' }, { type: 'idle' }];
+    state.G.phaseIdx = 0;
+    state.G.phaseT = 0;
+    state.G.spawnIdx = state.G.waves[0].length;
+    state.G.enemies = [];
+
+    const economia = await import('../src/game/economy');
+    const conta = economia.impostoDoRound(state.G.machines.length, state.G.survived + 1);
+    const antes = state.G.scrap;
+    game.update(0.05);
+    // A sucata passiva (3/s) entra no mesmo quadro; o imposto tem que aparecer inteiro.
+    const pago = antes - state.G.scrap;
+    expect(pago).toBeGreaterThanOrEqual(conta - 1);
+    expect(pago).toBeLessThanOrEqual(conta);
+    expect(state.G.impostoDevido).toBe(0);
+    expect(state.G.scrap).toBeGreaterThan(0);
+  });
+});
+
+describe('contramedidas justas', () => {
+  it('o ventilador espanta a baleia em vez de matá-la', () => {
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('ventilador', 0, 0, true)).toBe(true);
+    const baleia = game.spawnEnemy('baleia', 0, 400);
+    expect(baleia).not.toBeNull();
+    for (let i = 0; i < 40; i++) game.update(0.1);
+    expect(baleia!.spooked).toBe(true);
+  });
+
+  it('a lata devolve no máximo três torradas — a quarta entra', () => {
+    state.Game.startCampaign(0);
+    const lata = game.spawnEnemy('lata', 0, 900);
+    expect(lata).not.toBeNull();
+    const hp = lata!.hp;
+    for (let i = 0; i < 3; i++) {
+      state.G.projs.push({ x: lata!.x, y: 300, lane: 0, vx: 0, dmg: 20, kind: 'toast', enemy: false });
+      game.update(0.01);
+    }
+    expect(lata!.hp).toBe(hp);
+    expect(lata!.reflects).toBe(3);
+    state.G.projs.push({ x: lata!.x, y: 300, lane: 0, vx: 0, dmg: 20, kind: 'toast', enemy: false });
+    game.update(0.01);
+    expect(lata!.hp).toBeLessThan(hp);
+  });
+
+  it('canhão de lata e estilingue acertam voador sem holofote', () => {
+    state.Game.startCampaign(0);
+    const gaivota = game.spawnEnemy('gaivota', 0, 800);
+    expect(gaivota).not.toBeNull();
+    expect(game.isTargetable(gaivota!, false)).toBe(false);
+    expect(game.isTargetable(gaivota!, false, !!MACH.lancador_lata.air)).toBe(true);
+    expect(game.isTargetable(gaivota!, false, !!MACH.estilingue.air)).toBe(true);
+  });
+});
+
+describe('O Faroleiro fica no campo', () => {
+  it('na fase 2 o teleporte não o joga para fora do alcance', () => {
+    state.Game.startBoss(1); // Farol do Fim
+    game.update(8.1); // prep → intro
+    game.update(2.7); // intro → chefe
+    const boss = state.G.boss;
+    expect(boss).not.toBeNull();
+    if (!boss) return;
+
+    boss.phase = 2;
+    boss.actT = 0;
+    game.update(0.05);
+
+    expect(boss.x).toBeLessThanOrEqual(W);
+    expect(boss.x).toBeGreaterThan(VX);
+    expect(game.isTargetable(boss)).toBe(true);
   });
 });
