@@ -16,9 +16,22 @@ export function eff(): TreeEffects {
   return SaveDB.eff();
 }
 
+/**
+ * O desafio diário pode banir engenhocas ("SEM GELADEIRA").
+ *
+ * O ban vem do mod do dia (`G.mods.ban`) e vale para a partida inteira:
+ * a engenhoca some da banca, não pode ser plantada e não aparece como
+ * oferta de desbloqueio.
+ */
+export function isBanned(k: string): boolean {
+  const ban = G.mods && G.mods.ban;
+  return Array.isArray(ban) && ban.includes(k);
+}
+
 /** A engenhoca está disponível para este slot? */
 export function isMachUnlocked(k: string): boolean {
   if (!MACH[k]) return false;
+  if (isBanned(k)) return false;
   if (MACH[k].unlock) return true;
   const e = eff();
   if (e.unlocks && e.unlocks[k]) return true;
