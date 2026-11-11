@@ -27,6 +27,43 @@ canvas.style.width = '100%';
 canvas.style.height = '100%';
 ctx.scale(DPR, DPR);
 
+/**
+ * Retângulo de canto arredondado (caminho pronto, é só preencher).
+ *
+ * Vive aqui porque é helper de canvas: o cenário (`render/`) e as
+ * criaturas (`render/creatures.ts`) usam o mesmo, e nenhum dos dois
+ * precisa saber do outro.
+ */
+export function rr(x: number, y: number, w: number, h: number, r: number): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/** Linhas de água (ondulação em faixas). */
+export function waterLines(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  t: number,
+  col: string,
+  gap?: number,
+): void {
+  ctx.fillStyle = col;
+  gap = gap || 18;
+  for (let i = 0; i < Math.floor(h / gap); i++) {
+    const yy = y + 8 + i * gap;
+    const off = Math.sin(t * 1.4 + i * 0.7) * 12;
+    for (let xx = x + off; xx < x + w; xx += 62) {
+      ctx.fillRect(xx, yy, 26 + Math.sin(t + i) * 8, 2);
+    }
+  }
+}
 /** Explosão de partículas. */
 export function burst(
   x: number,

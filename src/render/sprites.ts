@@ -5,13 +5,17 @@
  * geométricos (`rr`, `eye`, `pose`) são compartilhados com `creatures.ts`.
  */
 import { COLS, COLW, FIELD_R, H, LANES, LANE_H, LANE_Y0, VX, W, clamp, plantY, rnd } from '../core/constants';
-import { ctx } from '../core/canvas';
+import { ctx, rr, waterLines } from '../core/canvas';
 import { G } from '../core/state';
 import { CARTAZES } from '../data';
+import { drawLaneFloorNova } from './lanes';
+
+// `rr` e `waterLines` moram em core/canvas (são helper de canvas, não de
+// cenário). Reexportados aqui porque o resto do jogo já importava deste
+// módulo.
+export { rr, waterLines };
 
 
-export function rr(x: number,y: number,w: number,h: number,r: number){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 export function eye(x: number,y: number,r: number,px?: number,py?: number,col?: string){ctx.fillStyle='#f0ecd0';ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
   ctx.fillStyle=col||'#111';ctx.beginPath();ctx.arc(x+(px||0),y+(py||0),r*.5,0,7);ctx.fill();}
 export function blinkEye(x: number,y: number,r: number,closed: boolean,px?: number,py?: number,col?: string){
@@ -30,11 +34,6 @@ export function pose(o: { flash?: number; act?: number; hypno?: number; reflectT
   if(st==='hurt')return{st,f,tilt:[-.20,.14,-.07][f],sx:[.86,1.13,.93][f],sy:[1.10,.82,.95][f]};
   if(st==='action')return{st,f,tilt:[-.09,.11,-.03][f],sx:[1.13,1,.94][f],sy:[.91,1.07,1][f]};
   return{st,f,tilt:[-.04,0,.04][f],sx:[1,.98,1.02][f],sy:[.99,1.02,.97][f]};
-}
-export function waterLines(x: number,y: number,w: number,h: number,t: number,col: string,gap?: number){
-  ctx.fillStyle=col;gap=gap||18;
-  for(let i=0;i<Math.floor(h/gap);i++){const yy=y+8+i*gap,off=Math.sin(t*1.4+i*.7)*12;
-    for(let xx=x+off;xx<x+w;xx+=62)ctx.fillRect(xx,yy,26+Math.sin(t+i)*8,2);}
 }
 export function note(x: number,y: number,txt: string,w: number){
   w=w||96;ctx.save();ctx.translate(x,y);ctx.rotate(rnd(-.04,.04));
@@ -161,32 +160,9 @@ function drawCemiterio(p,t){
 // Pisos por corredor, por mapa
 export function drawLaneFloor(map,p,l,t){
   const y=LANE_Y0+l*LANE_H;
-  if(l===3){
-    // jardim ribeirinho: água, plantas, ponte de madeira
-    ctx.fillStyle='#2a4a3a';ctx.fillRect(VX,y,W-VX,LANE_H);
-    waterLines(VX,y+8,W-VX,LANE_H-16,t,'rgba(120,180,160,.18)',10);
-    ctx.fillStyle='#3a6a4a';for(let i=0;i<14;i++){const px=VX+30+i*78;ctx.beginPath();ctx.ellipse(px,y+LANE_H-24,26,12,0,0,7);ctx.fill();}
-    ctx.fillStyle='#6a5a3a';for(let i=0;i<6;i++){const px=VX+60+i*150;ctx.fillRect(px,y+LANE_H-40,8,36);ctx.fillRect(px-12,y+LANE_H-44,32,8);}
-    ctx.fillStyle='#7a6a4a';ctx.fillRect(VX,y+LANE_H-10,W-VX,4);
-    ctx.fillStyle='#5a4a2a';for(let i=0;i<8;i++){ctx.fillRect(VX+40+i*110,y+24,6,LANE_H-40);}
-    // flores e pedras
-    for(let i=0;i<16;i++){ctx.fillStyle=i%2?'#d06080':'#e0a040';ctx.beginPath();ctx.arc(VX+20+i*72,y+20+Math.sin(i)*4,4,0,7);ctx.fill();}
-    for(let i=0;i<10;i++){ctx.fillStyle='#6a6a6a';ctx.beginPath();ctx.ellipse(VX+30+i*110,y+LANE_H-18,14,6,0,0,7);ctx.fill();}
-    return;
-  }
-  if(l===4){
-    // trapiche: estacas, tábuas, varais de peixe
-    ctx.fillStyle='#3a3028';ctx.fillRect(VX,y,W-VX,LANE_H);
-    ctx.fillStyle='#2a241e';ctx.fillRect(VX,y+LANE_H-22,W-VX,22);
-    for(let i=0;i<18;i++){ctx.fillStyle=i%2?'#4a4034':'#3e362c';ctx.fillRect(VX+i*52,y+28,48,LANE_H-54);}
-    ctx.fillStyle='#6a5a4a';for(let i=0;i<12;i++){const px=VX+20+i*80;ctx.fillRect(px,y+10,6,LANE_H-34);}
-    ctx.strokeStyle='#8a7a5a';ctx.lineWidth=2;for(let i=0;i<6;i++){const px=VX+40+i*150;ctx.beginPath();ctx.moveTo(px,y+16);ctx.lineTo(px+60,y+8);ctx.lineTo(px+120,y+16);ctx.stroke();}
-    ctx.fillStyle='#b09060';for(let i=0;i<10;i++){ctx.fillRect(VX+30+i*95,y+20,14,6);}
-    // redes de pesca e barris
-    ctx.strokeStyle='#c0a070';ctx.lineWidth=1;for(let i=0;i<5;i++){const px=VX+50+i*220;ctx.beginPath();ctx.moveTo(px,y+LANE_H-30);ctx.lineTo(px+80,y+LANE_H-40);ctx.lineTo(px+160,y+LANE_H-30);ctx.stroke();}
-    for(let i=0;i<6;i++){ctx.fillStyle='#7a5a3a';ctx.beginPath();ctx.ellipse(VX+40+i*180,y+LANE_H-16,16,10,0,0,7);ctx.fill();ctx.fillStyle='#5a3a1a';ctx.fillRect(VX+32+i*180,y+LANE_H-22,16,6);}
-    return;
-  }
+  // lanes 4, 5 e 6: piso, props e silhueta próprios de cada mapa
+  // (moram em lanes.ts — aqui ficava jardim e trapiche repetidos).
+  if(l>=3){drawLaneFloorNova(map,p,l,t);return;}
   if(map.id==='barra'){
     if(l===0){ctx.fillStyle='#0f2e33';ctx.fillRect(VX,y,W-VX,LANE_H);waterLines(VX,y,W-VX,LANE_H,t,'rgba(120,160,140,.12)');
       for(let i=0;i<38;i++){if((i*7)%9===0)continue;ctx.fillStyle=`rgb(${76+(i%4)*12},${56+(i%3)*8},${34} )`;ctx.fillRect(VX+i*20,y+26,18,LANE_H-30);}
