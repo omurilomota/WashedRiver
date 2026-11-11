@@ -340,7 +340,10 @@ export const SaveDB = {
       extraOffer: false,
       repair: 0,
       shield: 0,
-      machineHp: 1,
+      // Bônus, não multiplicador: a peça nasce com o HP do dado e cada
+      // nível da árvore soma um pouco. (Com 1 aqui, toda peça nascia
+      // com o dobro da vida — e a árvore somava em cima.)
+      machineHp: 0,
       discount: 0,
       luck: 0,
       unlocks: {},
