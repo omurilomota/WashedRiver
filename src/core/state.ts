@@ -80,6 +80,8 @@ export interface Enemy {
   attached: any;
   carry: number;
   saved: boolean;
+  /** O Pescador chegou na vila e cobrou o pedágio em sucata. */
+  taxed: boolean;
   spoke: string;
   buff: boolean;
   enraged: boolean;

@@ -165,9 +165,9 @@ describe('economia: slots', () => {
     expect(machineAt(0, 3)).toBeUndefined();
   });
 
-  it('o campo tem 6 lanes × 5 colunas', () => {
+  it('o campo tem 6 lanes × 7 colunas', () => {
     expect(LANES).toBe(6);
-    expect(COLS).toBe(5);
+    expect(COLS).toBe(7);
     expect(STRUCTURES).toBe(LANES * 2);
   });
 });

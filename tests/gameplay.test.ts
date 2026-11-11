@@ -355,6 +355,26 @@ describe('contramedidas justas', () => {
   });
 });
 
+describe('o Pescador não quebra a vila', () => {
+  it('chega na vila, cobra pedágio em sucata e volta — sem derrubar estrutura', () => {
+    state.Game.startCampaign(0);
+    state.G.scrap = 100;
+    const antes = state.G.structures.flat().filter((s) => s.alive).length;
+
+    const pescador = game.spawnEnemy('pescador', 0, VX + 2);
+    expect(pescador).not.toBeNull();
+    game.update(0.05);
+
+    // Nada caiu: um bicho que não se pode matar não pode custar uma parede.
+    expect(state.G.structures.flat().filter((s) => s.alive).length).toBe(antes);
+    // O preço é sucata, e é o dado que manda no preço.
+    expect(state.G.scrap).toBeCloseTo(100 - ECONOMIA.pescadorTaxa, 0);
+    expect(pescador!.saved).toBe(true);
+    expect(pescador!.taxed).toBe(true);
+    expect(game.isTargetable(pescador!, false)).toBe(false);
+  });
+});
+
 describe('O Faroleiro fica no campo', () => {
   it('na fase 2 o teleporte não o joga para fora do alcance', () => {
     state.Game.startBoss(1); // Farol do Fim

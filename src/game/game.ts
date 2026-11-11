@@ -447,6 +447,7 @@ function baseEnemy(o: {
     switching: false,
     switchT: rnd(3, 6),
     saved: false,
+    taxed: false,
     spoke: 'Zé?',
     // Campos de chefe, neutros aqui.
     phase: 0,
@@ -877,7 +878,7 @@ function updateEnemies(dt: number): void {
       for(const p of [...G.pickups])if(!p.fly&&!p.auto&&Math.abs(p.x-e.x)<40&&Math.abs(p.y-(plantY(e.lane)-20))<80){steal(p,e);break;}
       if(e.flee){e.x+=e.speed*1.7*dt;if(e.x>SPAWN_X){G.enemies.splice(n,1);addText(W-100,plantY(e.lane)-50,'LEVOU '+e.carry,'#e08080');}continue;}
     }
-    if(e.type==='pescador'&&e.saved){e.x+=e.speed*dt;if(e.x>W+60){G.enemies.splice(n,1);dropScrap(200,plantY(1)-40,40,true);}continue;}
+    if(e.type==='pescador'&&e.saved){e.x+=e.speed*dt;if(e.x>W+60){G.enemies.splice(n,1);if(!e.taxed)dropScrap(200,plantY(1)-40,40,true);}continue;}
     if(e.hypno>0){e.hypno-=dt;e.eating=null;e.x+=13*dt;e.act=.3;continue;}
     if(e.type==='passageiro'){
       e.switchT-=dt;
@@ -1043,6 +1044,19 @@ function updateAmbientAchievements(): void {
 // ---------------------------------------------------------------------
 function breach(e: Enemy): void {
   if(e.boss&&e.b==='mare')return;
+  // Gente não quebra estrutura. O Pescador é invulnerável por regra
+  // (ADR 004), e um bicho que não se pode matar não pode ser o único
+  // jeito de perder uma parede: ele cobra pedágio em sucata e volta pro
+  // mar. Rádio e Cachorro continuam sendo a resposta que rende.
+  if(e.type==='pescador'||e.human||ENEMY[e.type]?.human){
+    const taxa=Math.min(Math.max(0,G.scrap),ECONOMIA.pescadorTaxa);
+    G.scrap-=taxa;
+    e.saved=true;e.taxed=true;e.flee=true;e.speed=34;e.act=1;
+    addText(e.x,plantY(e.lane)-e.r-20,taxa>0?'ELE LEVOU '+taxa:'ELE NÃO LEVOU NADA','#f0d0a0');
+    announce('O PESCADOR PASSOU. NÃO QUEBROU NADA; LEVOU '+taxa+' DE SUCATA.','story');
+    G.ze.say='Ele só queria o que era dele.';G.ze.sayT=3.5;
+    return;
+  }
   const idx=G.enemies.indexOf(e);if(idx>=0&&!e.boss)G.enemies.splice(idx,1);
   G.shake=20;G.flash=1;SFX.crash();
   burst(120,plantY(e.lane)-30,40,'#6a5a4a',260,500,rnd(3,7),1);

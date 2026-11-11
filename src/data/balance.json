@@ -499,8 +499,8 @@
       "scrap": 0,
       "r": 24,
       "human": true,
-      "desc": "Um homem pela metade. Ainda fala. Ainda reconhece o barco. Não dá para matar o que já era gente.",
-      "hint": "Rádio hipnotiza e redireciona. Cachorro late e confunde. Mata não dá."
+      "desc": "Um homem pela metade. Ainda fala. Ainda reconhece o barco. Não dá para matar o que já era gente — e ele não quebra a vila: leva sucata e volta pro mar.",
+      "hint": "Rádio hipnotiza, redireciona e ainda rende sucata. Cachorro late e confunde. Sem resposta, ele cobra o pedágio."
     },
     "passageiro": {
       "nome": "Passageiro do Trilho",
@@ -950,6 +950,7 @@
       "porPeca": 2,
       "porOnda": 6
     },
+    "pescadorTaxa": 15,
     "meta": {
       "base": 45,
       "estrela": 40,

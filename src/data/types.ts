@@ -55,6 +55,13 @@ export interface EconomiaDef {
     porPeca: number;
     porOnda: number;
   };
+  /**
+   * Pedágio do Pescador quando chega na vila.
+   *
+   * Ele é gente: não se mata e não quebra estrutura. O preço de deixá-lo
+   * passar é sucata — o único recurso que o jogador sente na hora.
+   */
+  pescadorTaxa: number;
   /** Recompensa de sucata velha no fim da partida. */
   meta: {
     base: number;
