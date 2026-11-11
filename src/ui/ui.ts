@@ -7,7 +7,7 @@
  * importa a UI para decidir regra — só para mostrar e avisar.
  */
 import { H, STRUCTURES, W, clamp, fmt, plantY, shuffle } from '../core/constants';
-import { canvas, ctx } from '../core/canvas';
+import { ctx } from '../core/canvas';
 import { G, Game } from '../core/state';
 import { dayKey, hashStr, mulberry } from '../core/rng';
 import {
@@ -247,8 +247,6 @@ export const UI=(function(){
       '<p class="muted">Sucata velha: <b class="gold">'+meta()+'</b> · ganha ao terminar partidas. Nada aqui conserta o mar.</p>'+
       '<div class="branches">'+branches+'</div><div class="space"></div>'+btn('VOLTAR','back','','small'));
   }
-  function costLvl(n,lvl){return n.cost;}
-
   // ---------- COMO JOGAR ----------
   function help(){
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">COMO SOBREVIVER</h2>'+
@@ -272,7 +270,7 @@ export const UI=(function(){
     const offers=Game.offers||[];
     const desc={unlock:o=>'DESBLOQUEAR: '+MACH[o.k].nome.toUpperCase(),up:o=>'ENFIAR '+UPG[o.k][(G.up[o.k]||0)].toUpperCase()+' NA '+MACH[o.k].nome.toUpperCase(),
       scrap:()=>'+150 DE SUCATA',repair:()=>'RECONSTRUIR UMA ESTRUTURA',heal:()=>'CURAR TODAS AS PEÇAS'};
-    const sub={unlock:o=>MACH[o.k].desc,up:o=>'Upgrade permanente. Fica visível na peça.',scrap:()=>'O Zé revira o lixo. Não pergunta de onde veio.',
+    const sub={unlock:o=>MACH[o.k].desc,up:()=>'Upgrade permanente. Fica visível na peça.',scrap:()=>'O Zé revira o lixo. Não pergunta de onde veio.',
       repair:()=>'Volta torta, mas volta.',heal:()=>'Conserta tudo e prepara a próxima onda.'};
     shopEl.innerHTML='<div class="scr"><div class="scr-inner">'+
       '<div class="logo" style="font-size:clamp(26px,5vw,54px)">O ZÉ TROUXE<br><em>UMAS COISAS</em></div>'+
@@ -405,7 +403,7 @@ export const UI=(function(){
       ctx.fillStyle=`rgba(120,20,10,${.12+Math.sin(g.t*8)*.04})`;ctx.fillRect(0,H/2-90,W,180);
       ctx.save();ctx.translate(W/2,plantY(1)+30);ctx.scale(.9+Math.min(1,t)*.3,.9+Math.min(1,t)*.3);
       const fake={boss:true,b:intro.b,type:intro.b,lane:1,x:W/2,anim:g.t,phase:3,hp:1,maxhp:1,rise:0,inflate:false,act:1,flash:0,revealed:1};
-      try{drawBoss(fake);}catch(e){}
+      try{drawBoss(fake);}catch{}
       ctx.restore();
       ctx.textAlign='center';ctx.fillStyle='#e8d9a8';ctx.font='bold 30px Impact,sans-serif';
       ctx.fillText(BOSSES[intro.b].nome,W/2,90);

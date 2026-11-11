@@ -6,9 +6,7 @@
  * por isso `Snd.init()` é chamado no primeiro clique.
  */
 import { clamp, rnd } from '../core/constants';
-import { ctx } from '../core/canvas';
 import { SaveDB } from '../save/storage';
-import { note } from '../render/sprites';
 
 
 /**

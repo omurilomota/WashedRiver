@@ -4,9 +4,8 @@
  * Recebe estado, devolve pixels. A regra de quem é imune, quem voa e quem
  * morre mora em `src/data/balance.json` e em `src/game/game.ts`.
  */
-import { FIELD_R, H, W, clamp, colX, plantY, rnd } from '../core/constants';
-import { burst, ctx } from '../core/canvas';
-import { G } from '../core/state';
+import { FIELD_R, H, W, clamp, plantY, rnd } from '../core/constants';
+import { ctx } from '../core/canvas';
 import { blinkEye, eye, lowHp, pose, rr, teeth } from './sprites';
 
 
@@ -146,7 +145,7 @@ export function drawEnemy(e){
     ctx.globalAlpha=1;
   }else if(B==='polvo'){
     ctx.fillStyle='#6a4a5a';ctx.beginPath();ctx.ellipse(0,-30,24,20,0,0,7);ctx.fill();
-    for(let i=0;i<5;i++){const a=Math.PI*.3+i*.35;ctx.strokeStyle='#7a5a6a';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18+i*9,-16);
+    for(let i=0;i<5;i++){ctx.strokeStyle='#7a5a6a';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18+i*9,-16);
       ctx.quadraticCurveTo(-24+i*10,-2+Math.sin(t*4+i)*6,-30+i*11,10);ctx.stroke();}
     ctx.fillStyle='#8a6a7a';ctx.beginPath();ctx.arc(0,-34,12,0,7);ctx.fill();
     blinkEye(-7,-36,4,f===0,-1,0,'#e8d040');blinkEye(6,-36,4,f===2,-1,0,'#e8d040');
@@ -306,7 +305,6 @@ export function drawBoss(e){
     ctx.fillStyle='#5a6a2a';ctx.beginPath();ctx.arc(28,-100,6,0,7);ctx.arc(40,-90,5,0,7);ctx.fill();
     ctx.restore();
   }else if(e.b==='gerente'){
-    const step=Math.sin(t*4);
     ctx.fillStyle='#2a2a2e';ctx.fillRect(-34,-70,68,64);
     ctx.fillStyle='#8a1a1a';ctx.beginPath();ctx.moveTo(-4,-70);ctx.lineTo(6,-70);ctx.lineTo(4,-34);ctx.lineTo(-8,-34);ctx.fill();
     ctx.fillStyle='#d8c8b0';ctx.beginPath();ctx.arc(0,-86,15,0,7);ctx.fill();
