@@ -98,7 +98,7 @@ function drawFarol(p,t){
   ctx.strokeStyle='rgba(200,230,220,.25)';ctx.lineWidth=1;
   for(let i=0;i<6;i++){ctx.beginPath();ctx.arc(180+i*130,LANE_Y0+2+Math.sin(t*1.5+i)*2,18,Math.PI,0);ctx.stroke();}
 }
-function drawEstacao(p,t){
+function drawEstacao(_p,_t){
   // teto da estação e fios
   ctx.fillStyle='#1c2224';ctx.fillRect(330,18,W-330,16);ctx.fillRect(330,18,8,72);ctx.fillRect(700,18,8,72);
   ctx.strokeStyle='#39423e';ctx.lineWidth=1;
@@ -256,7 +256,7 @@ export function drawLaneFloor(map,p,l,t){
 //  CLIMA — cada mapa tem um, e todos fazem alguma coisa
 // =====================================================================
 export function drawWeather(G,t){
-  const w=G.map.weather,p=G.map.pal;
+  const w=G.map.weather;
   if(w==='rain'||w==='storm'||w==='gale'){
     ctx.strokeStyle=w==='gale'?'rgba(200,220,210,.22)':'rgba(180,200,210,.22)';ctx.lineWidth=1;
     for(let i=0;i<70;i++){
@@ -292,7 +292,7 @@ export function drawWeather(G,t){
 //  VILA, ESTRAGOS E NPCS
 // =====================================================================
 export function drawStructure(s,lane,i,map,t){
-  const bx=i===0?58:126,by=plantY(lane),col=map.pal;
+  const bx=i===0?58:126,by=plantY(lane);
   const kind=['barco','galpao','bote','navio','mastro','tenda'].some(k=>s.id.includes(k))?'boat':
     ['poste','sinaleira','lanterna','chaminé','chamine','relogio','cruz'].some(k=>s.id.includes(k))?'post':
     ['comporta','valvula','válvula','caixa','caldeira','guinda'].some(k=>s.id.includes(k))?'tank':'house';
@@ -340,7 +340,6 @@ export function drawStructure(s,lane,i,map,t){
     ctx.fillStyle=map.id==='fabrica'?'#8a4a20':'#5a8a5a';ctx.fillRect(-4,-16,8,18);
     if(s.id.includes('caixa')){ctx.fillStyle='#7a6a4a';ctx.fillRect(-14,-30,28,4);}
   }else{
-    const big=s.id==='casa'||s.id==='navio';
     ctx.fillStyle=map.id==='feira'?'#c8a03a':'#6a5a48';ctx.fillRect(-30,-58,60,58);
     ctx.fillStyle=map.id==='cemiterio'?'#2e3a3a':'#5a3a2a';ctx.beginPath();ctx.moveTo(-36,-58);ctx.lineTo(0,-82);ctx.lineTo(36,-58);ctx.fill();
     ctx.fillStyle='#1a1a18';ctx.fillRect(12,-30,16,30);
@@ -392,7 +391,7 @@ export function drawVillage(G,t){
   ctx.fillStyle='#c8b060';ctx.font='bold 9px monospace';ctx.fillText('BARRA SUJA',6,10);
   ctx.fillStyle='#8a8a6a';ctx.font='6px monospace';ctx.fillText('POP. 7 (ONTEM 9)',6,18);ctx.restore();
 }
-export function drawZe(G,t){
+export function drawZe(G,_t){
   const z=G.ze,x=46,g=plantY(1)+2,sw=Math.sin(z.anim*4)*6;
   if(!z.alive){
     ctx.fillStyle='#2a4a6a';ctx.fillRect(x-8,g-6,16,6);ctx.fillStyle='#c8a070';ctx.fillRect(x+2,g-2,5,4);
@@ -410,7 +409,7 @@ export function drawZe(G,t){
     ctx.fillStyle='rgba(240,236,220,.94)';rr(x-4,g-84,w,20,4);ctx.fill();
     ctx.fillStyle='#222';ctx.fillText(z.say.slice(0,30),x+2,g-70);}
 }
-export function drawLu(G,t){
+export function drawLu(G,_t){
   const x=124,y=plantY(1)-76;
   ctx.fillStyle='#1a1a18';ctx.fillRect(x-12,y,20,16);
   ctx.fillStyle='#d8c8b8';ctx.beginPath();ctx.arc(x-2,y+9,5,0,7);ctx.fill();

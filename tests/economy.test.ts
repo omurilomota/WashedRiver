@@ -9,7 +9,7 @@ import {
 } from '../src/game/economy';
 import { MACH, MACH_ORDER, MAPS } from '../src/data';
 import { COLS, LANES, STRUCTURES } from '../src/core/constants';
-import { G, setG } from '../src/core/state';
+import { setG } from '../src/core/state';
 import type { GameState, Machine, Structure } from '../src/core/state';
 import { SaveDB } from '../src/save/storage';
 

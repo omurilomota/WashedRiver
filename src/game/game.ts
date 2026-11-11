@@ -24,15 +24,13 @@ import {
   chance,
   clamp,
   colX,
-  fmt,
-  lerp,
   pick,
   plantY,
   randLane,
   rnd,
   shuffle,
 } from '../core/constants';
-import { addText, burst, canvas, ctx, stain } from '../core/canvas';
+import { addText, burst, canvas, stain } from '../core/canvas';
 import { G, Game, setG } from '../core/state';
 import type { Enemy, GameState, Machine, Offer, Phase, Pickup, WaveEntry } from '../core/state';
 import type { DailyMod } from '../data/types';
@@ -46,7 +44,6 @@ import {
   MACH,
   MACH_ORDER,
   MAPS,
-  MAP_UNLOCKS,
   RADIO,
   TOQ_LINES,
   UPG,
@@ -94,7 +91,7 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     machines:[],enemies:[],projs:[],pickups:[],parts:[],decals:[],texts:[],winds:[],props:[],deaths:[],hazards:[],
     selected:null,cds:{},phaseIdx:0,phaseT:0,spawnIdx:0,tideT:4,shake:0,flash:0,msg:'',msgT:0,
     over:false,win:false,kills:0,collected:0,destroyed:[],survived:0,
-    structures:map.estruturas.map((lane,i)=>lane.map((s,j)=>({...s,alive:true}))),
+    structures:map.estruturas.map(lane=>lane.map(s=>({...s,alive:true}))),
     ze:{alive:true,say:'',sayT:0,nextSay:12,anim:0,repeat:0},zeSilent:0,zeHat:false,
     luAtWindow:true,toqAlive:true,toqSay:'',toqSayT:0,toqClicks:0,zeClicks:0,toqBoost:0,
     dogSay:0,luTalking:'',
@@ -538,7 +535,7 @@ function explode(x: number, lane: number, dmgE: number, dmgM: number, big?: bool
   for(const e of [...G.enemies])if(Math.abs(e.lane-lane)<=1&&Math.abs(e.x-x)<COLW*1.6)damageEnemy(e,dmgE,big?'boom':'boom');
   for(const m of [...G.machines])if(Math.abs(m.lane-lane)<=1&&Math.abs(m.x-x)<COLW*1.6&&!m.dead)damageMachine(m,dmgM);
 }
-function damageBoss(e: Enemy, dmg: number, src?: string): void {
+function damageBoss(e: Enemy, dmg: number, _src?: string): void {
   if(e.b==='mare'){addText(e.x-30,plantY(1)-160,'NÃO DÁ','#c8e0d8');return;}
   if(e.inflate)dmg*=.15;
   e.hp-=dmg;e.flash=.16;e.act=.3;
@@ -645,7 +642,6 @@ export function update(dt: number){
   updatePickups(dt);
   updateAmbientAchievements();
 
-  if(G.hitsThisSecond===undefined)G.hitsThisSecond=0;
 }
 function updateWeatherMech(dt: number): void {
   const w=G.map.weather;
@@ -779,7 +775,6 @@ function redirectPescador(): void {
   dropScrap(e.x,plantY(e.lane)-30,80,true);
   G.ze.say='Ele ainda sabia voltar.';G.ze.sayT=4;
 }
-function damageBossByFire(e){}
 function updateEnemies(dt: number): void {
   for(let n=G.enemies.length-1;n>=0;n--){
     const e=G.enemies[n];if(!e)continue;
@@ -958,7 +953,6 @@ function updatePickups(dt: number): void {
 function updateAmbientAchievements(): void {
   if(G.mode==='endless'&&G.survived>=10&&SaveDB.achievement('noite10'))announce('CONQUISTA: madrugada 10','ach');
 }
-function Structure_hasLost(){return G.structures.flat().some(s=>!s.alive);}
 
 // ---------------------------------------------------------------------
 // Invasão / fim
@@ -1055,7 +1049,6 @@ function openShop(): void {
   Game.screen='shop';
   if(G.repairBank>0){G.repairBank--;const dead=G.structures.flat().find(s=>!s.alive);if(dead){dead.alive=true;announce('REBOQUE: '+dead.nome+' VOLTOU. MAL.','story');}}
   const offers: Offer[]=[];
-  const locked=availableMachines().filter(()=>false);
   const notOwned=MACH_ORDER.filter(k=>!isMachUnlocked(k)&&k!=='coisa_ze'&&k!=='remover');
   if(notOwned.length)offers.push({kind:'unlock',k:pick(notOwned)});
   const ups=MACH_ORDER.filter(k=>isMachUnlocked(k)&&UPG[k]&&(G.up[k]||0)<3&&k!=='coisa_ze'&&k!=='remover');
@@ -1112,8 +1105,6 @@ Game.startFromOpts=function(o){
   else if(o.kind==='daily')Game.startDaily();
   else Game.startSandbox();
 };
-// guarda de opção para reinício
-const origStartCampaign=Game.startCampaign;
 // ---------------------------------------------------------------------
 // Opções, rádio e conquistas escondidas
 // ---------------------------------------------------------------------
