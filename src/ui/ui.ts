@@ -371,8 +371,8 @@ export const UI=(function(){
     ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
     ctx.fillStyle='#f0e4bd';ctx.font='bold 26px "Courier New",monospace';ctx.fillText(fmt(g.scrap),46,32);
     ctx.fillStyle='#9aa08a';ctx.font='13px monospace';ctx.fillText(p.resShort,46,44);
-    ctx.fillStyle='#7a806a';ctx.font='11px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
-    ctx.fillStyle='#c8b070';ctx.font='11px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
+    ctx.fillStyle='#7a806a';ctx.font='12px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
+    ctx.fillStyle='#c8b070';ctx.font='12px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
     // cartas
     for(const r of cardLayout()){
       const m=MACH[r.k],cost=machCost(r.k),cool=g.cds&&g.cds[r.k]||0,up=(g.up&&g.up[r.k])||0;
@@ -381,7 +381,7 @@ export const UI=(function(){
       ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();
       ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h-19);ctx.scale(.36,.36);ctx.globalAlpha=can||g.selected===r.k?1:.45;
       drawMachine({type:r.k,x:0,lane:0,t:g.t,hp:1,maxhp:1,anim:0,act:0,flash:0,_icon:true});ctx.restore();
-      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 12px monospace';ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
+      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 13px monospace';ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
       const short=m.nome.split(' ')[0].toUpperCase().slice(0,7);
       ctx.fillStyle='#a8aa94';ctx.font='9px monospace';ctx.fillText(short,r.x+3,r.y+9);
       if(up){for(let j=0;j<3;j++){ctx.fillStyle=j<up?'#e8c84a':'#39402f';ctx.fillRect(r.x+r.w-8+j*2.4,r.y+3,2,4);}}
@@ -390,10 +390,10 @@ export const UI=(function(){
     // descrição da peça sob o mouse (item sem descrição é item que ninguém entende)
     if(Game.mouse){const hov=cardLayout().find(r=>Game.mouse!.x>=r.x&&Game.mouse!.x<=r.x+r.w&&Game.mouse!.y>=r.y&&Game.mouse!.y<=r.y+r.h);
       if(hov)drawCardTip(hov);}
-    if(g.savedT>0){ctx.fillStyle='#7fb3a6';ctx.font='bold 9px monospace';ctx.fillText('SALVO',W-52,70);}
+    if(g.savedT>0){ctx.fillStyle='#7fb3a6';ctx.font='bold 10px monospace';ctx.fillText('SALVO',W-52,70);}
     // status do modo
-    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font='8px monospace';ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
-    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font='9px monospace';ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
+    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font='9px monospace';ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
+    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font='10px monospace';ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
     if(g.boss&&!g.bossDeath){
       const b=g.boss;
       ctx.fillStyle='rgba(8,10,8,.72)';rr(W/2-180,3,360,22,3);ctx.fill();
