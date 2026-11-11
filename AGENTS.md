@@ -16,6 +16,8 @@
 8. **NÃO mude a direção do texto do jogo** (narrativa, piadas, rádio) sem aprovação do usuário.
 9. **NÃO remova funcionalidade.** Só adicione, corrija ou reorganize.
 10. **Bug de gameplay vira teste** sempre que couber: dado inválido, contagem errada, economia quebrada.
+11. **Regra de partida vira teste em `tests/gameplay.test.ts`.** O jogo roda de verdade dentro do jsdom (contexto 2D falso, DOM mínimo): dá para plantar, soltar bicho, bater nele e perguntar se é alvo. Bug de *regra* — campo lido que ninguém escreve, bônus que começa em 1, exclusão que vira código morto, dado lido e ignorado, mod que promete e não faz nada — **não** aparece em typecheck, lint nem em teste de dado.
+12. **Texto de gameplay é contrato.** Se o mod promete, implementa ou apaga a promessa. `docs/GAME_DESIGN.md` precisa contar a regra que o jogo executa.
 
 ## 📊 O PADRÃO MORTAL DESTE PROJETO
 
