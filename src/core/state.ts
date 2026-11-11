@@ -230,7 +230,7 @@ export interface Pointer {
 
 /** Uma oferta da Banca do Zé (escolha entre 3 ou 4). */
 export interface Offer {
-  kind: 'up' | 'unlock' | 'repair' | 'heal' | 'scrap';
+  kind: 'up' | 'unlock' | 'repair' | 'heal' | 'sucataVelha';
   /** Peça afetada (upgrade, desbloqueio). */
   k?: string;
   [key: string]: unknown;
