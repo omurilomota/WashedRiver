@@ -99,7 +99,9 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     luAtWindow:true,toqAlive:true,toqSay:'',toqSayT:0,toqClicks:0,zeClicks:0,toqBoost:0,
     dogSay:0,luTalking:'',
     up:{},unlockedMach:{},dmgBonus:0,shields:e.shield||0,repairBank:e.repair||0,
-    boss:null,bossDeath:null,dark:false,darkT:0,
+    boss:null,bossDeath:null,
+    // "NOITE PERMANENTE": o mapa já começa no escuro.
+    dark:!!(daily&&mods.dark),darkT:daily&&mods.dark?1e9:0,
     fireT:0,geladeiraScene:false,pirate:false,radioClicks:0,placementCount:0,cabraCount:0,
     mods,daily,sandbox:mode==='sandbox',dailyMods,
     phases:[],waves:[],weekSeed:0,newSeen:[],
@@ -556,8 +558,11 @@ function placeMachine(k: string, l: number, c: number, freeGift?: boolean): bool
     if((G.cds[k]||0)>0)return false;
     G.scrap-=machCost(k);G.cds[k]=MACH[k].cd;
   }
+  // "PEÇAS DE VIDRO": metade da vida. E a árvore da meta pode dar um
+  // bônus. O mod é multiplicador; a árvore é bônus.
   const hpBonus=1+(eff().machineHp||0)+(G.hpBonus||0);
-  const hp=Math.round(MACH[k].hp*hpBonus);
+  const hpMult=(G.mods&&G.mods.machHp)?Number(G.mods.machHp):1;
+  const hp=Math.max(1,Math.round(MACH[k].hp*hpBonus*hpMult));
   const m={type:k,lane:l,col:c,x:colX(c),hp,maxhp:hp,t:rnd(0,3),timer:0,anim:0,act:0,flash:0,jam:0,
     variant:k==='coisa_ze'?pick(['torradeira','ventilador','radio','boia','bujao','holofote']):null};
   G.machines.push(m);SFX.place();burst(m.x,plantY(l),10,'#8a7a5a',120,400,3,.5);
