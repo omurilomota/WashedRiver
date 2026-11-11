@@ -9,13 +9,19 @@ O Pescador (`hp:9999`, trait `human`) e a Baleia-Filhote (`hp:9999`, trait
 `neutral`) usavam vida gigante como atalho para "não dá pra matar". A Baleia
 ainda podia morrer por explosão, porque `explode()` ignora `isTargetable`.
 
+Atualização (2026-11-11): a Baleia-Filhote e o Pescador passaram a ser
+**matáveis**. A trait `neutral` (baleia) e `human` (pescador) foram removidas;
+ambos agora são alvos normais (tiro funciona). Apenas a MARÉ (`unbeatable`)
+permanece imortal. O Pescador mantém o comportamento de pedágio na chegada
+(cobra `economia.pescadorTaxa` e volta pro mar), agora por tipo, não por trait.
+
 ## Decisão
 
-Remover o hack: **Pescador `hp:60`**, **Baleia-Filhote `hp:400`**, mantendo a
-semântica exclusivamente nas traits (`human`, `neutral`). A Baleia passa a ser
-imune a **qualquer** dano, inclusive explosão. A MARÉ (chefe final) continua
-invencível por design, mas com `unbeatable: true` explícito e sem número mágico.
-Nenhum inimigo comum tem HP acima de 500.
+Remover o hack: **Pescador `hp:60`**, **Baleia-Filhote `hp:400`**. Ambos deixam
+de usar traits de imortalidade (`human`, `neutral`) e passam a ser alvos
+normais. A MARÉ (chefe final) continua invencível por design, mas com
+`unbeatable: true` explícito e sem número mágico. Nenhum inimigo comum tem HP
+acima de 500.
 
 ## Consequências
 

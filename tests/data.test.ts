@@ -36,10 +36,10 @@ describe('criaturas', () => {
     }
   });
 
-  it('a Baleia-Filhote é neutral e o Pescador é gente', () => {
-    expect(ENEMY.baleia.neutral).toBe(true);
+  it('Baleia-Filhote e Pescador agora são alvos (matáveis)', () => {
+    expect(ENEMY.baleia.neutral).toBeFalsy();
     expect(ENEMY.baleia.hp).toBe(400);
-    expect(ENEMY.pescador.human).toBe(true);
+    expect(ENEMY.pescador.human).toBeFalsy();
     expect(ENEMY.pescador.hp).toBe(60);
   });
 

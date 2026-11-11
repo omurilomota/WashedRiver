@@ -10,11 +10,15 @@ Duas queixas do jogador, as duas de regra:
 1. **O campo é curto para a quantidade de cartas.** O jogo entrega 19
    engenhocas, mas cada lane só tinha **5 colunas** — 30 slots no total. O
    jogador queria plantar mais por corredor sem inventar peça nova.
-2. **O Pescador "enche o saco".** Ele tem trait `human` (não se mata, ADR
-   004), atravessa as peças sem bloquear e, ao chegar na vila, chamava
-   `breach()`: **derrubava uma estrutura**. Na prática, o único jeito de não
-   perder parede para um bicho invulnerável era ter Rádio ou Cachorro na
-   hora certa. Imortalidade não pode ser o custo de uma estrutura.
+2. **O Pescador "enche o saco".** Ele atravessa as peças sem bloquear e, ao
+   chegar na vila, chamava `breach()`: **derrubava uma estrutura**. Na
+   prática, o único jeito de não perder parede para um bicho invulnerável era
+   ter Rádio ou Cachorro na hora certa. Imortalidade não pode ser o custo de
+   uma estrutura.
+
+   Atualização (2026-11-11): o Pescador passou a ser **matável**. A trait
+   `human` foi removida (ADR 004, atualização); ele agora é alvo normal (tiro
+   funciona). O pedágio na chegada permanece por tipo, não por trait.
 
 ## Decisão
 
@@ -49,7 +53,7 @@ Duas queixas do jogador, as duas de regra:
   o que encolhe a peça e a arte da lane junto.
 - **Encolher `COLW` para caber mais colunas:** muda o desenho de toda peça e
   de toda lane; o pedido era espaço, não peça menor.
-- **Tornar o Pescador matável:** quebra o trait `human` e a ficção (ADR 004);
-  o jogador escolheu a opção de ele não destruir nada.
+- **Tornar o Pescador matável:** aceito em 2026-11-11 (ADR 004, atualização);
+  o jogador optou por permitir matá-lo. O pedágio na chegada permanece.
 - **Pescador não fazer nada ao chegar:** sem custo nenhum, ele vira só
   decoração andando; o pedágio mantém a decisão de gastar Rádio/Cachorro.

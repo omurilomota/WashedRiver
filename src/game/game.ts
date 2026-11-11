@@ -548,7 +548,7 @@ export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
   if(!e||e.burrow>0)return;
   if(e.neutral)return;
   if(e.boss){damageBoss(e,dmg,src);return;}
-  if(e.human||ENEMY[e.type].human||e.type==='pescador'){
+  if(e.human){
     e.revealed=1;e.spoke=pick(['Zé?','Meu barco...','Eu não quero machucar.']);e.act=.5;
     addText(e.x,plantY(e.lane)-e.r-16,'ELE É GENTE','#f0d0a0');SFX.human();return;
   }
@@ -559,10 +559,9 @@ export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
   if(e.hp<=0)killEnemy(e);
 }
 function killEnemy(e: Enemy, noChain?: boolean): void {
-  if(e&&e.type==='baleia')return;
   const i=G.enemies.indexOf(e);if(i<0)return;G.enemies.splice(i,1);
   if(e.type==='mare')return;
-  G.kills++;if(e.type!=='baleia'&&e.type!=='pescador')G.collected+=0;
+  G.kills++;if(e.type!=='baleia')G.collected+=0;
   const y=plantY(e.lane);
   const ichor=e.type==='enguia'?'#1b1b22':e.type==='ova'?'#e07a9a':e.type==='lata'?'#6a8a9a':e.type==='polvo'?'#5a3a52':'#5a1a2a';
   stain(e.x+rnd(-8,8),y+rnd(0,10),ichor,e.boss?50:undefined);
@@ -802,7 +801,7 @@ function updateMachines(dt: number): void {
       if(m.timer>3.2-.3*up){const tgt=G.enemies.find(e=>e.lane===m.lane&&e.x>m.x+20&&isTargetable(e,false,!!MACH.estilingue.air)&&Math.abs(e.x-m.x)<W);
         if(tgt){m.timer=0;m.act=.5;SFX.can();G.projs.push({x:m.x+10,y:plantY(m.lane)-52,lane:m.lane,vx:520,dmg:(45+12*up)*(1+G.dmgBonus),rot:0,kind:'can',silent:true,enemy:false,airPierce:!!MACH.estilingue.air});}}
     }else if(kind==='aspirador'){
-      if(m.timer>2.6){const cand=G.enemies.filter(e=>!e.boss&&e.type!=='pescador'&&e.burrow<=0&&e.x>m.x&&e.x<m.x+2*COLW&&ENEMY[e.type]&&ENEMY[e.type].hp<150&&!e.neutral);
+      if(m.timer>2.6){const cand=G.enemies.filter(e=>!e.boss&&e.type!=='pescador'&&e.type!=='baleia'&&e.burrow<=0&&e.x>m.x&&e.x<m.x+2*COLW&&ENEMY[e.type]&&ENEMY[e.type].hp<150&&!e.neutral);
         if(cand.length){m.timer=0;m.act=.7;SFX.gust();
           for(const e of cand){e.kb-=140+40*up;e.slow=.8;if(nearMach(m,'bujao'))e.kb-=90;}
           burst(m.x+20,plantY(m.lane)-20,8,'rgba(180,200,190,.5)',100,-40,3,.4);}
@@ -827,7 +826,7 @@ function updateMachines(dt: number): void {
           for(let l=0;l<LANES;l++)G.projs.push({x:m.x+10,y:plantY(l)-40,lane:l,vx:420,dmg:(13+4*(G.up.aranha||0))*(1+G.dmgBonus),rot:0,kind:'can',silent:true,enemy:false});}
       }
     }else if(kind==='cachorro'){
-      if(m.timer>3.2){const small=G.enemies.filter(e=>e.lane===m.lane&&e.x>m.x&&e.x<m.x+2.2*COLW&&!e.boss&&!e.neutral&&ENEMY[e.type]&&ENEMY[e.type].hp<120);
+      if(m.timer>3.2){const small=G.enemies.filter(e=>e.lane===m.lane&&e.x>m.x&&e.x<m.x+2.2*COLW&&!e.boss&&e.type!=='baleia'&&!e.neutral&&ENEMY[e.type]&&ENEMY[e.type].hp<120);
         if(small.length){m.timer=0;m.act=.6;SFX.lata();for(const e of small)e.kb+=120;G.dogSay=.6;}
         if(G.enemies.some(e=>e.type==='pescador'&&Math.abs(e.x-m.x)<COLW*2.5)&&(nearMach(m,'radio')||chance(.35)))redirectPescador();
       }
@@ -1016,7 +1015,7 @@ function updateHazards(dt: number): void {
     if(h.t>=h.warn&&h.t<h.warn+h.dur){
       if(!h.hit){h.hit=true;SFX.crash();G.shake=16;
         for(const m of G.machines)if(m.lane===h.lane)damageMachine(m,h.dmg);
-        for(const e of G.enemies)if(e.lane===h.lane&&!e.boss&&e.type!=='baleia'&&e.type!=='pescador')damageEnemy(e,h.kind==='train'?90:25,'boom');}
+        for(const e of G.enemies)if(e.lane===h.lane&&!e.boss&&e.type!=='pescador')damageEnemy(e,h.kind==='train'?90:25,'boom');}
     }
     if(h.t>h.warn+h.dur+.3)G.hazards.splice(i,1);
   }

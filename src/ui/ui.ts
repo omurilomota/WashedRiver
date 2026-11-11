@@ -259,7 +259,7 @@ export const UI=(function(){
       '<div class="panel"><h3>DEFESAS QUE EXISTEM</h3><p>'+
       Object.keys(ENEMY).length+' criaturas catalogáveis, seis chefes com fases, e '+MACH_ORDER.length+' engenhocas. Nenhuma resposta serve pra tudo.</p>'+
       '<p><b>Voa</b> cai com Holofote, Ventilador, Canhão de Lata, Estilingue ou Bujão. <b>Cava</b> pede bujão atrás. <b>Invisível</b> pede luz. <b>Espelho</b> devolve três torradas e cansa: a quarta entra.</p>'+
-      '<p><b>Não mate</b> o Pescador: rádio e cachorro redirecionam. <b>Não mate</b> a baleia-filhote: o Ventilador espanta e ela volta pro mar.</p></div>'+
+      '<p><b>Pescador e Baleia-filhote</b> agora são alvos (tiro funciona). Rádio e cachorro ainda redirecionam o Pescador; se ele chegar, cobra pedágio. Ventilador ainda espanta a Baleia.</p></div>'+
       '<div class="panel"><h3>CLIMA E LUGAR</h3><p>CHUVA apaga o fogo do pneu. NÉVOA encurta a torrada. VENTANIA empurra projétil e bicho. CALOR deixa piranha mais rápida. CINZA atrasa a recarga.</p>'+
       '<p>A luz do holofote muda o combate inteiro no Farol. A maré sobe no Cemitério e o espaço útil encolhe visualmente.</p></div>'+
       '<div class="panel"><h3>O ZÉ</h3><p>Entre ondas ele oferece três coisas: desbloqueio, upgrade visível na peça ou sucata. A escolha pausa o jogo.</p>'+
