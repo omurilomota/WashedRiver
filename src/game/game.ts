@@ -939,16 +939,30 @@ function breach(e: Enemy): void {
   const s=lane.find(s=>s.alive);
   if(G.shields>0&&!e.boss){G.shields--;announce('A TÁBUA DE RESERVA SEGUROU. UMA.','story');addText(150,plantY(e.lane)-60,'TÁBUA','#e8c84a');if(e.x<W)G.enemies.push(e);return;}
   if(G.sandbox){announce('SANDBOX: nada quebrou. O ZÉ AGRADECE.','radio');if(!e.boss)G.enemies.push(e);e.x=SPAWN_X;return;}
-  if(s){s.alive=false;G.destroyed.push(s.nome);G.ze.say=pick(['Ai.','Já era.','Não.','Levanta, Zé.']);G.ze.sayT=3;
+  if(s){
+    s.alive=false;G.destroyed.push(s.nome);G.ze.say=pick(['Ai.','Já era.','Não.','Levanta, Zé.']);G.ze.sayT=3;
     if(!G.firstVillageLost){G.firstVillageLost=true;announce('A vila sentiu isso. Não deixa de novo.','story');}
-    announce(s.msg,'story');}
-  else if(G.ze.alive&&G.structures[e.lane].every(s=>!s.alive)){
-    G.ze.alive=false;
-    burst(50,plantY(1)-30,30,'#7a1a2a',220,500,undefined,1);stain(50,plantY(1),'#5a1a2a',30);
-    announce('PERDEMOS O ZÉ.','story');
+    announce(s.msg,'story');
   }
-  if(G.structures.flat().every(s=>!s.alive)&&!G.ze.alive)endRun(false);
-  else if(!G.ze.alive)endRun(false);
+  // A lane abriu brecha. A partida continua: só acaba quando todas as
+  // estruturas caem (o Zé reclama, mas ainda respira).
+  if(G.ze.alive&&G.structures[e.lane].every(x=>!x.alive)){
+    if(!(G.breachLanes||[]).includes(e.lane)){
+      G.breachLanes=G.breachLanes||[];
+      G.breachLanes.push(e.lane);
+      G.breaches=(G.breaches||0)+1;
+      announce('ABRIU UMA BRECHA. O MAR GANHOU UM QUARTO.','story');
+    }
+  }
+  // Fim de partida: todas as estruturas caíram. O Zé se vai com a última.
+  if(G.structures.flat().every(x=>!x.alive)){
+    if(G.ze.alive){
+      G.ze.alive=false;
+      burst(50,plantY(1)-30,30,'#7a1a2a',220,500,undefined,1);stain(50,plantY(1),'#5a1a2a',30);
+      announce('PERDEMOS O ZÉ.','story');
+    }
+    endRun(false);
+  }
 }
 function bossDefeated(e: Enemy): void {
   if(G.bossDeath)return;
