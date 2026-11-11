@@ -1,12 +1,36 @@
-/* =====================================================================
-   audio.js — Snd (música dinâmica + ambientes) e SFX (efeitos)
-   Tudo sintetizado na hora. Nenhum arquivo externo. Nada toca antes do
-   primeiro clique (política de autoplay dos navegadores).
-   ===================================================================== */
+/**
+ * audio.ts — música, ambiência e efeitos.
+ *
+ * Tudo sintetizado em WebAudio: nenhum arquivo de áudio no repo. O
+ * contexto só nasce depois de um gesto do usuário (regra dos navegadores),
+ * por isso `Snd.init()` é chamado no primeiro clique.
+ */
+import { clamp, rnd } from '../core/constants';
+import { SaveDB } from '../save/storage';
+
+
+/**
+ * Uma trilha: o esqueleto da música. Cada mapa veste o mesmo tema com
+ * outro modo, outro instrumento e outro ambiente.
+ */
+export interface Track {
+  nome: string;
+  bpm: number;
+  root: number;
+  mode: number[];
+  lead: string;
+  pad: string;
+  perc: string[];
+  amb: string;
+  /** Camadas de música disponíveis nesta trilha. */
+  layers: number;
+  /** Delay do contratempo, em fração de step. */
+  swing: number;
+}
 
 // Tema comum: graus da escala. Cada mapa veste o mesmo esqueleto.
-const MOTIF=[0,0,2,0, 4,0,2,0, 5,0,4,2, 0,-1,2,0, 7,0,5,4, 2,0,0,-1, 4,0,5,2, 4,2,0,-1];
-const TRACKS={
+export const MOTIF=[0,0,2,0, 4,0,2,0, 5,0,4,2, 0,-1,2,0, 7,0,5,4, 2,0,0,-1, 4,0,5,2, 4,2,0,-1];
+export const TRACKS: Record<string, Track>={
   barra:{bpm:92,root:38,mode:[0,2,3,5,7,8,10],lead:'acc',pad:'reed',perc:['kick','lata','clank'],amb:'sea',
     nome:'PÍER, 3 DA MANHÃ',layers:4,swing:.04},
   farol:{bpm:70,root:33,mode:[0,2,3,5,7,8,10],lead:'bell',pad:'strings',perc:['bell','wood'],amb:'wind',
@@ -21,14 +45,106 @@ const TRACKS={
     nome:'O QUE O MAR NÃO QUIS',layers:5,swing:0}
 };
 
-const Snd=(function(){
-  const S={ctx:null,master:null,music:null,sfx:null,amb:null,low:null,muted:false,vol:{master:.9,music:.62,sfx:.85},
-    track:'barra',intensity:1,step:0,next:0,timer:null,pirate:false,paused:false,started:false};
-  const f=m=>440*Math.pow(2,(m-69)/12);
+export const Snd=(function(){
+  /**
+   * O estado do áudio é um objeto com métodos pendurados depois — padrão
+   * do legado. O TypeScript não infere isso, então a forma está escrita
+   * aqui: é a API pública do módulo de som.
+   *
+   * Os nós do WebAudio ficam `any` de propósito: todos nascem nulos e
+   * só existem depois do primeiro gesto do usuário. Tipá-los só produziria
+   * `possibly null` em 200 linhas que já checam `if(!S.ctx)return`.
+   */
+  interface AmbNode {
+    src: any;
+    flt: any;
+    g: any;
+  }
+
+  interface AudioState {
+    ctx: any;
+    master: any;
+    music: any;
+    sfx: any;
+    amb: any;
+    low: any;
+    noise: any;
+    brown: any;
+    muted: boolean;
+    vol: { master: number; music: number; sfx: number };
+    track: string;
+    intensity: number;
+    step: number;
+    next: number;
+    timer: ReturnType<typeof setInterval> | null;
+    pirate: boolean;
+    paused: boolean;
+    started: boolean;
+
+    ambSea: AmbNode | null;
+    ambWind: AmbNode | null;
+    ambHiss: AmbNode | null;
+    ambFab: AmbNode | null;
+    ambHumGain: any;
+    ambChoirGain: any;
+
+    init(): void;
+    resume(): void;
+    applyVolumes(): void;
+    toggleMute(): void;
+    setTrack(id: string): void;
+    setIntensity(n: number): void;
+    pauseDuck(on: boolean): void;
+    buildAmbience(): void;
+    mixAmbience(): void;
+    ambAccent(): void;
+    tone(t: number, dur: number, type: string, f0: number, f1?: number | null, gain?: number, dest?: any): any;
+    noiseHit(t: number, dur: number, type: string, freq: number, Q: number, gain: number, dest?: any): any;
+    kick(t: number, g?: number): void;
+    lata(t: number): void;
+    clank(t: number, g?: number): void;
+    bell(fq: number, t: number, g?: number, dur?: number): void;
+    steam(t: number): void;
+    wood(t: number): void;
+    water(t: number): void;
+    drum(t: number): void;
+    instr(kind: string, midi: number, t: number, dur: number, g?: number): void;
+    bass(midi: number, t: number, dur: number): void;
+    schedule(): void;
+    playStep(s: number, t: number, tr: Track, stepDur: number): void;
+  }
+
+  const S = {
+    ctx: null,
+    master: null,
+    music: null,
+    sfx: null,
+    amb: null,
+    low: null,
+    noise: null,
+    brown: null,
+    muted: false,
+    vol: { master: 0.9, music: 0.62, sfx: 0.85 },
+    track: 'barra',
+    intensity: 1,
+    step: 0,
+    next: 0,
+    timer: null,
+    pirate: false,
+    paused: false,
+    started: false,
+    ambSea: null,
+    ambWind: null,
+    ambHiss: null,
+    ambFab: null,
+    ambHumGain: null,
+    ambChoirGain: null,
+  } as AudioState;
+  const f=(m: number)=>440*Math.pow(2,(m-69)/12);
 
   S.init=function(){
     if(S.ctx)return;
-    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    const AC=window.AudioContext||(window as unknown as {webkitAudioContext?: typeof AudioContext}).webkitAudioContext;if(!AC)return;
     const c=S.ctx=new AC();
     S.master=c.createGain();S.low=c.createBiquadFilter();S.low.type='lowpass';S.low.frequency.value=18000;
     S.master.connect(S.low);S.low.connect(c.destination);
@@ -48,7 +164,7 @@ const Snd=(function(){
   };
   S.resume=function(){if(S.ctx&&S.ctx.state==='suspended')S.ctx.resume();};
   S.applyVolumes=function(){
-    const o=(typeof SaveDB!=='undefined')?SaveDB.options:{master:.9,music:.62,sfx:.85};
+    const o=(typeof SaveDB!=='undefined')?SaveDB.options:{master:.9,music:.62,sfx:.85,mute:0};
     S.vol={master:o.master,music:o.music,sfx:o.sfx};S.muted=!!o.mute;
     if(!S.ctx)return;
     S.master.gain.value=S.muted?0:o.master;
@@ -65,8 +181,9 @@ const Snd=(function(){
   // ---------- ambiente contínuo (todos os mapas, ganhos diferentes) ----------
   S.buildAmbience=function(){
     const c=S.ctx;
-    const mk=(buf,type,freq,q,gain,detune)=>{
-      const s=c.createBufferSource();s.buffer=buf;s.loop=true;
+    if(!c)return;
+    const mk=(buf: AudioBuffer | null,type: string,freq: number,q: number,gain: number): AmbNode=>{
+      const s=c.createBufferSource();if(buf)s.buffer=buf;s.loop=true;
       const flt=c.createBiquadFilter();flt.type=type;flt.frequency.value=freq;flt.Q.value=q;
       const g=c.createGain();g.gain.value=gain;
       s.connect(flt);flt.connect(g);g.connect(S.amb);s.start();
@@ -239,7 +356,7 @@ const Snd=(function(){
 // =====================================================================
 //  SFX — entrada e morte PRÓPRIAS para cada criatura
 // =====================================================================
-const SFX=(function(){
+export const SFX=(function(){
   const now=()=>Snd.ctx?Snd.ctx.currentTime:0;
   const ok=()=>!!Snd.ctx;
   const api={
@@ -264,6 +381,10 @@ const SFX=(function(){
     dig(){if(!ok())return;const t=now();for(let i=0;i<4;i++)Snd.noiseHit(t+i*.07,.09,'lowpass',320,1,.22);},
     bite(){if(!ok())return;Snd.noiseHit(now(),.05,'bandpass',2500,3,.2);},
     metal(){if(!ok())return;const t=now();Snd.tone(t,.38,'square',1080,null,.07);Snd.tone(t,.38,'square',1610,null,.045);Snd.noiseHit(t,.28,'lowpass',1900,1,.32);},
+    // Lata batendo: o cachorro empurra, o passageiro troca de trilho.
+    lata(){if(!ok())return;const t=now();Snd.tone(t,.12,'square',1700,null,.07);Snd.noiseHit(t,.1,'bandpass',2700,6,.14);},
+    // Vapor: o maquinista apita, o gerente abre a reunião.
+    steam(){if(!ok())return;const t=now();Snd.noiseHit(t,.45,'highpass',3000,1,.14);Snd.noiseHit(t+.05,.3,'bandpass',5200,1,.08);},
     laugh(){if(!ok())return;const t=now();[175,155,132,120].forEach((fv,i)=>Snd.tone(t+i*.19,.16,'sawtooth',fv,fv*.86,.12));},
     reflect(){if(!ok())return;const t=now();Snd.tone(t,.22,'square',2400,null,.07);Snd.tone(t+.04,.22,'square',3600,null,.04);},
     ui(){if(!ok())return;const t=now();Snd.tone(t,.035,'square',900,null,.035);},
@@ -273,7 +394,7 @@ const SFX=(function(){
     human(){if(!ok())return;const t=now();Snd.noiseHit(t,.5,'bandpass',420,1,.1);Snd.tone(t,.5,'sine',120,95,.1);},
     alarm(){if(!ok())return;const t=now();for(let i=0;i<3;i++)Snd.tone(t+i*.24,.2,'square',440,880,.08);},
     bossIntro(){if(!ok())return;const t=now();Snd.tone(t,2.2,'sine',55,40,.55);Snd.tone(t,.4,'square',110,null,.12);Snd.tone(t+2.3,1.6,'sawtooth',82,55,.15);Snd.noiseHit(t,2.4,'lowpass',200,1,.2);},
-    bossDeath(){if(!ok())return;const t=now();[0,.18,.42,.8].forEach((d,i)=>{Snd.tone(t+d,1.2,'sine',140/(i+1),40,.5);Snd.noiseHit(t+d,.9,'lowpass',700,1,.4);});Snd.laugh();},
+    bossDeath(){if(!ok())return;const t=now();[0,.18,.42,.8].forEach((d,i)=>{Snd.tone(t+d,1.2,'sine',140/(i+1),40,.5);Snd.noiseHit(t+d,.9,'lowpass',700,1,.4);});api.laugh();},
     // ---- entrada: dá pra reconhecer quem vem sem olhar ----
     enter(type){
       if(!ok())return;const t=now();
@@ -285,7 +406,7 @@ const SFX=(function(){
         caranguejo:()=>{Snd.noiseHit(t,.04,'bandpass',3200,9,.19);Snd.noiseHit(t+.13,.04,'bandpass',2700,9,.17);},
         caranguejo_m:()=>{Snd.noiseHit(t,.04,'bandpass',3200,9,.19);Snd.noiseHit(t+.13,.04,'bandpass',2700,9,.17);Snd.tone(t+.2,.3,'square',160,null,.05);},
         bomba:()=>{Snd.noiseHit(t,.4,'highpass',4200,1,.1);Snd.tone(t,.4,'square',1200,null,.015);},
-        bento:()=>{Snd.tone(t,.5,'sine',70,42,.5);Snd.laugh();},
+        bento:()=>{Snd.tone(t,.5,'sine',70,42,.5);api.laugh();},
         gaivota:()=>{Snd.tone(t,.28,'sawtooth',780,300,.1);Snd.tone(t+.1,.2,'sawtooth',620,240,.07);},
         gaivota_r:()=>{Snd.tone(t,.2,'sawtooth',980,420,.12);Snd.tone(t+.14,.3,'sawtooth',760,260,.09);Snd.noiseHit(t,.3,'bandpass',2200,2,.08);},
         tatu:()=>{for(let i=0;i<3;i++)Snd.noiseHit(t+i*.13,.1,'lowpass',260,1,.24);},
@@ -297,7 +418,7 @@ const SFX=(function(){
         sapo:()=>{Snd.tone(t,.08,'square',180,90,.14);Snd.noiseHit(t+.12,.1,'lowpass',700,1,.12);},
         piranha:()=>{Snd.noiseHit(t,.05,'bandpass',3600,5,.13);Snd.tone(t+.06,.05,'square',2200,null,.03);},
         baleia:()=>{Snd.tone(t,1.4,'sine',95,62,.28);Snd.tone(t+.2,1.2,'sine',140,90,.12);},
-        pescador:()=>{Snd.human();Snd.tone(t+.5,.4,'sine',300,260,.03);},
+        pescador:()=>{api.human();Snd.tone(t+.5,.4,'sine',300,260,.03);},
         passageiro:()=>{Snd.steam(t);Snd.tone(t+.2,.3,'sine',200,140,.06);},
         faroleiro:()=>{Snd.bell(440,t,.12,3);Snd.tone(t+1,.9,'sine',70,50,.3);},
         maquinista:()=>{Snd.steam(t);[0,.3,.6].forEach((d,i)=>Snd.tone(t+d,.25,'square',300-i*40,null,.06));},
@@ -305,7 +426,7 @@ const SFX=(function(){
         gerente:()=>{Snd.steam(t);Snd.tone(t+.1,.5,'sawtooth',110,null,.1);Snd.noiseHit(t+.2,.5,'bandpass',600,2,.06);},
         mare:()=>{for(let i=0;i<4;i++)Snd.noiseHit(t+i*.5,1.6,'lowpass',420,1,.14);Snd.tone(t,3,'sine',46,38,.2);}
       };
-      (map[type]||(()=>Snd.squish()))();
+      (map[type]||(()=>api.squish()))();
     },
     // ---- morte: remate próprio ----
     death(type){
@@ -313,29 +434,29 @@ const SFX=(function(){
       const map={
         baiacu:()=>{Snd.tone(t,.45,'sine',600,140,.18);Snd.tone(t+.42,.06,'sine',900,1500,.1);},
         enguia:()=>{Snd.tone(t,.5,'sine',220,50,.18);Snd.noiseHit(t,.5,'lowpass',400,1,.16);},
-        ova:()=>{Snd.plop();Snd.tone(t+.15,.3,'square',900,1600,.1);},
+        ova:()=>{api.plop();Snd.tone(t+.15,.3,'square',900,1600,.1);},
         larva:()=>{Snd.tone(t,.06,'square',500,120,.08);},
-        caranguejo:()=>{Snd.metal();Snd.noiseHit(t+.2,.3,'bandpass',2400,8,.12);},
-        caranguejo_m:()=>{Snd.metal();Snd.tone(t+.15,.4,'sawtooth',220,180,.1);Snd.laugh();},
+        caranguejo:()=>{api.metal();Snd.noiseHit(t+.2,.3,'bandpass',2400,8,.12);},
+        caranguejo_m:()=>{api.metal();Snd.tone(t+.15,.4,'sawtooth',220,180,.1);api.laugh();},
         bomba:()=>{Snd.noiseHit(t,.16,'bandpass',900,2,.15);Snd.tone(t,.18,'square',300,90,.12);api.explode();},
         bento:()=>{api.bossDeath();},
         gaivota:()=>{Snd.tone(t,.55,'sawtooth',400,60,.13);Snd.noiseHit(t,.3,'lowpass',700,1,.16);},
-        gaivota_r:()=>{Snd.tone(t,.55,'sawtooth',600,60,.13);Snd.metal();},
+        gaivota_r:()=>{Snd.tone(t,.55,'sawtooth',600,60,.13);api.metal();},
         tatu:()=>{Snd.noiseHit(t,.6,'lowpass',200,1,.3);Snd.tone(t,.5,'sine',100,45,.16);},
-        lata:()=>{Snd.metal();Snd.tone(t,.3,'square',2100,400,.06);},
+        lata:()=>{api.metal();Snd.tone(t,.3,'square',2100,400,.06);},
         fantasma:()=>{Snd.tone(t,.9,'sine',1200,180,.08);},
         polvo:()=>{for(let i=0;i<11;i++)Snd.tone(t+i*.073,.1,'square',rnd(900,2600),null,.035);Snd.noiseHit(t,.3,'highpass',4000,1,.1);},
         agua:()=>{Snd.noiseHit(t,.8,'highpass',5000,1,.14);Snd.tone(t,.8,'sine',1600,300,.04);},
         mariposa:()=>{Snd.noiseHit(t,.25,'highpass',6000,1,.08);Snd.tone(t,.2,'sine',1200,300,.03);},
-        sapo:()=>{Snd.tone(t,.2,'square',260,70,.14);Snd.noiseHit(t,.15,'lowpass',600,1,.18);Snd.plop();},
-        piranha:()=>{Snd.tone(t,.09,'square',700,160,.07);},
+        sapo:()=>{Snd.tone(t,.2,'square',260,70,.14);Snd.noiseHit(t,.15,'lowpass',600,1,.18);api.plop();},
+        piranha:()=>{Snd.tone(t,.06,'square',1800,600,.08);Snd.noiseHit(t,.08,'highpass',4200,4,.1);},
         baleia:()=>{Snd.tone(t,1.6,'sine',95,38,.3);Snd.noiseHit(t,1.2,'lowpass',300,1,.2);},
-        pescador:()=>{Snd.human();},
+        pescador:()=>{api.human();},
         passageiro:()=>{Snd.steam(t);Snd.tone(t+.1,.3,'sine',160,70,.08);},
-        faroleiro:()=>{Snd.bossDeath();Snd.bell(220,t+.3,.1,4);},
-        maquinista:()=>{Snd.bossDeath();Snd.steam(t);Snd.steam(t+.4);},
-        peixe_mae:()=>{Snd.bossDeath();for(let i=0;i<6;i++)Snd.pop();},
-        gerente:()=>{Snd.bossDeath();Snd.steam(t+.2);},
+        faroleiro:()=>{api.bossDeath();Snd.bell(220,t+.3,.1,4);},
+        maquinista:()=>{api.bossDeath();Snd.steam(t);Snd.steam(t+.4);},
+        peixe_mae:()=>{api.bossDeath();for(let i=0;i<6;i++)api.pop();},
+        gerente:()=>{api.bossDeath();Snd.steam(t+.2);},
         mare:()=>{for(let i=0;i<7;i++)Snd.noiseHit(t+i*.4,1.8,'lowpass',500,1,.12);}
       };
       (map[type]||(()=>api.squish()))();
@@ -343,3 +464,4 @@ const SFX=(function(){
   };
   return api;
 })();
+

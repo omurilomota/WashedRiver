@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# O mandato do AGENTS.md: typecheck, lint e testes antes de qualquer commit.
+# O build e a checagem do dist/ ficam para a CI e para `npm run check`.
+npm run typecheck && npm run lint && npm run test

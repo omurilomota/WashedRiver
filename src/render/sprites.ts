@@ -1,35 +1,42 @@
-/* =====================================================================
-   sprites.js — tudo que é desenhado no canvas, menos as criaturas.
-   Cenários dos 6 mapas, vila, NPCs, clima, máquinas, sucata e efeitos.
-   Desenho por formas: nenhuma imagem externa.
-   ===================================================================== */
+/**
+ * sprites.ts — cenário, estruturas, engenhocas e o que mora no campo.
+ *
+ * Tudo aqui é desenho puro: recebe estado, não muda regra. Os helpers
+ * geométricos (`rr`, `eye`, `pose`) são compartilhados com `creatures.ts`.
+ */
+import { COLS, COLW, FIELD_R, H, LANES, LANE_H, LANE_Y0, VX, W, clamp, plantY, rnd } from '../core/constants';
+import { ctx } from '../core/canvas';
+import { G } from '../core/state';
+import { CARTAZES } from '../data';
 
-function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+
+export function rr(x: number,y: number,w: number,h: number,r: number){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
   ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
-function eye(x,y,r,px,py,col){ctx.fillStyle='#f0ecd0';ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+export function eye(x: number,y: number,r: number,px?: number,py?: number,col?: string){ctx.fillStyle='#f0ecd0';ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
   ctx.fillStyle=col||'#111';ctx.beginPath();ctx.arc(x+(px||0),y+(py||0),r*.5,0,7);ctx.fill();}
-function blinkEye(x,y,r,closed,px,py,col){
+export function blinkEye(x: number,y: number,r: number,closed: boolean,px?: number,py?: number,col?: string){
   if(closed){ctx.strokeStyle='#1a1a10';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-r,y);ctx.lineTo(x+r,y);ctx.stroke();return;}
   eye(x,y,r,px,py,col);
 }
-function teeth(x,y,w,n,h,up){ctx.fillStyle='#f4efd8';for(let i=0;i<n;i++){const tx=x+i*w/n;
+export function teeth(x: number,y: number,w: number,n: number,h: number,up?: boolean){ctx.fillStyle='#f4efd8';for(let i=0;i<n;i++){const tx=x+i*w/n;
   ctx.beginPath();ctx.moveTo(tx,y);ctx.lineTo(tx+w/n/2,y+(up?-h:h));ctx.lineTo(tx+w/n,y);ctx.fill();}}
-function lowHp(e){return e.maxhp>0&&e.hp/e.maxhp<.35;}
+export function lowHp(e: {maxhp: number;hp: number}){return e.maxhp>0&&e.hp/e.maxhp<.35;}
 // 3 frames por estado, mudando o CONTORNO. Silhueta legível em preto.
-function pose(o,clock){
-  const hurt=o.flash>0, action=o.act>0||o.hypno>0||o.reflectT>0||o.burrow>0||o.air&&o.grounded>0;
+export function pose(o: { flash?: number; act?: number; hypno?: number; reflectT?: number; burrow?: number; grounded?: number; air?: boolean; [k: string]: unknown },clock: number){
+  const flash=o.flash||0,act=o.act||0,hypno=o.hypno||0,reflectT=o.reflectT||0,burrow=o.burrow||0,grounded=o.grounded||0;
+  const hurt=flash>0, action=act>0||hypno>0||reflectT>0||burrow>0||(o.air&&grounded>0);
   const st=hurt?'hurt':action?'action':'idle';
   const f=Math.floor(clock*(hurt?18:action?11:3))%3;
   if(st==='hurt')return{st,f,tilt:[-.20,.14,-.07][f],sx:[.86,1.13,.93][f],sy:[1.10,.82,.95][f]};
   if(st==='action')return{st,f,tilt:[-.09,.11,-.03][f],sx:[1.13,1,.94][f],sy:[.91,1.07,1][f]};
   return{st,f,tilt:[-.04,0,.04][f],sx:[1,.98,1.02][f],sy:[.99,1.02,.97][f]};
 }
-function waterLines(x,y,w,h,t,col,gap){
+export function waterLines(x: number,y: number,w: number,h: number,t: number,col: string,gap?: number){
   ctx.fillStyle=col;gap=gap||18;
   for(let i=0;i<Math.floor(h/gap);i++){const yy=y+8+i*gap,off=Math.sin(t*1.4+i*.7)*12;
     for(let xx=x+off;xx<x+w;xx+=62)ctx.fillRect(xx,yy,26+Math.sin(t+i)*8,2);}
 }
-function note(x,y,txt,w){
+export function note(x: number,y: number,txt: string,w: number){
   w=w||96;ctx.save();ctx.translate(x,y);ctx.rotate(rnd(-.04,.04));
   ctx.fillStyle='#d7c9a0';ctx.fillRect(0,0,w,30);ctx.fillStyle='#8a6a3a';ctx.fillRect(w/2-2,0,4,6);
   ctx.fillStyle='#4a3a24';ctx.font='7px monospace';txt.split('|').forEach((l,i)=>ctx.fillText(l,5,11+i*9));
@@ -39,7 +46,7 @@ function note(x,y,txt,w){
 // =====================================================================
 //  FUNDOS
 // =====================================================================
-function drawBackground(map,G,t){
+export function drawBackground(map,G,t){
   t=t||0;const p=map.pal;
   let g=ctx.createLinearGradient(0,0,0,LANE_Y0);g.addColorStop(0,p.sky1);g.addColorStop(1,p.sky2);
   ctx.fillStyle=g;ctx.fillRect(0,0,W,LANE_Y0);
@@ -54,12 +61,12 @@ function drawBackground(map,G,t){
   else{drawCemiterio(p,t);}
 
   // os três corredores: cada um com piso próprio
-  for(let l=0;l<3;l++)drawLaneFloor(map,p,l,t);
+  for(let l=0;l<LANES;l++)drawLaneFloor(map,p,l,t);
   // mar/margem à direita
   g=ctx.createLinearGradient(FIELD_R-30,0,W,0);g.addColorStop(0,'rgba(5,18,20,0)');g.addColorStop(.35,p.water);g.addColorStop(1,'#061417');
   ctx.fillStyle=g;ctx.fillRect(FIELD_R-30,LANE_Y0,W-FIELD_R+30,H-LANE_Y0);
   ctx.fillStyle='rgba(200,220,200,.14)';
-  for(let l=0;l<3;l++)for(let i=0;i<4;i++)ctx.fillRect(FIELD_R+4+Math.sin(t*2+i+l)*7,LANE_Y0+l*LANE_H+26+i*30,15,2);
+  for(let l=0;l<LANES;l++)for(let i=0;i<4;i++)ctx.fillRect(FIELD_R+4+Math.sin(t*2+i+l)*7,LANE_Y0+l*LANE_H+26+i*30,15,2);
   // névoa de calor/umidade na base
   const hz=ctx.createLinearGradient(0,H-60,0,H);hz.addColorStop(0,'rgba(0,0,0,0)');hz.addColorStop(1,p.haze);
   ctx.fillStyle=hz;ctx.fillRect(0,H-60,W,60);
@@ -70,7 +77,8 @@ function drawBarra(p,t){
   const stacks=[[520,58],[610,80],[700,44],[800,90],[880,62]];
   for(const [sx,sh] of stacks){ctx.fillStyle='#161c1a';ctx.fillRect(sx,90-sh,18,sh);ctx.fillRect(sx-5,90-sh,28,5);
     ctx.fillStyle=Math.sin(t*3+sx)>.7?'#ff4020':'#5a1a10';ctx.fillRect(sx+7,88-sh,3,3);}
-  ctx.fillStyle='rgba(70,60,50,.25)';for(let i=0;i<5;i++)ctx.beginPath(),ctx.arc(540+i*80+Math.sin(t*.3+i)*10,40-i*4,10+i*4,0,7),ctx.fill();
+  ctx.fillStyle='rgba(70,60,50,.25)';
+  for(let i=0;i<5;i++){ctx.beginPath();ctx.arc(540+i*80+Math.sin(t*.3+i)*10,40-i*4,10+i*4,0,7);ctx.fill();}
   // guindaste
   ctx.strokeStyle='#1a201c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(860,90);ctx.lineTo(860,20);ctx.lineTo(800,34);ctx.stroke();
   ctx.fillStyle='#1a201c';ctx.fillRect(858,16,5,74);
@@ -90,7 +98,7 @@ function drawFarol(p,t){
   ctx.strokeStyle='rgba(200,230,220,.25)';ctx.lineWidth=1;
   for(let i=0;i<6;i++){ctx.beginPath();ctx.arc(180+i*130,LANE_Y0+2+Math.sin(t*1.5+i)*2,18,Math.PI,0);ctx.stroke();}
 }
-function drawEstacao(p,t){
+function drawEstacao(_p,_t){
   // teto da estação e fios
   ctx.fillStyle='#1c2224';ctx.fillRect(330,18,W-330,16);ctx.fillRect(330,18,8,72);ctx.fillRect(700,18,8,72);
   ctx.strokeStyle='#39423e';ctx.lineWidth=1;
@@ -151,8 +159,34 @@ function drawCemiterio(p,t){
 }
 
 // Pisos por corredor, por mapa
-function drawLaneFloor(map,p,l,t){
+export function drawLaneFloor(map,p,l,t){
   const y=LANE_Y0+l*LANE_H;
+  if(l===3){
+    // jardim ribeirinho: água, plantas, ponte de madeira
+    ctx.fillStyle='#2a4a3a';ctx.fillRect(VX,y,W-VX,LANE_H);
+    waterLines(VX,y+8,W-VX,LANE_H-16,t,'rgba(120,180,160,.18)',10);
+    ctx.fillStyle='#3a6a4a';for(let i=0;i<14;i++){const px=VX+30+i*78;ctx.beginPath();ctx.ellipse(px,y+LANE_H-24,26,12,0,0,7);ctx.fill();}
+    ctx.fillStyle='#6a5a3a';for(let i=0;i<6;i++){const px=VX+60+i*150;ctx.fillRect(px,y+LANE_H-40,8,36);ctx.fillRect(px-12,y+LANE_H-44,32,8);}
+    ctx.fillStyle='#7a6a4a';ctx.fillRect(VX,y+LANE_H-10,W-VX,4);
+    ctx.fillStyle='#5a4a2a';for(let i=0;i<8;i++){ctx.fillRect(VX+40+i*110,y+24,6,LANE_H-40);}
+    // flores e pedras
+    for(let i=0;i<16;i++){ctx.fillStyle=i%2?'#d06080':'#e0a040';ctx.beginPath();ctx.arc(VX+20+i*72,y+20+Math.sin(i)*4,4,0,7);ctx.fill();}
+    for(let i=0;i<10;i++){ctx.fillStyle='#6a6a6a';ctx.beginPath();ctx.ellipse(VX+30+i*110,y+LANE_H-18,14,6,0,0,7);ctx.fill();}
+    return;
+  }
+  if(l===4){
+    // trapiche: estacas, tábuas, varais de peixe
+    ctx.fillStyle='#3a3028';ctx.fillRect(VX,y,W-VX,LANE_H);
+    ctx.fillStyle='#2a241e';ctx.fillRect(VX,y+LANE_H-22,W-VX,22);
+    for(let i=0;i<18;i++){ctx.fillStyle=i%2?'#4a4034':'#3e362c';ctx.fillRect(VX+i*52,y+28,48,LANE_H-54);}
+    ctx.fillStyle='#6a5a4a';for(let i=0;i<12;i++){const px=VX+20+i*80;ctx.fillRect(px,y+10,6,LANE_H-34);}
+    ctx.strokeStyle='#8a7a5a';ctx.lineWidth=2;for(let i=0;i<6;i++){const px=VX+40+i*150;ctx.beginPath();ctx.moveTo(px,y+16);ctx.lineTo(px+60,y+8);ctx.lineTo(px+120,y+16);ctx.stroke();}
+    ctx.fillStyle='#b09060';for(let i=0;i<10;i++){ctx.fillRect(VX+30+i*95,y+20,14,6);}
+    // redes de pesca e barris
+    ctx.strokeStyle='#c0a070';ctx.lineWidth=1;for(let i=0;i<5;i++){const px=VX+50+i*220;ctx.beginPath();ctx.moveTo(px,y+LANE_H-30);ctx.lineTo(px+80,y+LANE_H-40);ctx.lineTo(px+160,y+LANE_H-30);ctx.stroke();}
+    for(let i=0;i<6;i++){ctx.fillStyle='#7a5a3a';ctx.beginPath();ctx.ellipse(VX+40+i*180,y+LANE_H-16,16,10,0,0,7);ctx.fill();ctx.fillStyle='#5a3a1a';ctx.fillRect(VX+32+i*180,y+LANE_H-22,16,6);}
+    return;
+  }
   if(map.id==='barra'){
     if(l===0){ctx.fillStyle='#0f2e33';ctx.fillRect(VX,y,W-VX,LANE_H);waterLines(VX,y,W-VX,LANE_H,t,'rgba(120,160,140,.12)');
       for(let i=0;i<38;i++){if((i*7)%9===0)continue;ctx.fillStyle=`rgb(${76+(i%4)*12},${56+(i%3)*8},${34} )`;ctx.fillRect(VX+i*20,y+26,18,LANE_H-30);}
@@ -221,8 +255,8 @@ function drawLaneFloor(map,p,l,t){
 // =====================================================================
 //  CLIMA — cada mapa tem um, e todos fazem alguma coisa
 // =====================================================================
-function drawWeather(G,t){
-  const w=G.map.weather,p=G.map.pal;
+export function drawWeather(G,t){
+  const w=G.map.weather;
   if(w==='rain'||w==='storm'||w==='gale'){
     ctx.strokeStyle=w==='gale'?'rgba(200,220,210,.22)':'rgba(180,200,210,.22)';ctx.lineWidth=1;
     for(let i=0;i<70;i++){
@@ -257,8 +291,8 @@ function drawWeather(G,t){
 // =====================================================================
 //  VILA, ESTRAGOS E NPCS
 // =====================================================================
-function drawStructure(s,lane,i,map,t){
-  const bx=i===0?58:126,by=gy(lane),col=map.pal;
+export function drawStructure(s,lane,i,map,t){
+  const bx=i===0?58:126,by=plantY(lane);
   const kind=['barco','galpao','bote','navio','mastro','tenda'].some(k=>s.id.includes(k))?'boat':
     ['poste','sinaleira','lanterna','chaminé','chamine','relogio','cruz'].some(k=>s.id.includes(k))?'post':
     ['comporta','valvula','válvula','caixa','caldeira','guinda'].some(k=>s.id.includes(k))?'tank':'house';
@@ -306,7 +340,6 @@ function drawStructure(s,lane,i,map,t){
     ctx.fillStyle=map.id==='fabrica'?'#8a4a20':'#5a8a5a';ctx.fillRect(-4,-16,8,18);
     if(s.id.includes('caixa')){ctx.fillStyle='#7a6a4a';ctx.fillRect(-14,-30,28,4);}
   }else{
-    const big=s.id==='casa'||s.id==='navio';
     ctx.fillStyle=map.id==='feira'?'#c8a03a':'#6a5a48';ctx.fillRect(-30,-58,60,58);
     ctx.fillStyle=map.id==='cemiterio'?'#2e3a3a':'#5a3a2a';ctx.beginPath();ctx.moveTo(-36,-58);ctx.lineTo(0,-82);ctx.lineTo(36,-58);ctx.fill();
     ctx.fillStyle='#1a1a18';ctx.fillRect(12,-30,16,30);
@@ -322,21 +355,32 @@ function drawStructure(s,lane,i,map,t){
     // cartaz do mapa
     ctx.save();ctx.translate(-24,-30);ctx.rotate(-.03);ctx.fillStyle='#c8bb92';ctx.fillRect(0,0,30,18);
     ctx.fillStyle='#3a3020';ctx.font='4px monospace';const txt=(CARTAZES[map.id]||[''])[i%3]||'';
-    txt.slice(0,13).match(/.{1,7}/g).forEach((ln,k)=>ctx.fillText(ln,2,7+k*6));ctx.restore();
+    (txt.slice(0,13).match(/.{1,7}/g)||[]).forEach((ln,k)=>ctx.fillText(ln,2,7+k*6));ctx.restore();
   }
   ctx.restore();
 }
-function drawVillage(G,t){
+export function drawVillage(G,t){
   const map=G.map;
   // calçada da vila
   ctx.fillStyle='#151a18';ctx.fillRect(0,LANE_Y0,VX-4,H-LANE_Y0);
-  for(let l=0;l<3;l++){
-    ctx.fillStyle=['#1e2622','#25251f','#1a201a'][l];ctx.fillRect(0,LANE_Y0+l*LANE_H,VX-4,LANE_H);
+  const sidewalk=['#1e2622','#25251f','#1a201a','#222a24','#1c2228','#20262a'];
+  for(let l=0;l<LANES;l++){
+    ctx.fillStyle=sidewalk[l%sidewalk.length];ctx.fillRect(0,LANE_Y0+l*LANE_H,VX-4,LANE_H);
     ctx.fillStyle='#0c100e';ctx.fillRect(VX-6,LANE_Y0+l*LANE_H,6,LANE_H);
   }
   // postes de cerca da vila
-  ctx.fillStyle='#2e2a22';for(let l=0;l<3;l++){ctx.fillRect(VX-10,LANE_Y0+l*LANE_H+30,4,LANE_H-40);}
-  for(let l=0;l<3;l++)for(let i=0;i<2;i++){const s=G.structures[l][i];drawStructure(s,l,i,map,t);}
+  ctx.fillStyle='#2e2a22';for(let l=0;l<LANES;l++){ctx.fillRect(VX-10,LANE_Y0+l*LANE_H+30,4,LANE_H-40);}
+  // vizinhos extras nas novas lanes (animados)
+  for(let l=3;l<LANES;l++){
+    const x=30+Math.sin(G.t*1.2+l)*6, y=plantY(l)-18;
+    ctx.fillStyle=l%2?'#5a5a6a':'#6a5a4a';ctx.fillRect(x-4,y-14,8,14);
+    ctx.fillStyle='#c8a070';ctx.beginPath();ctx.arc(x,y-18,4.5,0,7);ctx.fill();
+    ctx.fillStyle='#2a2a28';ctx.fillRect(x-3,y-22,6,3);
+  }
+  for(let l=0;l<LANES;l++){
+    const lane=G.structures[l]||[];
+    for(let i=0;i<lane.length;i++)drawStructure(lane[i],l,i,map,t);
+  }
   drawZe(G,t);
   if(G.luAtWindow)drawLu(G,t);
   drawToquinho(G,t);
@@ -347,8 +391,8 @@ function drawVillage(G,t){
   ctx.fillStyle='#c8b060';ctx.font='bold 9px monospace';ctx.fillText('BARRA SUJA',6,10);
   ctx.fillStyle='#8a8a6a';ctx.font='6px monospace';ctx.fillText('POP. 7 (ONTEM 9)',6,18);ctx.restore();
 }
-function drawZe(G,t){
-  const z=G.ze,x=46,g=gy(1)+2,sw=Math.sin(z.anim*4)*6;
+export function drawZe(G,_t){
+  const z=G.ze,x=46,g=plantY(1)+2,sw=Math.sin(z.anim*4)*6;
   if(!z.alive){
     ctx.fillStyle='#2a4a6a';ctx.fillRect(x-8,g-6,16,6);ctx.fillStyle='#c8a070';ctx.fillRect(x+2,g-2,5,4);
     return;
@@ -365,8 +409,8 @@ function drawZe(G,t){
     ctx.fillStyle='rgba(240,236,220,.94)';rr(x-4,g-84,w,20,4);ctx.fill();
     ctx.fillStyle='#222';ctx.fillText(z.say.slice(0,30),x+2,g-70);}
 }
-function drawLu(G,t){
-  const x=124,y=gy(1)-76;
+export function drawLu(G,_t){
+  const x=124,y=plantY(1)-76;
   ctx.fillStyle='#1a1a18';ctx.fillRect(x-12,y,20,16);
   ctx.fillStyle='#d8c8b8';ctx.beginPath();ctx.arc(x-2,y+9,5,0,7);ctx.fill();
   ctx.fillStyle='#b8a898';ctx.beginPath();ctx.arc(x-2,y+5,5,Math.PI,0);ctx.fill();
@@ -374,9 +418,9 @@ function drawLu(G,t){
   if(G.luTalking){ctx.fillStyle='rgba(240,236,220,.94)';const w=Math.min(180,ctx.measureText(G.luTalking).width+12);
     rr(20,y-26,w,20,4);ctx.fill();ctx.fillStyle='#222';ctx.font='9px monospace';ctx.fillText(G.luTalking.slice(0,40),25,y-13);}
 }
-function drawToquinho(G,t){
+export function drawToquinho(G,t){
   if(!G.toqAlive)return;
-  const lane=2,x=70+Math.sin(t*.6)*22+(G.toqBoost||0),y=gy(lane)+2,run=Math.sin(t*8)*5;
+  const lane=2,x=70+Math.sin(t*.6)*22+(G.toqBoost||0),y=plantY(lane)+2,run=Math.sin(t*8)*5;
   ctx.fillStyle='#3a5a8a';ctx.fillRect(x-4,y-18,8,12);
   ctx.fillStyle='#c8a070';ctx.beginPath();ctx.arc(x,y-23,5.5,0,7);ctx.fill();
   ctx.fillStyle='#1a1a18';ctx.fillRect(x-6,y-29,12,4);ctx.fillStyle='#c44';ctx.fillRect(x-6,y-31,8,2);
@@ -385,8 +429,8 @@ function drawToquinho(G,t){
   if(G.toqSay){ctx.fillStyle='rgba(240,236,220,.9)';rr(x+8,y-46,Math.min(150,ctx.measureText(G.toqSay).width+12),16,3);ctx.fill();
     ctx.fillStyle='#222';ctx.font='8px monospace';ctx.fillText(G.toqSay.slice(0,34),x+12,y-35);}
 }
-function drawRealDog(G,t){
-  const x=94+Math.sin(t*1.3)*8,y=gy(2)+4;
+export function drawRealDog(G,t){
+  const x=94+Math.sin(t*1.3)*8,y=plantY(2)+4;
   ctx.fillStyle='#7a5a3a';ctx.fillRect(x-8,y-12,16,8);ctx.fillStyle='#8a6a4a';ctx.beginPath();ctx.arc(x+9,y-14,5,0,7);ctx.fill();
   ctx.fillStyle='#7a5a3a';ctx.beginPath();ctx.moveTo(x+12,y-18);ctx.lineTo(x+16,y-22);ctx.lineTo(x+14,y-14);ctx.fill();
   ctx.strokeStyle='#7a5a3a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-8,y-8);ctx.lineTo(x-12,y-16+Math.sin(t*9)*4);ctx.stroke();
@@ -397,7 +441,7 @@ function drawRealDog(G,t){
 // =====================================================================
 //  MÁQUINAS
 // =====================================================================
-function drawUpgrades(m){
+export function drawUpgrades(m){
   const n=(G.up&&G.up[m.type])||0;if(!n)return;
   if(m.type==='torradeira'){if(n>=1){ctx.fillStyle='#e8c84a';ctx.fillRect(-26,-30,52,5);ctx.fillRect(-26,-20,52,4);}
     if(n>=2){ctx.fillStyle='#8a3030';ctx.fillRect(-8,-45,16,5);} if(n>=3){ctx.fillStyle='#ff7030';ctx.beginPath();ctx.arc(0,-16,4,0,7);ctx.fill();}}
@@ -417,8 +461,8 @@ function drawUpgrades(m){
     ctx.strokeStyle='#ddd';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-10,-62);ctx.lineTo(10,-56);ctx.stroke();
   }
 }
-function drawMachine(m){
-  const icon=m._icon, x=m.x,y=icon?0:gy(m.lane), t=icon?G.t:(m.t||0);m.t=t;
+export function drawMachine(m){
+  const icon=m._icon, x=m.x,y=icon?0:plantY(m.lane), t=icon?G.t:(m.t||0);m.t=t;
   const P=pose(m,t),f=P.f,act=P.st==='action',hurt=P.st==='hurt';
   const dmg=m.maxhp?clamp(1-m.hp/m.maxhp,0,1):0;
   ctx.save();ctx.translate(x,y);
@@ -444,6 +488,15 @@ function drawMachine(m){
     ctx.strokeStyle='#222';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-24,-12);
     ctx.quadraticCurveTo([-38,-44,-32][f],[-4,-2,2][f],[-38,-30,-36][f],4);ctx.stroke();
     ctx.fillStyle='#ff6020';ctx.beginPath();ctx.arc([-38,-30,-36][f],4,2,0,7);ctx.fill();
+  }else if(k==='lancador_lata'){
+    const st=act?1:0;
+    ctx.fillStyle='#4a4a42';ctx.fillRect(-18,-8,36,8);
+    ctx.fillStyle='#6a6a60';rr(-22,-34,44,28,4);ctx.fill();
+    ctx.fillStyle='#8a8a7a';ctx.fillRect(10,-30,18,8);
+    ctx.fillStyle='#3a3a34';ctx.fillRect(-20,-32,20,20);
+    ctx.fillStyle='#9aa8a0';ctx.beginPath();ctx.arc(24+st*6,-26,6,0,7);ctx.fill();
+    ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-18,-10);ctx.lineTo(-30,4);ctx.stroke();
+    if(hurt){ctx.fillStyle='#555';ctx.fillRect(-10,-28,8,6);}
   }else if(k==='ventilador'){
     ctx.fillStyle='#6a6a62';rr(-14,-20,28,20,3);ctx.fill();ctx.fillStyle='#2a2a2a';ctx.beginPath();ctx.arc(0,-40,24,0,7);ctx.fill();
     ctx.fillStyle='#3a3a3a';ctx.beginPath();ctx.arc(0,-40,20,0,7);ctx.fill();
@@ -554,7 +607,7 @@ function drawMachine(m){
 // =====================================================================
 //  SUCATA, PROJÉTEIS, EFEITOS
 // =====================================================================
-function drawPickup(p,G){
+export function drawPickup(p,G){
   const res=G&&G.map?G.map.res:'sucata';
   ctx.save();ctx.translate(p.x,p.y+(p.fly||p.auto?0:Math.sin(G.t*3+(p.bob||0))*3));
   if(p.life<3&&!p.fly&&Math.sin(G.t*12)>0)ctx.globalAlpha=.4;
@@ -568,26 +621,28 @@ function drawPickup(p,G){
   if(Math.sin(G.t*6+(p.bob||0))>.7){ctx.fillStyle='#fff';ctx.fillRect(-4,-12,2,2);}
   ctx.restore();
 }
-function drawProjectile(p){
+export function drawProjectile(p){
   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot||0);
   if(p.kind==='can'){ctx.fillStyle='#9aa8a0';rr(-7,-7,14,14,3);ctx.fill();ctx.fillStyle='#6a7870';ctx.fillRect(-7,-7,14,3);}
   else if(p.kind==='mirror'){ctx.fillStyle='#c8e0e0';ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(7,0);ctx.lineTo(0,8);ctx.lineTo(-7,0);ctx.fill();}
   else if(p.kind==='scrap'){ctx.fillStyle='#c0503a';ctx.fillRect(-6,-6,12,12);ctx.fillStyle='#8a9a8a';ctx.fillRect(-6,-6,12,3);}
+  else if(p.kind==='lata_proj'){ctx.fillStyle='#9aa8a0';rr(-8,-6,16,12,3);ctx.fill();ctx.fillStyle='#7a8a80';ctx.fillRect(-8,-6,16,3);ctx.fillStyle='#c0c8c0';ctx.fillRect(-2,-2,4,4);}
   else{const enemy=p.enemy;ctx.fillStyle=enemy?'#8aa0a8':'#a8743a';rr(-8,-8,16,16,4);ctx.fill();
     ctx.fillStyle=enemy?'#d8e8f0':'#e0b878';rr(-6,-6,12,12,3);ctx.fill();}
   ctx.restore();
   if(p.kind!=='mirror'){ctx.fillStyle=p.enemy?'rgba(200,240,255,.4)':'rgba(255,180,80,.3)';
     ctx.fillRect(p.x+(p.vx>0?-20:8),p.y-2,14,3);}
 }
-function drawParticles(G){
+export function drawParticles(G){
   for(const q of G.parts){ctx.globalAlpha=clamp(q.life/(q.max||1),0,1);ctx.fillStyle=q.color;
     if(q.round){ctx.beginPath();ctx.arc(q.x,q.y,q.size/2,0,7);ctx.fill();}else ctx.fillRect(q.x-q.size/2,q.y-q.size/2,q.size,q.size);}
   ctx.globalAlpha=1;
-  for(const tx of G.texts){ctx.globalAlpha=clamp(tx.life,0,1);ctx.fillStyle=tx.color;ctx.font='bold 11px monospace';
+  for(const tx of G.texts){ctx.globalAlpha=clamp(tx.life,0,1);ctx.fillStyle=tx.color;ctx.font='bold 14px monospace';
     ctx.textAlign='center';ctx.fillText(tx.text,tx.x,tx.y);}
   ctx.globalAlpha=1;ctx.textAlign='left';
 }
-function drawDecals(G){
+export function drawDecals(G){
   for(const d of G.decals){ctx.globalAlpha=d.a;ctx.fillStyle=d.color;ctx.beginPath();ctx.ellipse(d.x,d.y,d.r,d.r*.4,0,0,7);ctx.fill();}
   ctx.globalAlpha=1;
 }
+

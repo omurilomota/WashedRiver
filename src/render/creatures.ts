@@ -1,12 +1,18 @@
-/* =====================================================================
-   creatures.js — desenho das criaturas, chefes e MORTES ÚNICAS.
-   A lógica fica em game.js; aqui só a pose, o detalhe e o remate cômico.
-   ===================================================================== */
+/**
+ * creatures.ts — as criaturas, os chefes e o que sobra deles.
+ *
+ * Recebe estado, devolve pixels. A regra de quem é imune, quem voa e quem
+ * morre mora em `src/data/balance.json` e em `src/game/game.ts`.
+ */
+import { FIELD_R, H, W, clamp, plantY, rnd } from '../core/constants';
+import { ctx } from '../core/canvas';
+import { blinkEye, eye, lowHp, pose, rr, teeth } from './sprites';
 
-function drawEnemy(e){
+
+export function drawEnemy(e){
   if(e.boss){drawBoss(e);return;}
   const t=e.anim||0,low=lowHp(e),P=pose(e,t),f=P.f,act=P.st==='action',hurt=P.st==='hurt';
-  const x=(e.x||0)+(low?Math.sin(t*38)*1.6:0),y=gy(e.lane);
+  const x=(e.x||0)+(low?Math.sin(t*38)*1.6:0),y=plantY(e.lane);
   const flying=e.air&&e.lit<=0;
   const hidden=e.type==='fantasma'&&!e.revealed&&!e.lit;
   ctx.save();ctx.translate(x,y);
@@ -48,7 +54,7 @@ function drawEnemy(e){
     ctx.globalAlpha=e.dived?.22:1;
     if(e.dived){ctx.strokeStyle='rgba(200,220,200,.6)';ctx.lineWidth=1;for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(-10+i*16,0,10+i*4,3,0,0,7);ctx.stroke();}}
     ctx.lineCap='round';ctx.strokeStyle='#15151c';ctx.lineWidth=16+(act?3:0);ctx.beginPath();
-    for(let i=0;i<=8;i++){const px=-20+i*8,py=-14+Math.sin(t*9+i*.9+f*.7)*6*(i/8+.3);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();
+    for(let i=0;i<=8;i++){const px=-20+i*8,py=-14+Math.sin(t*9+i*.9+f*.7)*6*(i/8+.3);if(i)ctx.lineTo(px,py);else ctx.moveTo(px,py);}ctx.stroke();
     ctx.strokeStyle='rgba(140,60,180,.4)';ctx.lineWidth=4;ctx.stroke();
     ctx.fillStyle='#15151c';ctx.beginPath();ctx.ellipse(-24,-14,14,10,0,0,7);ctx.fill();
     blinkEye(-28,-18,6,f===2,-2,0,'#e8d020');eye(-20,-10,2.5,0,0,'#e8d020');
@@ -139,7 +145,7 @@ function drawEnemy(e){
     ctx.globalAlpha=1;
   }else if(B==='polvo'){
     ctx.fillStyle='#6a4a5a';ctx.beginPath();ctx.ellipse(0,-30,24,20,0,0,7);ctx.fill();
-    for(let i=0;i<5;i++){const a=Math.PI*.3+i*.35;ctx.strokeStyle='#7a5a6a';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18+i*9,-16);
+    for(let i=0;i<5;i++){ctx.strokeStyle='#7a5a6a';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-18+i*9,-16);
       ctx.quadraticCurveTo(-24+i*10,-2+Math.sin(t*4+i)*6,-30+i*11,10);ctx.stroke();}
     ctx.fillStyle='#8a6a7a';ctx.beginPath();ctx.arc(0,-34,12,0,7);ctx.fill();
     blinkEye(-7,-36,4,f===0,-1,0,'#e8d040');blinkEye(6,-36,4,f===2,-1,0,'#e8d040');
@@ -229,8 +235,8 @@ function drawEnemy(e){
 // =====================================================================
 //  CHEFES — silhuetas de fase
 // =====================================================================
-function drawBoss(e){
-  const t=e.anim,y=gy(e.lane),x=e.x;
+export function drawBoss(e){
+  const t=e.anim,y=plantY(e.lane),x=e.x;
   ctx.save();ctx.translate(x,y);
   ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(0,2,e.r+.2*(e.b==='bento'?30:0),9,0,0,7);ctx.fill();
   if(e.b==='bento'){
@@ -299,7 +305,6 @@ function drawBoss(e){
     ctx.fillStyle='#5a6a2a';ctx.beginPath();ctx.arc(28,-100,6,0,7);ctx.arc(40,-90,5,0,7);ctx.fill();
     ctx.restore();
   }else if(e.b==='gerente'){
-    const step=Math.sin(t*4);
     ctx.fillStyle='#2a2a2e';ctx.fillRect(-34,-70,68,64);
     ctx.fillStyle='#8a1a1a';ctx.beginPath();ctx.moveTo(-4,-70);ctx.lineTo(6,-70);ctx.lineTo(4,-34);ctx.lineTo(-8,-34);ctx.fill();
     ctx.fillStyle='#d8c8b0';ctx.beginPath();ctx.arc(0,-86,15,0,7);ctx.fill();
@@ -319,7 +324,7 @@ function drawBoss(e){
   }
   ctx.restore();
 }
-function drawMare(t,e){
+export function drawMare(t,e){
   // não é bicho: uma parede de água com cara e voz
   const base=H+20,rise=e.rise||0;
   const grd=ctx.createLinearGradient(FIELD_R,0,W,H);
@@ -341,12 +346,12 @@ function drawMare(t,e){
 // =====================================================================
 //  MORTES — cada bicho tem o seu remate. Nada de particle burst único.
 // =====================================================================
-function deathDur(type){
+export function deathDur(type){
   return type==='bento'?6:type==='faroleiro'?6:type==='maquinista'?6.5:type==='peixe_mae'?7:type==='gerente'?6.5:type==='mare'?8:
     type==='ova'?2.6:type==='polvo'?2.4:type==='caranguejo'?2.6:type==='passageiro'?2.2:type==='pescador'?2.8:
-    type==='bomba'?1.6:type==='baleia'?3.2:type==='agua'?1.8:1.9;
+    type==='bomba'?1.6:type==='baleia'?3.2:type==='agua'?1.8:type==='piranha'?1.6:1.9;
 }
-function drawDeath(d){
+export function drawDeath(d){
   const t=d.t,p=t/d.dur;
   ctx.save();ctx.translate(d.x,d.y);
   ctx.globalAlpha=clamp(1-Math.max(0,p-.7)/.3,0,1);
@@ -406,7 +411,7 @@ function drawDeath(d){
     for(let i=0;i<9;i++){const bx=(i%3-1)*22+Math.sin(t*3+i)*6,by=-30+((t*90+i*14)%54);
       ctx.fillStyle=['#4a7a4a','#7a5a3a','#3a6a7a'][i%3];ctx.fillRect(bx,by,5,13);ctx.fillStyle='#d8d0b0';ctx.fillRect(bx,by-3,5,3);}
     ctx.fillStyle='#6a4a5a';ctx.beginPath();ctx.ellipse(0,-10,16,7,0,0,7);ctx.fill();
-    ctx.fillStyle='#e8e0c0';ctx.font='9px monospace';ctx.fillText('R$ 0,35',-18,-58);
+    ctx.fillStyle='#e8e0c0';ctx.font='9px monospace';ctx.fillText('RECICLADO.',-22,-58);
   }else if(B==='agua'){ // evapora deixando o formato molhado no chão
     ctx.fillStyle=`rgba(200,230,225,${clamp(1-p,0,1)*.45})`;ctx.beginPath();ctx.ellipse(0,-2,26,7,0,0,7);ctx.fill();
     ctx.globalAlpha=clamp(1-t,0,1);ctx.fillStyle='rgba(220,245,240,.7)';
@@ -418,13 +423,14 @@ function drawDeath(d){
     ctx.fillStyle='#4a5a20';ctx.beginPath();ctx.ellipse(0,-4,18,5,0,0,7);ctx.fill();
     ctx.fillStyle='#6a7a30';ctx.beginPath();ctx.ellipse(20+((t*40)%30),-4-((t*20)%16),10,7,0,0,7);ctx.fill();
     ctx.fillStyle='#e8e0a0';ctx.font='8px monospace';ctx.fillText('desculpa',-18,-30);
-  }else if(B==='piranha'){ctx.fillStyle='#6a5a4a';ctx.beginPath();ctx.ellipse(0,-2,12,3,0,0,7);ctx.fill();
-    ctx.fillStyle='#f0ecd0';ctx.font='8px monospace';ctx.fillText('...',10,-16+(t*8%10));
+  }else if(B==='piranha'){const sb=d.swimBack?Math.min(1,t/.6)*-28:0;ctx.translate(sb,0);
+    ctx.fillStyle='#6a5a4a';ctx.beginPath();ctx.ellipse(0,-2,12,3,0,0,7);ctx.fill();
+    ctx.fillStyle='#f0ecd0';ctx.font='8px monospace';ctx.fillText('SOZINHA NÃO.',-4, -16+(t*8%10));
   }else if(B==='baleia'){ // cômico-trágico: encalha, o Zé fica calado
     ctx.save();ctx.rotate(.2);ctx.fillStyle='#5a7078';ctx.beginPath();ctx.ellipse(0,-18,40,22,0,0,7);ctx.fill();
     ctx.fillStyle='#3a4a50';ctx.beginPath();ctx.arc(-26,-18,6,0,7);ctx.fill();ctx.restore();
     ctx.fillStyle='#c8d8d8';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(-6+i*12,-44-t*8%12,4,0,7);ctx.fill();}
-    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('MÃE VAI FICAR BRAVA',-52,-62);
+    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('ELA NÃO SABIA.',-40,-62);
   }else if(B==='pescador'){ // ele tira o boné, agradece e entra no mar
     ctx.fillStyle='#3a5a6a';ctx.fillRect(-8,-26,16,22);
     ctx.fillStyle='#8aa8a0';ctx.beginPath();ctx.ellipse(0,-34,12,10,0,0,7);ctx.fill();
@@ -441,7 +447,7 @@ function drawDeath(d){
 // =====================================================================
 //  MORTE DE CHEFE — 5 a 8 segundos, sem pressa
 // =====================================================================
-function drawBossDeath(d){
+export function drawBossDeath(d){
   const t=d.t,p=t/d.dur;
   ctx.save();ctx.translate(d.x,d.y);
   const B=d.b;
@@ -505,9 +511,10 @@ function drawBossDeath(d){
     const dawn=clamp(p*1.6,0,1);
     ctx.fillStyle=`rgba(255,180,110,${dawn*.35})`;ctx.fillRect(FIELD_R-100,0,W-FIELD_R+100,H);
     ctx.fillStyle='#e8d9a8';ctx.font='bold 12px monospace';ctx.fillText('AMANHECEU.',-40,-80);
-    if(t>2)ctx.fillStyle='#f0e4bd',ctx.fillText('O MAR NÃO FOI EMBORA.',-56,-62);
-    if(t>4)ctx.fillStyle='#c8d8c0',ctx.fillText('ELE SÓ PAROU DE GRITAR.',-56,-46);
+    if(t>2){ctx.fillStyle='#f0e4bd';ctx.fillText('O MAR NÃO FOI EMBORA.',-56,-62);}
+    if(t>4){ctx.fillStyle='#c8d8c0';ctx.fillText('ELE SÓ PAROU DE GRITAR.',-56,-46);}
     ctx.fillStyle='rgba(220,240,230,.3)';for(let i=0;i<10;i++){ctx.beginPath();ctx.arc(rnd(-60,60),rnd(-100,-10),rnd(2,5),0,7);ctx.fill();}
   }
   ctx.restore();ctx.globalAlpha=1;
 }
+

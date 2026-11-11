@@ -2,6 +2,9 @@
    MARÉ PODRE — folha única de estilo.
    Paleta: alcatrão, ferrugem, osso, verde-de-esgoto e amarelo de farol.
    Sem fontes externas: Impact/Arial Black e monospace do sistema.
+
+   O canvas é 1280x846 (6 lanes × 126px + cabeçalho de 90px) — ver
+   ADR 003. O --fs é a escala de fonte controlada pelas opções.
    ===================================================================== */
 :root{
   --bg:#0a0c0b; --ink:#e6dcc0; --dim:#8d907c; --rust:#a4552a; --rust2:#d1713a;
@@ -16,9 +19,9 @@ body{background:
   radial-gradient(1200px 700px at 50% 40%, #1a2320 0%, #0a0c0b 62%, #050605 100%);
 }
 #app{height:100%;display:flex;align-items:center;justify-content:center}
-#stage{position:relative;width:min(100vw,calc(100vh*16/9));aspect-ratio:16/9;background:#050807;
-  box-shadow:0 0 0 2px #1d2420, 0 30px 80px rgba(0,0,0,.8);overflow:hidden}
-#cv{width:100%;height:100%;display:block;image-rendering:auto;cursor:crosshair}
+#stage{position:relative;width:100vw;height:100vh;background:#050807;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+#cv{max-width:100%;max-height:100%;width:auto;height:auto;aspect-ratio:1280/846;display:block;image-rendering:crisp-edges;cursor:crosshair}
 .hidden{display:none !important}
 
 /* ---------- HUD mínimo ---------- */
@@ -27,7 +30,7 @@ body{background:
 #topbar .mini,#radioLamp{pointer-events:auto}
 #trackName{font-size:calc(10px * var(--fs));letter-spacing:.18em;color:#c7b98c;text-shadow:0 1px 0 #000}
 #topbar .spacer{flex:1}
-.mini{width:26px;height:22px;border:1px solid var(--line);background:#20261f;color:#d8cba6;
+.mini{width:32px;height:32px;border:1px solid var(--line);background:#20261f;color:#d8cba6;
   font-family:inherit;font-size:11px;cursor:pointer;padding:0}
 .mini:hover{background:#31392c;color:#fff}
 .lamp{font-size:calc(9px * var(--fs));letter-spacing:.1em;color:#1c241c;background:#7d8a63;
@@ -61,7 +64,7 @@ body{background:
 .slotbar small{color:#8d907c;display:block}
 
 /* ---------- Botões ---------- */
-.btn{font-family:Impact,"Arial Black",sans-serif;font-size:calc(19px * var(--fs));letter-spacing:.05em;
+.btn{font-family:Impact,"Arial Black",sans-serif;font-size:calc(22px * var(--fs));letter-spacing:.05em;
   padding:10px 18px;border:2px solid #6b5228;border-bottom-width:4px;border-radius:2px;cursor:pointer;
   background:linear-gradient(#4a3921,#2e2414);color:#efdfae;line-height:1.05;text-align:center;
   text-shadow:0 1px 0 #000;transition:transform .06s, background .12s, border-color .12s}

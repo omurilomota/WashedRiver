@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Decisões do projeto (ADRs)
+    url: https://github.com/omurilomota/WashedRiver/blob/develop/docs/DECISIONS.md
+    about: Toda decisão de stack, gameplay e repo fica registrada em ADR — com o que foi rejeitado e por quê.
+  - name: Como contribuir
+    url: https://github.com/omurilomota/WashedRiver/blob/develop/CONTRIBUTING.md
+    about: Fluxo gitflow, commits Conventional Commits + gitmoji e checklist de PR.

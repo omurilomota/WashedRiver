@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Conventional Commits + gitmoji. Não passa commit fora do padrão.
+npx --no-install commitlint --edit "$1"

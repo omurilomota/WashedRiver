@@ -1,24 +1,58 @@
-/* =====================================================================
-   ui.js — telas, menus, HUD, codex, árvore, loja e epílogo.
-   DOM para texto; canvas para HUD. Tudo acionado por data-act.
-   ===================================================================== */
-const UI=(function(){
-  const $=id=>document.getElementById(id);
-  const scr=$('screen'),shopEl=$('shop'),top=$('topbar');
-  let lastToast=0;
+/**
+ * ui.ts — telas, menus, HUD, codex, árvore, loja e epílogo.
+ *
+ * DOM para texto; canvas para HUD. Tudo acionado por `data-act`.
+ *
+ * A UI observa o estado e **emite** ações (`Game.xxx`); o jogo nunca
+ * importa a UI para decidir regra — só para mostrar e avisar.
+ */
+import { H, STRUCTURES, W, clamp, fmt, plantY, shuffle } from '../core/constants';
+import { ctx } from '../core/canvas';
+import { G, Game } from '../core/state';
+import { dayKey, hashStr, mulberry } from '../core/rng';
+import {
+  ACHIEVEMENTS,
+  BOSSES,
+  DAILY_MODS,
+  ENDINGS,
+  ENEMY,
+  ENEMY_ORDER,
+  MACH,
+  MACH_ORDER,
+  MAPS,
+  RADIO,
+  TREE,
+  TREE_BRANCHES,
+  UPG,
+} from '../data';
+import { SaveDB } from '../save/storage';
+import { SFX, Snd, TRACKS } from '../audio/audio';
+import { drawMachine, rr } from '../render/sprites';
+import { drawBoss } from '../render/creatures';
+import { availableMachines, machCost, structuresAlive } from '../game/economy';
+
+export const UI=(function(){
+  const $=(id: string): HTMLElement|null=>document.getElementById(id);
+  /** Elemento que precisa existir: se sumiu, o jogo quebrou de vez. */
+  const must=(id: string): HTMLElement=>{
+    const el=$(id);
+    if(!el)throw new Error('elemento #'+id+' não encontrado no documento');
+    return el;
+  };
+  const scr=must('screen'),shopEl=must('shop'),top=must('topbar');
 
   // ---------- utilidades ----------
-  function stars(n){return '<span class="stars">'+'★'.repeat(n)+'☆'.repeat(3-n)+'</span>';}
+  function stars(n: number){return '<span class="stars">'+'★'.repeat(n)+'☆'.repeat(3-n)+'</span>';}
   function openScreens(){scr.classList.remove('hidden');}
   function hide(){scr.classList.add('hidden');shopEl.classList.add('hidden');}
   function setScreen(html){scr.innerHTML='<div class="scr"><div class="scr-inner">'+html+'</div></div>';openScreens();}
-  function btn(label,act,arg,cls){return '<button class="btn '+(cls||'')+'" data-act="'+act+'"'+(arg!==undefined?' data-arg="'+arg+'"':'')+'>'+label+'</button>';}
-  function tag(t,cls){return '<span class="tag '+(cls||'')+'">'+t+'</span>';}
+  function btn(label: string,act: string,arg?: string | number,cls?: string){return '<button class="btn '+(cls||'')+'" data-act="'+act+'"'+(arg!==undefined?' data-arg="'+arg+'"':'')+'>'+label+'</button>';}
+  function tag(t: string,cls?: string){return '<span class="tag '+(cls||'')+'">'+t+'</span>';}
   function meta(){return SaveDB.slot.oldScrap||0;}
   const toast=(kind,text)=>{
     const box=$('toasts');if(!box)return;
     const d=document.createElement('div');d.className='toast '+(kind||'');d.textContent=text;box.appendChild(d);
-    while(box.children.length>4)box.removeChild(box.firstChild);
+    while(box.children.length>4&&box.firstChild)box.removeChild(box.firstChild);
     setTimeout(()=>{d.style.transition='opacity .4s';d.style.opacity='0';setTimeout(()=>d.remove(),420);},kind==='ach'?6000:5200);
   };
   function achCount(){return Object.keys(SaveDB.slot.ach||{}).length;}
@@ -49,7 +83,7 @@ const UI=(function(){
         btn('BESTIÁRIO','codex','','tiny')+btn('ÁRVORE','tree','','tiny')+btn('OPÇÕES','options','','tiny')+
         btn('SLOTS','slots','','tiny')+btn('COMO JOGAR','help','','tiny')+
       '</div>'+
-      '<div class="bottomline">Sucata velha: <b class="gold">'+meta()+'</b> · selos: '+achCount()+'/10 · mapa liberado: '+Math.min(6,s.campaign+1)+'/6<br>'+
+      '<div class="bottomline">Sucata velha: <b class="gold">'+meta()+'</b> · selos: '+achCount()+'/'+ACHIEVEMENTS.length+' · mapa liberado: '+Math.min(MAPS.length,s.campaign+1)+'/'+MAPS.length+'<br>'+
       'A música, os bichos e a vila são sintetizados na hora. Clique uma vez pra liberar o som.</div>'
     );
     top.classList.add('hidden');
@@ -60,7 +94,7 @@ const UI=(function(){
     const cards=[0,1,2].map(i=>{const s=SaveDB.slotInfo(i);
       return '<div class="slot '+(i===SaveDB.slotIndex?'current':'')+'">'+
         '<h3>'+s.name+'</h3>'+
-        '<div class="kv">sucata velha: <b>'+s.oldScrap+'</b><br>campanha: <b>'+Math.min(6,s.campaign+1)+'/6</b><br>partidas: <b>'+(s.runs||0)+'</b> · selos: <b>'+Object.keys(s.ach||{}).length+'/10</b><br>'+
+        '<div class="kv">sucata velha: <b>'+s.oldScrap+'</b><br>campanha: <b>'+Math.min(MAPS.length,s.campaign+1)+'/'+MAPS.length+'</b><br>partidas: <b>'+(s.runs||0)+'</b> · selos: <b>'+Object.keys(s.ach||{}).length+'/'+ACHIEVEMENTS.length+'</b><br>'+
         'último jogo: '+(s.lastPlayed?new Date(s.lastPlayed).toLocaleDateString('pt-BR'):'nunca')+'</div>'+
         '<div class="row" style="justify-content:flex-start">'+btn('USAR','slot',i,'small')+
         '<button class="btn dark" data-act="newslot" data-arg="'+i+'">APAGAR</button></div></div>';}).join('');
@@ -129,7 +163,7 @@ const UI=(function(){
       'peças: '+G.machines.length+' · bichos mortos: '+G.kills+' · sucata: '+G.scrap+'</p>'+
       '<div class="menu">'+btn('RETOMAR','resume','','primary')+btn('OPÇÕES','options','')+btn('BESTIÁRIO','codex','')+
       btn('REINICIAR','retry','','danger')+btn('SALVAR','save','','small')+btn('SAIR PRO TÍTULO','title','','small')+'</div>'+
-      '<div class="bottomline">Salva automaticamente a cada onda e ao sair. P pausa, M silencia, 1–9 escolhe peça.</div>');
+      '<div class="bottomline">Salva automaticamente a cada onda e ao sair. P pausa, M silencia, 1–9 escolhe peça.<br>Legenda: 🟩 estrutura de pé · 🟥 destruída · ícones da vila = vidas.</div>');
   }
 
   // ---------- OPÇÕES ----------
@@ -157,7 +191,7 @@ const UI=(function(){
 
   // ---------- CODEX ----------
   let codexTab='bestiary';
-  function codex(tab){
+  function codex(tab?: string){
     if(tab)codexTab=tab;
     const s=SaveDB.slot;
     const seenB=Object.keys(s.seenB||{}).length,seenM=Object.keys(s.seenM||{}).length;
@@ -213,8 +247,6 @@ const UI=(function(){
       '<p class="muted">Sucata velha: <b class="gold">'+meta()+'</b> · ganha ao terminar partidas. Nada aqui conserta o mar.</p>'+
       '<div class="branches">'+branches+'</div><div class="space"></div>'+btn('VOLTAR','back','','small'));
   }
-  function costLvl(n,lvl){return n.cost;}
-
   // ---------- COMO JOGAR ----------
   function help(){
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">COMO SOBREVIVER</h2>'+
@@ -238,20 +270,20 @@ const UI=(function(){
     const offers=Game.offers||[];
     const desc={unlock:o=>'DESBLOQUEAR: '+MACH[o.k].nome.toUpperCase(),up:o=>'ENFIAR '+UPG[o.k][(G.up[o.k]||0)].toUpperCase()+' NA '+MACH[o.k].nome.toUpperCase(),
       scrap:()=>'+150 DE SUCATA',repair:()=>'RECONSTRUIR UMA ESTRUTURA',heal:()=>'CURAR TODAS AS PEÇAS'};
-    const sub={unlock:o=>MACH[o.k].desc,up:o=>'Upgrade permanente. Fica visível na peça.',scrap:()=>'O Zé revira o lixo. Não pergunta de onde veio.',
+    const sub={unlock:o=>MACH[o.k].desc,up:()=>'Upgrade permanente. Fica visível na peça.',scrap:()=>'O Zé revira o lixo. Não pergunta de onde veio.',
       repair:()=>'Volta torta, mas volta.',heal:()=>'Conserta tudo e prepara a próxima onda.'};
     shopEl.innerHTML='<div class="scr"><div class="scr-inner">'+
       '<div class="logo" style="font-size:clamp(26px,5vw,54px)">O ZÉ TROUXE<br><em>UMAS COISAS</em></div>'+
       '<p class="muted">Onda '+(G.survived||0)+' aguentada. Escolhe uma e volta pro corredor. Não tem tempo pra duas — tirando o tempo que você quiser.</p>'+
       '<div class="offers">'+offers.map((o,i)=>'<div class="offer"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':'RECURSO')+'</div>'+
         '<h4>'+desc[o.kind](o)+'</h4><p>'+sub[o.kind](o)+'</p>'+
-        (o.kind==='up'?'<p class="gold">nível '+(G.up[o.k]+1)+'/3</p>':'')+
+        (o.kind==='up'?'<p class="gold">nível '+(G.up[o.k||'']+1)+'/3</p>':'')+
         '<div class="price">'+btn('ESCOLHER','offer',i,'small primary')+'</div></div>').join('')+'</div>'+
       '<div class="hr"></div>'+
       '<p class="muted">BANCA DO ZÉ — compra com a sucata do corredor. Pode levar quantas quiser.</p>'+
       '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
         it.nome+' · '+it.cost+'</button>').join('')+'</div>'+
-      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+G.scrap+'</b> · estruturas de pé: <b>'+structuresAlive()+'/6</b> · peças: '+G.machines.length+'</p>'+
+      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+G.scrap+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+'</p>'+
       '<div class="bottomline">"+ reconstruir uma parede" pode salvar a partida. "Um ímã" também. O Zé não dá garantia.</div>'+
       '</div></div>';
     shopEl.classList.remove('hidden');scr.classList.add('hidden');top.classList.add('hidden');
@@ -281,7 +313,7 @@ const UI=(function(){
       '<div class="panel" style="max-width:560px;margin:12px auto"><div class="kv">'+
       'BICHOS MORTOS: <b>'+summary.kills+'</b> · TEMPO: <b>'+Math.round(summary.time)+'s</b> · ONDAS: <b>'+summary.survived+'</b><br>'+
       'SUCATA VELHA GANHA: <b class="gold">+'+summary.meta+'</b> · TOTAL: '+SaveDB.slot.oldScrap+'<br>'+
-      'BESTIÁRIO: '+Object.keys(SaveDB.slot.seenB||{}).length+'/'+ENEMY_ORDER.length+' · ESTRUTURAS: '+structuresAlive()+'/6'+
+      'BESTIÁRIO: '+Object.keys(SaveDB.slot.seenB||{}).length+'/'+ENEMY_ORDER.length+' · ESTRUTURAS: '+structuresAlive()+'/'+STRUCTURES+
       '</div></div>'+
       '<div class="menu">'+
       (next?btn('PRÓXIMO MAPA','nextmap','','primary'):'')+
@@ -333,9 +365,9 @@ const UI=(function(){
     ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,64,4);ctx.fill();
     ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
     ctx.fillStyle='#f0e4bd';ctx.font='bold 23px "Courier New",monospace';ctx.fillText(fmt(g.scrap),46,32);
-    ctx.fillStyle='#9aa08a';ctx.font='8px monospace';ctx.fillText(p.resShort,46,44);
-    ctx.fillStyle='#7a806a';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
-    ctx.fillStyle='#c8b070';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
+    ctx.fillStyle='#9aa08a';ctx.font='12px monospace';ctx.fillText(p.resShort,46,44);
+    ctx.fillStyle='#7a806a';ctx.font='11px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
+    ctx.fillStyle='#c8b070';ctx.font='11px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
     // cartas
     for(const r of cardLayout()){
       const m=MACH[r.k],cost=machCost(r.k),cool=g.cds&&g.cds[r.k]||0,up=(g.up&&g.up[r.k])||0;
@@ -344,9 +376,9 @@ const UI=(function(){
       ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();
       ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h-19);ctx.scale(.36,.36);ctx.globalAlpha=can||g.selected===r.k?1:.45;
       drawMachine({type:r.k,x:0,lane:0,t:g.t,hp:1,maxhp:1,anim:0,act:0,flash:0,_icon:true});ctx.restore();
-      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 9px monospace';ctx.fillText(r.k==='remover'?'—':cost,r.x+3,r.y+53);
+      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 12px monospace';ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
       const short=m.nome.split(' ')[0].toUpperCase().slice(0,7);
-      ctx.fillStyle='#a8aa94';ctx.font='6px monospace';ctx.fillText(short,r.x+3,r.y+9);
+      ctx.fillStyle='#a8aa94';ctx.font='9px monospace';ctx.fillText(short,r.x+3,r.y+9);
       if(up){for(let j=0;j<3;j++){ctx.fillStyle=j<up?'#e8c84a':'#39402f';ctx.fillRect(r.x+r.w-8+j*2.4,r.y+3,2,4);}}
       if(cool>0){ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(r.x,r.y,r.w,r.h*(cool/m.cd));}
     }
@@ -356,7 +388,7 @@ const UI=(function(){
     if(g.boss&&!g.bossDeath){
       const b=g.boss;
       ctx.fillStyle='rgba(8,10,8,.72)';rr(W/2-180,3,360,22,3);ctx.fill();
-      ctx.fillStyle='#e8d9a8';ctx.font='8px monospace';ctx.textAlign='center';
+      ctx.fillStyle='#e8d9a8';ctx.font='11px monospace';ctx.textAlign='center';
       ctx.fillText((BOSSES[b.b].nome)+' — FASE '+b.phase,W/2,13);
       ctx.fillStyle='#3a1a16';ctx.fillRect(W/2-170,18,340,4);ctx.fillStyle='#c84a30';ctx.fillRect(W/2-170,18,340*clamp(b.hp/b.maxhp,0,1),4);
       ctx.textAlign='left';
@@ -369,9 +401,9 @@ const UI=(function(){
       const t=intro.t/intro.dur;
       ctx.fillStyle='rgba(2,3,4,.85)';ctx.fillRect(0,0,W,H);
       ctx.fillStyle=`rgba(120,20,10,${.12+Math.sin(g.t*8)*.04})`;ctx.fillRect(0,H/2-90,W,180);
-      ctx.save();ctx.translate(W/2,gy(1)+30);ctx.scale(.9+Math.min(1,t)*.3,.9+Math.min(1,t)*.3);
+      ctx.save();ctx.translate(W/2,plantY(1)+30);ctx.scale(.9+Math.min(1,t)*.3,.9+Math.min(1,t)*.3);
       const fake={boss:true,b:intro.b,type:intro.b,lane:1,x:W/2,anim:g.t,phase:3,hp:1,maxhp:1,rise:0,inflate:false,act:1,flash:0,revealed:1};
-      try{drawBoss(fake);}catch(e){}
+      try{drawBoss(fake);}catch{}
       ctx.restore();
       ctx.textAlign='center';ctx.fillStyle='#e8d9a8';ctx.font='bold 30px Impact,sans-serif';
       ctx.fillText(BOSSES[intro.b].nome,W/2,90);
@@ -388,7 +420,7 @@ const UI=(function(){
     if(!g||Game.screen==='title'){top.classList.add('hidden');return;}
     top.classList.remove('hidden');
     const tr=TRACKS[g.map.track]||TRACKS.barra;
-    $('trackName').textContent=(g.map.nome||'')+' · '+tr.nome;
+    must('trackName').textContent=(g.map.nome||'')+' · '+tr.nome;
     const lamp=$('radioLamp');if(lamp)lamp.textContent=Snd.muted?'MUDO':'AM';
   }
 
@@ -400,7 +432,7 @@ const UI=(function(){
   }
   function bind(){
     document.addEventListener('click',ev=>{
-      const el=ev.target.closest('[data-act]');if(!el)return;
+      const el=(ev.target as HTMLElement|null)?.closest('[data-act]');if(!el)return;
       const act=el.getAttribute('data-act'),arg=el.getAttribute('data-arg');
       SFX.ui();
       switch(act){
@@ -425,7 +457,7 @@ const UI=(function(){
         case 'options':Game.paused=true;options();break;
         case 'back':backTo();break;
         case 'codex':Game.paused=true;codex();break;
-        case 'codextab':codex(arg);break;
+        case 'codextab':codex(arg??undefined);break;
         case 'tree':Game.paused=true;tree();break;
         case 'buynode':Game.buyNode(arg);break;
         case 'help':Game.paused=true;help();break;
@@ -436,21 +468,22 @@ const UI=(function(){
         case 'ending':Game.finishEnding(arg);break;
       }
     });
-    $('radioLamp').addEventListener('click',()=>Game.radioClick());
+    must('radioLamp').addEventListener('click',()=>Game.radioClick());
     document.addEventListener('change',ev=>{
-      const el=ev.target;if(!el.getAttribute)return;
+      const el=ev.target as HTMLElement|null;if(!el||!el.getAttribute)return;
       const act=el.getAttribute('data-act');
       if(act==='opt'){
         const k=el.getAttribute('data-arg');
-        let v=el.value;if(k==='shake'||k==='cb')v=Number(v);if(k==='font')v=Number(v);
+        let v: string|number=(el as HTMLSelectElement).value;
+        if(k==='shake'||k==='cb'||k==='font')v=Number(v);
         Game.option(k,v);options();
       }
-      if(act==='muteopt'){Snd.init();const o=SaveDB.options;o.mute=Number(el.value);SaveDB.opt('mute',o.mute);Snd.applyVolumes();options();}
+      if(act==='muteopt'){Snd.init();const o=SaveDB.options;o.mute=Number((el as HTMLInputElement).value);SaveDB.opt('mute',o.mute);Snd.applyVolumes();options();}
     });
     document.addEventListener('input',ev=>{
-      const el=ev.target;if(!el.getAttribute||el.getAttribute('data-act')!=='vol')return;
-      const k=el.getAttribute('data-arg');Game.option(k,Number(el.value));
-      const lab=el.closest('.opt').querySelector('.sub');if(lab)lab.textContent=Math.round(Number(el.value)*100)+'%';
+      const el=ev.target as HTMLElement|null;if(!el||!el.getAttribute||el.getAttribute('data-act')!=='vol')return;
+      const k=el.getAttribute('data-arg');Game.option(k,Number((el as HTMLInputElement).value));
+      const opt=el.closest('.opt');const lab=opt?opt.querySelector('.sub'):null;if(lab)lab.textContent=Math.round(Number((el as HTMLInputElement).value)*100)+'%';
     });
   }
   function retry(){
@@ -469,7 +502,8 @@ const UI=(function(){
   return api;
 })();
 // nextPhase usa isso quando entra na fase de chefe
-function openBossIntro(){
+export function openBossIntro(){
   Game.bossIntro={b:G.map.boss,t:0,dur:2.6,total:BOSSES[G.map.boss]};
-  Snd.setIntensity(4);SFX.alert&&SFX.alert();
+  Snd.setIntensity(4);(SFX as {alert?:()=>void}).alert?.();
 }
+
