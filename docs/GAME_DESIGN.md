@@ -39,9 +39,13 @@ barco que era do irmão do Zé, uma escolha no final que ninguém vai achar boa.
 ## Estruturas
 
 Cada mapa tem 2 estruturas por lane. A estrutura **não é vida do jogador**:
-é o que a maré quer. Perder todas as estruturas de uma lane abre brecha;
-perder as Structures críticas ends a run no tom do jogo ("O BARCO AFUNDOU. O
-ZÉ NÃO VIU.").
+é o que a maré quer.
+
+- Perder **todas as estruturas de uma lane** abre uma **brecha**: a partida
+  continua, o mar ficou com um quarto a mais. A brecha é contada uma vez
+  por lane.
+- A partida só **acaba quando todas as 12 caem**. Aí o Zé se vai com a
+  última ("PERDEMOS O ZÉ.").
 
 Contagem de estruturas é sempre `LANES * 2` derivada — nunca `/10` solto.
 
@@ -150,6 +154,25 @@ Cada mapa tem: paleta própria, clima, 3 nomes de lane (repetidos nas 6 lanes
 com variação), 2 estruturas por lane, pool de criaturas, chefe, intro, fala
 do chefe e bio.
 
+### Ondas e pool de criaturas
+
+O **pool de criaturas** do mapa (`src/data/maps.json`) manda nas ondas:
+
+| Onda | Bichos |
+|---|---|
+| 0 | os 2 primeiros do pool |
+| 1 | os 6 primeiros do pool |
+| 2 (última) | o pool inteiro — garantido, cada bicho aparece pelo menos uma vez |
+
+As **cenas fixas** entram em todos os mapas: o polvo, o cardume de piranha e
+a Baleia-Filhote (que é visita, não moradora — aparece em todo mapa, "não
+deveria estar aqui"). Os **extras do mapa** entram a partir da onda 1.
+
+A Noite Infinita usa o pool do mapa também.
+
+No **desafio diário**, o mod "SÓ BAIACU" troca o pool inteiro: nenhuma
+criatura escapa, nem as cenas nem os extras.
+
 ## Árvore de desbloqueios (15 nós, 3 ramos)
 
 **MARÉ** — defesa, sucata, teimosia: Sucata Velha, Gambiarra Fina, Banca do
@@ -183,6 +206,9 @@ ganho gasto. (Ver ADR 005.)
 - **Desafio diário** — 8 modificadores sorteados por data local (determinístico,
   funciona offline): Sem Geladeira, Só Baiacu, Sucata Demais, Tudo Rápido,
   Peças de Vidro, Maré Cheia, Chefe Antes da Hora, Noite Permanente.
+  Todos os 8 **fazem o que o texto promete**: ban tiram engenhoca do baralho,
+  Peças de Vidro multiplica a vida da peça, Noite Permanente começa o mapa no
+  escuro, Só Baiacu troca o pool inteiro.
 - **Chefe** — um mapa, um chefe, sem campanha.
 - **Noite Infinita** — sobreviva às ondas; conquista na onda 10.
 - **Sandbox** — 50 engenhocas na areia, sem julgamento.
