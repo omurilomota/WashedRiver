@@ -112,18 +112,36 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
   return st;
 }
 // ondas de campanha: 3, geradas com identidade do mapa
+/**
+ * A lista de bichos que entra na onda.
+ *
+ * O pool é do mapa (`src/data/maps.json`): a onda 0 pega os dois
+ * primeiros, a onda 1 os seis primeiros e a onda 2 o pool inteiro. É o
+ * que dá identidade ao mapa — e o que faz tatu, sapo, gaivota, lata e
+ * fantasma aparecerem em algum momento.
+ */
+function wavePool(base: string[], w: number): string[] {
+  if (w === 0) return base.slice(0, 2);
+  if (w === 1) return base.slice(0, 6);
+  return base.slice();
+}
+
+/** Pool padrão, só se algum mapa vier sem pool (o dado sempre tem). */
+const POOL_CLASSICO = ['baiacu', 'enguia', 'caranguejo', 'ova', 'polvo', 'piranha', 'bomba'];
+
 function makeWaves(st: GameState, daily: boolean): WaveEntry[][] {
-  const map=st.map,diff=st.mods.hp||1,speed=st.mods.speed||1;
+  const map=st.map,speed=st.mods.speed||1;
   const rng=daily?mulberry(hashStr(dayKey()+map.id)):Math.random;
-  const pool=st.mods.pool||map.pool;
+  // O desafio diário pode trocar o pool inteiro ("SÓ BAIACU"). Nesse
+  // caso nada escapa: nem os bichos de cena, nem os extras do mapa.
+  const soUm: string[]|null=Array.isArray(st.mods.pool)&&st.mods.pool.length?(st.mods.pool as string[]):null;
+  const base=soUm||((map.pool&&map.pool.length)?map.pool:POOL_CLASSICO);
   const waves: WaveEntry[][]=[];
   const counts=daily?[7,13]:[7,13,20];
-  for(let w=0;w<(daily?2:3);w++){
+  const waveCount=daily?2:3;
+  for(let w=0;w<waveCount;w++){
     const arr: WaveEntry[]=[];
-    let poolW;
-    if(w===0) poolW=['baiacu','enguia'];
-    else if(w===1) poolW=['baiacu','enguia','caranguejo','ova','polvo','piranha'];
-    else poolW=['baiacu','enguia','caranguejo','ova','polvo','piranha','bomba'];
+    const poolW=wavePool(base,w);
     for(let i=0;i<counts[w];i++){
       const type=poolW[Math.floor(rng()*poolW.length)];
       const lane=Math.floor(rng()*LANES);
@@ -131,32 +149,42 @@ function makeWaves(st: GameState, daily: boolean): WaveEntry[][] {
       const time=i*spacing+rng()*1.6;
       arr.push([time,type,lane,1+w*.12]);
     }
-    // integração das 3 novas criaturas conforme especificação
+    // A última onda traz o pool inteiro: cada bicho do mapa aparece
+    // pelo menos uma vez, e não por acaso.
+    if(w===waveCount-1){
+      for(let i=0;i<poolW.length;i++)arr.push([2+i*2.4,poolW[i],Math.floor(rng()*LANES),1+w*.12]);
+    }
+    // cenas: o polvo, o cardume e a baleia-filhote. A baleia é visita,
+    // não moradora: aparece em todo mapa ("não devia estar aqui").
+    const cPolvo=soUm?soUm[0]:'polvo';
+    const cPiranha=soUm?soUm[0]:'piranha';
     if(w===1){
-      arr.push([30,'polvo',Math.floor(rng()*LANES),1.1]);
-      for(let k=0;k<4;k++)arr.push([30+rng()*2,'piranha',Math.floor(rng()*LANES),1.1]);
-      arr.push([30,'baleia',Math.floor(rng()*LANES),1]);
+      arr.push([30,cPolvo,Math.floor(rng()*LANES),1.1]);
+      for(let k=0;k<4;k++)arr.push([30+rng()*2,cPiranha,Math.floor(rng()*LANES),1.1]);
+      arr.push([30,soUm?soUm[0]:'baleia',Math.floor(rng()*LANES),1]);
     }
     if(w===2){
-      arr.push([12,'polvo',Math.floor(rng()*LANES),1.1]);
-      arr.push([14,'polvo',Math.floor(rng()*LANES),1.1]);
-      for(let k=0;k<5;k++)arr.push([18+rng()*4,'piranha',Math.floor(rng()*LANES),1.1]);
-      arr.push([45,'baleia',Math.floor(rng()*LANES),1]);
+      arr.push([12,cPolvo,Math.floor(rng()*LANES),1.1]);
+      arr.push([14,cPolvo,Math.floor(rng()*LANES),1.1]);
+      for(let k=0;k<5;k++)arr.push([18+rng()*4,cPiranha,Math.floor(rng()*LANES),1.1]);
+      arr.push([45,soUm?soUm[0]:'baleia',Math.floor(rng()*LANES),1]);
     }
     // exclusivo do mapa aparece na segunda onda
-    if(w>=1)for(const t of map.extra)arr.push([4+Math.floor(rng()*(counts[w]*2)),t,Math.floor(rng()*LANES),1.1]);
+    if(w>=1)for(const t of map.extra)arr.push([4+Math.floor(rng()*(counts[w]*2)),soUm?soUm[0]:t,Math.floor(rng()*LANES),1.1]);
     if(daily&&st.mods.bossEarly&&w===1)arr.push([counts[w]*2,map.boss,1,1]);
     waves.push(arr.sort((a,b)=>a[0]-b[0]));
   }
   st.enemyHpMult=st.mods.enemyHp||1;st.speedMult=speed;
   return waves;
 }
-function makeEndlessWave(n: number, pool?: string[], diff?: number): WaveEntry[] {
-  const types=(pool||[]).slice();const arr: WaveEntry[]=[];const dur=36+Math.min(14,n*2);
-  let count, poolW;
-  if(n===0){count=7;poolW=['baiacu','enguia'];}
-  else if(n===1){count=13;poolW=['baiacu','enguia','caranguejo','ova','polvo','piranha'];}
-  else{count=Math.min(22,9+Math.min(24,n*3));poolW=['baiacu','enguia','caranguejo','ova','polvo','piranha','bomba'];}
+function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
+  const base=(pool&&pool.length)?pool:POOL_CLASSICO;
+  const arr: WaveEntry[]=[];const dur=36+Math.min(14,n*2);
+  let count;
+  if(n===0)count=7;
+  else if(n===1)count=13;
+  else count=Math.min(22,9+Math.min(24,n*3));
+  const poolW=wavePool(base,n);
   const spc=n===0?4.2:2.6; for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),1+Math.min(1,n*.09)]);
   // integração das novas criaturas na Noite Infinita
   if(n>=1){
@@ -265,7 +293,7 @@ function nextPhase(): void {
     if((ph.n||0)>=G.waves.length){
       if(G.mode==='campaign'){G.phases.splice(G.phaseIdx,1,{type:'bossIntro',dur:2.6},{type:'boss'});nextPhase();return;}
       if(G.mode==='endless'||G.mode==='sandbox'){
-        const n=G.waves.length;G.waves.push(makeEndlessWave(n,G.map.pool,G.endlessDiff));
+        const n=G.waves.length;G.waves.push(makeEndlessWave(n,G.map.pool));
         G.phases.splice(G.phaseIdx,1,{type:'break'},{type:'wave',n:n});
         nextPhase();return;
       }
