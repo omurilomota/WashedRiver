@@ -1,82 +1,43 @@
 /**
- * main.ts — bootstrap.
+ * main.ts — o arranque.
  *
- * A cede o canvas ao jogo e draws o esqueleto do campo. O render completo
- * (cenário, criaturas, peças, efeitos, HUD) entra na F0 da migração.
+ * Aqui o jogo acorda: monta a tela, liga o loop e começa no título.
+ * Toda a lógica está nos módulos — este arquivo só orquestra.
  */
-import { COLS, COLW, FIELD_R, H, LANES, LANE_H, LANE_Y0, W } from './core/constants';
 import './styles/main.css';
 
-const canvas = document.getElementById('cv') as HTMLCanvasElement | null;
-if (!canvas) throw new Error('canvas #cv não encontrado no documento');
+// O módulo de gameplay pendura os métodos em `Game` (Game.startCampaign,
+// Game.pause, ...). Importá-lo antes da UI garante que a UI encontre o
+// que precisa quando o jogador clicar.
+import './game/game';
+import { G, Game } from './core/state';
+import { UI } from './ui/ui';
+import { SaveDB } from './save/storage';
 
-/** Contexto 2D garantido — o `throw` aqui é mais claro que `!` espalhado. */
-function getCtx(el: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = el.getContext('2d');
-  if (!context) throw new Error('contexto 2D indisponível');
-  return context;
-}
-
-const ctx = getCtx(canvas);
-
-// Escala fixa em 2: nítido em monitor de alta densidade, custo previsível.
-const DPR = 2;
-canvas.width = W * DPR;
-canvas.height = H * DPR;
-canvas.style.width = '100%';
-canvas.style.height = '100%';
-ctx.scale(DPR, DPR);
-
-/** Cores do esqueleto — as definitivas estão em `src/styles/main.css`. */
-const PAL = {
-  sky1: '#2c3a36',
-  sky2: '#0a0c0b',
-  ground: '#33352f',
-  strip: '#55524a',
-  sea: '#0d2a2e',
-};
-
-function draw(): void {
-  // céu
-  const sky = ctx.createLinearGradient(0, 0, 0, LANE_Y0);
-  sky.addColorStop(0, PAL.sky1);
-  sky.addColorStop(1, PAL.sky2);
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, LANE_Y0);
-
-  // mar à direita
-  ctx.fillStyle = PAL.sea;
-  ctx.fillRect(FIELD_R, LANE_Y0, W - FIELD_R, H - LANE_Y0);
-
-  // lanes
-  for (let l = 0; l < LANES; l++) {
-    const y = LANE_Y0 + l * LANE_H;
-    ctx.fillStyle = PAL.ground;
-    ctx.fillRect(0, y, W, LANE_H);
-    ctx.fillStyle = PAL.strip;
-    ctx.fillRect(0, y, W, 4);
-
-    // marcação das colunas de plantio
-    ctx.strokeStyle = 'rgba(0,0,0,.25)';
-    ctx.lineWidth = 1;
-    for (let c = 0; c <= COLS; c++) {
-      const x = 170 + c * COLW;
-      ctx.beginPath();
-      ctx.moveTo(x, y + 6);
-      ctx.lineTo(x, y + LANE_H);
-      ctx.stroke();
-    }
+// O build é um arquivo só e roda direto no navegador: expor o estado no
+// `window` mantém a depuração no console possível — e era assim no build
+// anterior. `G` é getter porque a partida é substituída a cada run.
+declare global {
+  interface Window {
+    Game: typeof Game;
+    G: typeof G;
   }
-
-  // borda direita do campo
-  ctx.fillStyle = 'rgba(0,0,0,.35)';
-  ctx.fillRect(FIELD_R - 4, LANE_Y0, 4, H - LANE_Y0);
-
-  // aviso de esqueleto
-  ctx.fillStyle = '#d9cba0';
-  ctx.font = 'bold 22px "Courier New", monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('MARÉ PODRE — esqueleto em construção', W / 2, LANE_Y0 / 2 + 8);
 }
+window.Game = Game;
+Object.defineProperty(window, 'G', { get: () => G, configurable: true });
 
-draw();
+// Opções salvas → aparência.
+document.body.classList.toggle('cb', !!SaveDB.options.cb);
+document.documentElement.style.setProperty('--fs', String(SaveDB.options.font || 1));
+document.body.classList.toggle('lowshake', !SaveDB.options.shake);
+
+SaveDB.ensureAll();
+
+// O título é o ponto de entrada: o WebAudio só pode nascer depois de um
+// gesto do usuário, e o clique no título é esse gesto.
+Game.titleBackdrop();
+UI.title();
+
+// O loop vive no módulo de jogo; aqui só ligamos o primeiro quadro.
+import { startLoop } from './game/loop';
+startLoop();
