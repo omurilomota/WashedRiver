@@ -187,7 +187,9 @@ function buildPhases(st: GameState): Phase[] {
 Game.startCampaign=function(mapIndex){
   Snd.init();Snd.resume();Snd.applyVolumes();
   SaveDB.setSlot(SaveDB.slotIndex);
-  setG(makeState(mapIndex,'campaign'));
+  const idx=clamp(Number(mapIndex)||0,0,MAPS.length-1);
+  Game.runOpts={kind:'campaign',map:idx};
+  setG(makeState(idx,'campaign'));
   Game.beginRun();
 };
 Game.continueCampaign=function(){
@@ -197,15 +199,19 @@ Game.continueCampaign=function(){
 Game.startEndless=function(diff){
   Snd.init();Snd.resume();Snd.applyVolumes();
   const mapIndex=clamp(Number(diff&&diff.map)||0,0,MAPS.length-1);
+  const level=Number(diff&&diff.level)||0;
+  Game.runOpts={kind:'endless',map:mapIndex,level};
   setG(makeState(mapIndex,'endless'));
-  G.endlessDiff=Number(diff&&diff.level)||0;
+  G.endlessDiff=level;
   G.speedMult=1+G.endlessDiff*.15;G.enemyHpMult=1+G.endlessDiff*.2;
   G.waves=[makeEndlessWave(0,MAPS[mapIndex].pool),makeEndlessWave(1,MAPS[mapIndex].pool)];
   Game.beginRun();
 };
 Game.startBoss=function(mapIndex){
   Snd.init();Snd.resume();Snd.applyVolumes();
-  setG(makeState(mapIndex,'boss'));
+  const idx=clamp(Number(mapIndex)||0,0,MAPS.length-1);
+  Game.runOpts={kind:'boss',map:idx};
+  setG(makeState(idx,'boss'));
   Game.beginRun();
 };
 Game.startDaily=function(){
@@ -215,12 +221,14 @@ Game.startDaily=function(){
   const mods=shuffle(DAILY_MODS.slice()).filter(()=>rng()<.4).slice(0,2);
   const mapIndex=Math.floor(rng()*Math.min(MAPS.length,SaveDB.slot.campaign+1));
   if(!mods.length)mods.push(DAILY_MODS[0]);
+  Game.runOpts={kind:'daily'};
   setG(makeState(mapIndex,'campaign',{daily:true,mods}));
   G.dailyMods=mods;G.mode='daily';
   Game.beginRun();
 };
 Game.startSandbox=function(){
   Snd.init();Snd.resume();Snd.applyVolumes();
+  Game.runOpts={kind:'sandbox'};
   setG(makeState(5,'sandbox'));
   Game.beginRun();
 };
@@ -1045,7 +1053,7 @@ Game.buyShopItem=function(id){
 };
 Game.pause=function(){if(Game.screen!=='play')return;Game.paused=true;Game.screen='pause';Snd.pauseDuck(true);UI.pause();};
 Game.resume=function(){if(Game.screen!=='pause')return;Game.paused=false;Game.screen='play';Snd.pauseDuck(false);UI.hideOverlays();};
-Game.restart=function(){if(G.runOpts)Game.startFromOpts(G.runOpts);else Game.quitToTitle();};
+Game.restart=function(){if(Game.runOpts)Game.startFromOpts(Game.runOpts);else Game.quitToTitle();};
 Game.quitToTitle=function(){Game.screen='title';Game.paused=false;Snd.pauseDuck(false);Snd.setIntensity(1);
   Game.titleBackdrop();UI.title();Snd.setTrack('barra');};
 Game.startFromOpts=function(o){
