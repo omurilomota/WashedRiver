@@ -241,11 +241,13 @@ Game.startBoss=function(mapIndex){
   setG(makeState(idx,'boss'));
   Game.beginRun();
 };
-Game.startDaily=function(){
+// `force` existe para o teste (e para depurar): sem ele, o desafio do
+// dia sorteia dois mods pelo seed da data, como sempre.
+Game.startDaily=function(force?: DailyMod[]){
   Snd.init();Snd.resume();Snd.applyVolumes();
   const seed=hashStr(dayKey()+(SaveDB.slotIndex+1));
   const rng=mulberry(seed);
-  const mods=shuffle(DAILY_MODS.slice()).filter(()=>rng()<.4).slice(0,2);
+  const mods=force&&force.length?force.slice():shuffle(DAILY_MODS.slice()).filter(()=>rng()<.4).slice(0,2);
   const mapIndex=Math.floor(rng()*Math.min(MAPS.length,SaveDB.slot.campaign+1));
   if(!mods.length)mods.push(DAILY_MODS[0]);
   Game.runOpts={kind:'daily'};
@@ -413,7 +415,7 @@ function baseEnemy(o: {
   };
 }
 
-function spawnEnemy(type: string, lane: number, x?: number, scale?: number): Enemy | null {
+export function spawnEnemy(type: string, lane: number, x?: number, scale?: number): Enemy | null {
   if (!ENEMY[type]) return null;
   const d = ENEMY[type];
   const s = scale || 1;
@@ -475,7 +477,7 @@ function spawnBoss(id: string, lane?: number, noIntro?: boolean): void {
   announce((B.nome)+' — '+B.hint,'story');
   SaveDB.seenEnemy(id);
 }
-function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean): boolean {
+export function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean): boolean {
   if(!e||e.burrow>0)return false;
   if(e.boss)return true;
   if(ENEMY[e.type]&&ENEMY[e.type].human)return false;
@@ -486,7 +488,7 @@ function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean): boole
   if(e.flee)return false;
   return true;
 }
-function damageEnemy(e: Enemy, dmg: number, src?: string): void {
+export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
   if(!e||e.burrow>0)return;
   if(e.neutral)return;
   if(e.boss){damageBoss(e,dmg,src);return;}
@@ -545,7 +547,7 @@ function damageBoss(e: Enemy, dmg: number, _src?: string): void {
 // ---------------------------------------------------------------------
 // Engenhocas
 // ---------------------------------------------------------------------
-function placeMachine(k: string, l: number, c: number, freeGift?: boolean): boolean {
+export function placeMachine(k: string, l: number, c: number, freeGift?: boolean): boolean {
   if(!MACH[k]||k==='remover')return false;
   if(machineAt(l,c))return false;
   const discountFree=freeGift||G.sandbox;
