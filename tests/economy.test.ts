@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   availableMachines,
   eff,
@@ -7,7 +8,7 @@ import {
   machineAt,
   structuresAlive,
 } from '../src/game/economy';
-import { MACH, MACH_ORDER, MAPS } from '../src/data';
+import { ECONOMIA, MACH, MACH_ORDER, MAPS } from '../src/data';
 import { COLS, LANES, STRUCTURES } from '../src/core/constants';
 import { setG } from '../src/core/state';
 import type { GameState, Machine, Structure } from '../src/core/state';
@@ -44,10 +45,11 @@ describe('economia: custo', () => {
     SaveDB.resetSlot(0);
   });
 
-  it('sem desconto, o custo é o custo do conteúdo', () => {
+  it('sem desconto, o custo é o custo do conteúdo com o encarecimento geral (+10%)', () => {
     for (const id of MACH_ORDER) {
       if (MACH[id].cost <= 0) continue; // coisa_ze e remover são de graça
-      expect(machCost(id), `${id}`).toBe(MACH[id].cost);
+      const esperado = Math.max(1, Math.round(MACH[id].cost * ECONOMIA.fatorCustoMaquina));
+      expect(machCost(id), `${id}`).toBe(esperado);
     }
   });
 
@@ -56,9 +58,10 @@ describe('economia: custo', () => {
     expect(alvo).toBeDefined();
     if (!alvo) return;
 
+    const base = Math.max(1, Math.round(MACH[alvo].cost * ECONOMIA.fatorCustoMaquina));
     SaveDB.slot.tree.maos = 1; // 6% de desconto
     const custo = machCost(alvo);
-    expect(custo).toBeLessThan(MACH[alvo].cost);
+    expect(custo).toBeLessThan(base);
     expect(custo).toBeGreaterThanOrEqual(1);
   });
 
@@ -166,5 +169,94 @@ describe('economia: slots', () => {
     expect(LANES).toBe(6);
     expect(COLS).toBe(5);
     expect(STRUCTURES).toBe(LANES * 2);
+  });
+});
+
+/** Contexto 2D falso: todo método é no-op e devolve algo encadeável. */
+function fakeContext(): CanvasRenderingContext2D {
+  const chain: unknown = new Proxy(
+    {},
+    {
+      get: () => () => chain,
+      set: () => true,
+    },
+  );
+  return new Proxy(
+    {},
+    {
+      get: (target: Record<string, unknown>, prop: string) => {
+        if (prop in target) return target[prop];
+        return () => chain;
+      },
+      set: (target: Record<string, unknown>, prop: string, value: unknown) => {
+        target[prop] = value;
+        return true;
+      },
+    },
+  ) as unknown as CanvasRenderingContext2D;
+}
+
+describe('economia: F4 — ADR 005 (sucata como sumidouro)', () => {
+  let game: typeof import('../src/game/game');
+  let state: typeof import('../src/core/state');
+
+  beforeAll(async () => {
+    document.body.innerHTML = `
+      <canvas id="cv"></canvas>
+      <div id="topbar"><div id="trackName"></div><div id="radioLamp"></div></div>
+      <div id="screen"></div><div id="shop"></div><div id="toasts"></div><div id="flash"></div>
+    `;
+    const ctx = fakeContext();
+    HTMLCanvasElement.prototype.getContext = (() =>
+      ctx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+    game = await import('../src/game/game');
+    state = await import('../src/core/state');
+  });
+
+  beforeEach(() => {
+    SaveDB.resetSlot(0);
+    state.Game.startCampaign(0);
+  });
+
+  it('passiva é 3/s (não 8/s)', () => {
+    expect(ECONOMIA.passiva).toBe(3);
+  });
+
+  it('melhoria de peça custa 120/220/380', () => {
+    expect(ECONOMIA.upgradeCusto).toEqual([120, 220, 380]);
+  });
+
+  it('banca do Zé só tem sumidouros (sem fonte de sucata)', () => {
+    expect(ECONOMIA.banca.reforco).toBe(150);
+    expect(ECONOMIA.banca.reparoDuplo).toBe(300);
+    expect(ECONOMIA.banca.tabua).toBe(220);
+    expect(ECONOMIA.banca.recarga).toBe(120);
+  });
+
+  it('upgrade de peça custa sucata e recusa sem sucata suficiente', () => {
+    const k = 'boia';
+    state.G.scrap = 200;
+    expect(game.placeMachine(k, 0, 0)).toBe(true);
+    const aposColocar = state.G.scrap; // 200 - custo da peça
+    expect(aposColocar).toBeLessThan(200);
+
+    // primeiro nível custa ECONOMIA.upgradeCusto[0] = 120
+    expect(game.upgradeMachine(k)).toBe(true);
+    expect(state.G.scrap).toBe(aposColocar - ECONOMIA.upgradeCusto[0]);
+    expect(state.G.up[k]).toBe(1);
+
+    // segundo nível custa 220; sem sucata, recusa e não gasta
+    const semSucata = state.G.scrap;
+    expect(game.upgradeMachine(k)).toBe(false);
+    expect(state.G.scrap).toBe(semSucata);
+    expect(state.G.up[k]).toBe(1);
+  });
+
+  it('sucata velha: 500 sucata vira 1 sucata velha', () => {
+    state.G.scrap = 600;
+    state.Game.offers = [{ kind: 'sucataVelha' }];
+    state.Game.chooseOffer(0);
+    expect(state.G.scrap).toBe(100);
+    expect(SaveDB.slot.oldScrap).toBe(1);
   });
 });

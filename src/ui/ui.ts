@@ -14,6 +14,7 @@ import {
   ACHIEVEMENTS,
   BOSSES,
   DAILY_MODS,
+  ECONOMIA,
   ENDINGS,
   ENEMY,
   ENEMY_ORDER,
@@ -269,13 +270,15 @@ export const UI=(function(){
   function shop(){
     const offers=Game.offers||[];
     const desc={unlock:o=>'DESBLOQUEAR: '+MACH[o.k].nome.toUpperCase(),up:o=>'ENFIAR '+UPG[o.k][(G.up[o.k]||0)].toUpperCase()+' NA '+MACH[o.k].nome.toUpperCase(),
-      scrap:()=>'+150 DE SUCATA',repair:()=>'RECONSTRUIR UMA ESTRUTURA',heal:()=>'CURAR TODAS AS PEÇAS'};
-    const sub={unlock:o=>MACH[o.k].desc,up:()=>'Upgrade permanente. Fica visível na peça.',scrap:()=>'O Zé revira o lixo. Não pergunta de onde veio.',
-      repair:()=>'Volta torta, mas volta.',heal:()=>'Conserta tudo e prepara a próxima onda.'};
+      repair:()=>'RECONSTRUIR UMA ESTRUTURA',heal:()=>'CURAR TODAS AS PEÇAS',
+      sucataVelha:()=>'CONVERTER '+ECONOMIA.sucataVelhaCusto+' SUCATA EM 1 SUCATA VELHA'};
+    const sub={unlock:o=>MACH[o.k].desc,up:()=>'Upgrade permanente. Fica visível na peça.',
+      repair:()=>'Volta torta, mas volta.',heal:()=>'Conserta tudo e prepara a próxima onda.',
+      sucataVelha:()=>'Sucata velha é moeda de meta: compra melhorias entre partidas.'};
     shopEl.innerHTML='<div class="scr"><div class="scr-inner">'+
       '<div class="logo" style="font-size:clamp(26px,5vw,54px)">O ZÉ TROUXE<br><em>UMAS COISAS</em></div>'+
       '<p class="muted">Onda '+(G.survived||0)+' aguentada. Escolhe uma e volta pro corredor. Não tem tempo pra duas — tirando o tempo que você quiser.</p>'+
-      '<div class="offers">'+offers.map((o,i)=>'<div class="offer"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':'RECURSO')+'</div>'+
+      '<div class="offers">'+offers.map((o,i)=>'<div class="offer"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':o.kind==='sucataVelha'?'CONVERTER':'RECURSO')+'</div>'+
         '<h4>'+desc[o.kind](o)+'</h4><p>'+sub[o.kind](o)+'</p>'+
         (o.kind==='up'?'<p class="gold">nível '+(G.up[o.k||'']+1)+'/3</p>':'')+
         '<div class="price">'+btn('ESCOLHER','offer',i,'small primary')+'</div></div>').join('')+'</div>'+

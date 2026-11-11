@@ -10,7 +10,7 @@
   --bg:#0a0c0b; --ink:#e6dcc0; --dim:#8d907c; --rust:#a4552a; --rust2:#d1713a;
   --sea:#2f5b52; --acid:#a5b45a; --bone:#d9cba0; --tar:#151918;
   --card:#1b201d; --line:#3a4038; --danger:#b3392c; --gold:#e8c84a;
-  --fs:1; /* escala de fonte controlada nas opções */
+  --fs:1.15; /* escala de fonte controlada nas opções */
   --screenNoise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
 }
 *{box-sizing:border-box}

@@ -103,6 +103,34 @@ describe('mapas', () => {
       }
     }
   });
+
+  it('cada lane tem nome próprio (as 6, sem repetir)', () => {
+    for (const map of MAPS) {
+      const nomes = map.lanes;
+      expect(new Set(nomes).size, `${map.id} repete nome de lane: ${nomes.join(', ')}`).toBe(LANES);
+    }
+  });
+
+  it('as estruturas de cada mapa são únicas', () => {
+    for (const map of MAPS) {
+      const ids = map.estruturas.flat().map((s) => s.id);
+      expect(new Set(ids).size, `${map.id} repete id de estrutura`).toBe(ids.length);
+    }
+  });
+
+  it('as lanes 4, 5 e 6 não usam mais as estruturas genéricas', () => {
+    // Antes as lanes de baixo mostravam horta/barraca/trapiche/cais iguais
+    // em todos os mapas — o cenário era o mesmo e o bug não aparecia em
+    // typecheck, lint ou teste de dado.
+    const GENERICAS = ['morador_beira', 'jardim_ribeirinho', 'horta', 'barraca'];
+    for (const map of MAPS) {
+      for (const lane of [3, 4, 5]) {
+        for (const s of map.estruturas[lane]) {
+          expect(GENERICAS, `${map.id} lane ${lane} ainda usa ${s.id}`).not.toContain(s.id);
+        }
+      }
+    }
+  });
 });
 
 describe('engenhocas', () => {
