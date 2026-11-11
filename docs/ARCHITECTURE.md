@@ -69,7 +69,7 @@ mude (ver ADR 001).
 export const W = 1280;
 export const H = 846;
 export const LANES = 6;        // índices 0–5
-export const COLS = 5;
+export const COLS = 7;         // 42 slots (ver ADR 009)
 export const COLW = 152;
 export const LANE_Y0 = 90;
 export const LANE_H = 126;

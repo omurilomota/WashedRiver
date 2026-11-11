@@ -30,7 +30,7 @@ barco que era do irmão do Zé, uma escolha no final que ninguém vai achar boa.
 
 ## O campo
 
-- **6 lanes** (índices 0–5) × **5 colunas** = **30 slots** de plantio.
+- **6 lanes** (índices 0–5) × **7 colunas** = **42 slots** de plantio.
 - Canvas lógico **1280×846** (`LANE_Y0=90`, `LANE_H=126`).
 - A vila fica à esquerda (`VX=170`); os inimigos entram pela direita.
 - Cada lane tem nome próprio por mapa (o corredor nasce do cenário, não de um
@@ -134,13 +134,15 @@ contra, não o lore.
 | Piranha-Coral | 25 | cardume forte | área / Bujão |
 | Caranguejo-Mártir | 120 | fúria dos amigos | matar por último |
 | Baleia-Filhote | 400 | **neutral** — imune a tudo | Ventilador espanta; ou desvie |
-| O Pescador | 60 | **human** — não morre | Rádio redireciona |
+| O Pescador | 60 | **human** — não morre, não quebra | Rádio redireciona; sem resposta, cobra pedágio em sucata |
 | Passageiro do Trilho | 90 | troca de trilho | corredor protegido |
 
 **Regra de imortalidade:** `human` e `neutral` significam "não mate". HP é só
 número de combate. A Baleia é imune inclusive a explosão — mas o **Ventilador
 a espanta** (ela sai pelo lado direito). A MARÉ (chefe final) é
-`unbeatable: true`, sem número mágico. Nenhum inimigo comum passa de 500 HP
+`unbeatable: true`, sem número mágico. **Nada com trait `human` destrói
+estrutura:** o Pescador chega na vila, cobra `economia.pescadorTaxa` de sucata
+e volta pro mar. Nenhum inimigo comum passa de 500 HP
 (teste automático). **Todo bicho tem contramedida** (mandato 13 do `AGENTS.md`).
 
 ## Chefes (6)

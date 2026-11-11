@@ -24,7 +24,8 @@
 
 ### "Lane × Contagem"
 
-O jogo tem **6 lanes** (índices 0–5) e **5 colunas**. Já existiram versões com 3 e com 5 lanes.
+O jogo tem **6 lanes** (índices 0–5) e **7 colunas**. Já existiram versões com 3 e com 5 lanes,
+e com 5 colunas.
 O mesmo bug apareceu de três formas:
 
 | Disfarce | Código Errado | Código Correto |

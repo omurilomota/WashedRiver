@@ -17,6 +17,7 @@ Os mesmos registros ficam espelhados na memória do projeto (ai-memory), em
 | [006](adr/006-repo-gitflow-gitmoji.md) | aceito | Gitflow completo + gitmoji + tooling mínima + CI |
 | [007](adr/007-regras-de-gameplay.md) | aceito | Pool do mapa nas ondas, derrota só com as 12, mods que cumprem |
 | [008](adr/008-combate-justo-e-qualidade-de-vida.md) | aceito | Contramedida para voador e baleia, lata devolve 3, Faroleiro no campo, imposto, hover/ESC/autosave |
+| [009](adr/009-sete-colunas-e-pedagio-do-pescador.md) | aceito | 7 colunas por lane (42 slots) e Pescador cobra pedágio em vez de derrubar estrutura |
 
 ## Como registrar uma decisão nova
 
