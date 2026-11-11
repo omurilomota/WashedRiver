@@ -1,0 +1,30 @@
+# Decisões do projeto (ADRs)
+
+Cada decisão que muda o rumo do MARÉ PODRE vira um registro aqui. O formato é
+ADR clássico: contexto, decisão, consequências — **e o que foi rejeitado e por quê**,
+para ninguém re-propor a mesma coisa no próximo mês.
+
+Os mesmos registros ficam espelhados na memória do projeto (ai-memory), em
+`decisions/`, para sobreviver entre sessões e entre agentes.
+
+| ADR | Status | Assunto |
+|---|---|---|
+| [001](adr/001-stack-canvas-typescript-vite.md) | aceito | Stack: Canvas 2D + TypeScript + Vite (React e Godot rejeitados) |
+| [002](adr/002-fonte-de-verdade-dados-json.md) | aceito | Dados em JSON, HTML como artefato gerado |
+| [003](adr/003-lanes-6-canvas-1280x846.md) | aceito | 6 lanes em canvas 1280x846 |
+| [004](adr/004-inimigos-sem-hp-9999.md) | aceito | Fim do hack `hp:9999`; traits definem "não mate" |
+| [005](adr/005-economia-sucata.md) | aceito | Entrada controlada, sumidouros reais, alvo 100–700 |
+| [006](adr/006-repo-gitflow-gitmoji.md) | aceito | Gitflow completo + gitmoji + tooling mínima + CI |
+| [007](adr/007-regras-de-gameplay.md) | aceito | Pool do mapa nas ondas, derrota só com as 12, mods que cumprem |
+
+## Como registrar uma decisão nova
+
+1. Copie o modelo de `adr/001-*.md` para `adr/NNN-slug.md`.
+2. Preencha **Contexto**, **Decisão**, **Consequências** e a seção
+   **Alternativas rejeitadas** (obrigatória: sem ela, a IA re-propõe).
+3. Marque `Status: aceito | proposto | substituído por [ADR-NNN]`.
+4. Adicione a linha na tabela acima.
+5. Espelhe no ai-memory (`decisions/<slug>.md`, `pinned: true`).
+
+Regra: **decisão substituída não é editada.** Escreve-se uma ADR nova e a antiga
+apenas muda o status para `substituído por [ADR-NNN]`.

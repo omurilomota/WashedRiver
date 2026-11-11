@@ -1,0 +1,512 @@
+/**
+ * ui.ts — telas, menus, HUD, codex, árvore, loja e epílogo.
+ *
+ * DOM para texto; canvas para HUD. Tudo acionado por `data-act`.
+ *
+ * A UI observa o estado e **emite** ações (`Game.xxx`); o jogo nunca
+ * importa a UI para decidir regra — só para mostrar e avisar.
+ */
+import { H, STRUCTURES, W, clamp, fmt, plantY, shuffle } from '../core/constants';
+import { ctx } from '../core/canvas';
+import { G, Game } from '../core/state';
+import { dayKey, hashStr, mulberry } from '../core/rng';
+import {
+  ACHIEVEMENTS,
+  BOSSES,
+  DAILY_MODS,
+  ECONOMIA,
+  ENDINGS,
+  ENEMY,
+  ENEMY_ORDER,
+  MACH,
+  MACH_ORDER,
+  MAPS,
+  RADIO,
+  TREE,
+  TREE_BRANCHES,
+  UPG,
+} from '../data';
+import { SaveDB } from '../save/storage';
+import { SFX, Snd, TRACKS } from '../audio/audio';
+import { drawMachine, rr } from '../render/sprites';
+import { drawBoss } from '../render/creatures';
+import { availableMachines, machCost, structuresAlive } from '../game/economy';
+
+export const UI=(function(){
+  const $=(id: string): HTMLElement|null=>document.getElementById(id);
+  /** Elemento que precisa existir: se sumiu, o jogo quebrou de vez. */
+  const must=(id: string): HTMLElement=>{
+    const el=$(id);
+    if(!el)throw new Error('elemento #'+id+' não encontrado no documento');
+    return el;
+  };
+  const scr=must('screen'),shopEl=must('shop'),top=must('topbar');
+
+  // ---------- utilidades ----------
+  function stars(n: number){return '<span class="stars">'+'★'.repeat(n)+'☆'.repeat(3-n)+'</span>';}
+  function openScreens(){scr.classList.remove('hidden');}
+  function hide(){scr.classList.add('hidden');shopEl.classList.add('hidden');}
+  function setScreen(html){scr.innerHTML='<div class="scr"><div class="scr-inner">'+html+'</div></div>';openScreens();}
+  function btn(label: string,act: string,arg?: string | number,cls?: string){return '<button class="btn '+(cls||'')+'" data-act="'+act+'"'+(arg!==undefined?' data-arg="'+arg+'"':'')+'>'+label+'</button>';}
+  function tag(t: string,cls?: string){return '<span class="tag '+(cls||'')+'">'+t+'</span>';}
+  function meta(){return SaveDB.slot.oldScrap||0;}
+  const toast=(kind,text)=>{
+    const box=$('toasts');if(!box)return;
+    const d=document.createElement('div');d.className='toast '+(kind||'');d.textContent=text;box.appendChild(d);
+    while(box.children.length>4&&box.firstChild)box.removeChild(box.firstChild);
+    setTimeout(()=>{d.style.transition='opacity .4s';d.style.opacity='0';setTimeout(()=>d.remove(),420);},kind==='ach'?6000:5200);
+  };
+  function achCount(){return Object.keys(SaveDB.slot.ach||{}).length;}
+  function mapUnlocked(i){return i<=SaveDB.slot.campaign;}
+
+  // ---------- TÍTULO ----------
+  function title(){
+    const s=SaveDB.slot;
+    const slotHTML=[0,1,2].map(i=>{const sl=SaveDB.slotInfo(i);
+      return '<div class="slot '+(i===SaveDB.slotIndex?'on':'')+'" data-act="slot" data-arg="'+i+'" tabindex="0">'+
+        '<b>'+sl.name+'</b><small>'+(sl.oldScrap||0)+' sucata velha · '+Object.keys(sl.ach||{}).length+' selos</small>'+
+        '<small>Mapa '+(sl.campaign+1)+'/6'+(sl.lastPlayed?' · jogado':' · novo')+'</small></div>';}).join('');
+    setScreen(
+      '<div class="logo">MARÉ<br><em>PODRE</em></div>'+
+      '<div class="logo-sub">A COSTA NÃO PERDOA · CAPÍTULO FINAL</div>'+
+      '<div class="slotbar">'+slotHTML+'</div>'+
+      '<div class="menu">'+
+        (s.campaign>0||s.lastPlayed? btn('CONTINUAR CAMPANHA','continue','','primary') : btn('COMEÇAR A CAMPANHA','maps','','primary'))+
+        btn('MAPAS','maps')+
+      '</div>'+
+      '<div class="menu">'+
+        btn('NOITE INFINITA','endlessmenu','','small')+
+        btn('MODO CHEFE','bossmenu','','small')+
+        btn('DESAFIO DO DIA','dailymenu','','small')+
+        btn('SANDBOX','sandbox','','small')+
+      '</div>'+
+      '<div class="menu">'+
+        btn('BESTIÁRIO','codex','','tiny')+btn('ÁRVORE','tree','','tiny')+btn('OPÇÕES','options','','tiny')+
+        btn('SLOTS','slots','','tiny')+btn('COMO JOGAR','help','','tiny')+
+      '</div>'+
+      '<div class="bottomline">Sucata velha: <b class="gold">'+meta()+'</b> · selos: '+achCount()+'/'+ACHIEVEMENTS.length+' · mapa liberado: '+Math.min(MAPS.length,s.campaign+1)+'/'+MAPS.length+'<br>'+
+      'A música, os bichos e a vila são sintetizados na hora. Clique uma vez pra liberar o som.</div>'
+    );
+    top.classList.add('hidden');
+  }
+
+  // ---------- SLOTS ----------
+  function slots(){
+    const cards=[0,1,2].map(i=>{const s=SaveDB.slotInfo(i);
+      return '<div class="slot '+(i===SaveDB.slotIndex?'current':'')+'">'+
+        '<h3>'+s.name+'</h3>'+
+        '<div class="kv">sucata velha: <b>'+s.oldScrap+'</b><br>campanha: <b>'+Math.min(MAPS.length,s.campaign+1)+'/'+MAPS.length+'</b><br>partidas: <b>'+(s.runs||0)+'</b> · selos: <b>'+Object.keys(s.ach||{}).length+'/'+ACHIEVEMENTS.length+'</b><br>'+
+        'último jogo: '+(s.lastPlayed?new Date(s.lastPlayed).toLocaleDateString('pt-BR'):'nunca')+'</div>'+
+        '<div class="row" style="justify-content:flex-start">'+btn('USAR','slot',i,'small')+
+        '<button class="btn dark" data-act="newslot" data-arg="'+i+'">APAGAR</button></div></div>';}).join('');
+    setScreen('<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:30px;margin:0">SLOTS</h2>'+
+      '<p class="muted">Cada slot tem sua própria árvore, campanha e bestiário. A sucata velha não viaja.</p>'+
+      '<div class="slots">'+cards+'</div>'+
+      '<div class="space"></div>'+btn('VOLTAR','title','','small'));
+  }
+
+  // ---------- MAPAS ----------
+  function mapArt(m){const p=m.pal;return 'background:linear-gradient(180deg,'+p.sky1+' 0%,'+p.sky2+' 55%,'+p.water+' 56%,'+p.water+' 100%)';}
+  function maps(){
+    const cards=MAPS.map((m,i)=>{
+      const unl=mapUnlocked(i);const st=SaveDB.slot.stars[i]||0;
+      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'map':'nada')+'" data-arg="'+i+'">'+
+        '<div class="art" style="'+mapArt(m)+'"><div class="no">'+(i+1)+'</div>'+(unl?'<div class="stars">'+stars(st)+'</div>':'<div class="stars" style="color:#777">TRANCADO</div>')+'</div>'+
+        '<h3>'+m.nome+'</h3><p>'+m.sub+'</p>'+
+        '<div class="tags">'+tag(m.weather.toUpperCase())+tag(m.resShort,'hot')+tag(m.boss==='mare'?'FINAL':'CHEFE')+'</div>'+
+        '<p style="margin-top:6px;color:#8d907c">'+m.bio+'</p></div>';}).join('');
+    setScreen('<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:30px;margin:0">A COSTA</h2>'+
+      '<p class="muted">Três ondas e um chefe por mapa. Terminar um mapa abre o próximo. Você pode voltar e melhorar a nota.</p>'+
+      '<div class="mapgrid">'+cards+'</div>'+
+      '<div class="space"></div>'+btn('VOLTAR','title','','small'));
+  }
+
+  // ---------- MODOS ----------
+  function endlessMenu(){
+    const map=clamp(SaveDB.slot.campaign,0,5);
+    setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">NOITE INFINITA</h2>'+
+      '<p class="muted">Sem chefe marcado, sem amanhã. A cada três ondas vem um Seu Bento de encomenda. Melhor marca: '+JSON.stringify(SaveDB.slot.endlessBest)+'.</p>'+
+      '<div class="mapgrid" style="grid-template-columns:repeat(3,1fr)">'+
+      [['DEVAGAR','costa calma, maré mansa',0],['COMO SEMPRE','do jeito que o mar gosta',1],['SEM DÓ','eles comeram o almoço',2]].map(d=>
+        '<div class="mapcard" data-act="endless" data-arg="'+d[2]+'"><div class="art" style="background:linear-gradient(180deg,#1a2a2e,#0a1418)"><div class="no">∞</div></div>'+
+        '<h3>'+d[0]+'</h3><p>'+d[1]+'</p><div class="tags">'+tag('MAPA: '+MAPS[map].nome)+'</div></div>').join('')+
+      '</div><div class="space"></div>'+btn('VOLTAR','title','','small'));
+  }
+  function bossMenu(){
+    const cards=MAPS.map((m,i)=>{const b=BOSSES[m.boss];const unl=mapUnlocked(i);const best=SaveDB.slot.bossBest[i];
+      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'boss':'nada')+'" data-arg="'+i+'">'+
+        '<div class="art" style="'+mapArt(m)+'"><div class="no">'+(i+1)+'</div></div>'+
+        '<h3>'+b.nome+'</h3><p>'+b.desc+'</p><div class="tags">'+tag('FASES: '+(m.boss==='mare'?'SOBREVIVER':m.boss==='gerente'?'7':'3'))+'</div>'+
+        (best?'<p class="gold">melhor: '+Math.round(best)+'s</p>':'')+'</div>';}).join('');
+    setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">MODO CHEFE</h2>'+
+      '<p class="muted">Sem onda de aquecimento. Você entra com 200 de sucata e a vila inteira de pé. É treino. Sua vila quebra de verdade.</p>'+
+      '<div class="mapgrid">'+cards+'</div><div class="space"></div>'+btn('VOLTAR','title','','small'));
+  }
+  function dailyPreview(){
+    const seed=hashStr(dayKey()+(SaveDB.slotIndex+1)),rng=mulberry(seed);
+    const mods=shuffle(DAILY_MODS.slice()).filter(()=>rng()<.4).slice(0,2);
+    const mapIndex=Math.floor(rng()*Math.min(6,SaveDB.slot.campaign+1));
+    return{mods:mods.length?mods:[DAILY_MODS[0]],map:mapIndex};
+  }
+  function dailyMenu(){
+    const d=dailyPreview(),done=SaveDB.slot.daily&&SaveDB.slot.daily.date===dayKey();
+    setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">DESAFIO DO DIA</h2>'+
+      '<p class="muted">Data do sistema: '+dayKey()+' · mapa: '+MAPS[d.map].nome+'</p>'+
+      '<div class="grid2">'+d.mods.map(m=>'<div class="offer"><div class="kind">MODIFICADOR</div><h4>'+m.nome+'</h4><p>'+m.desc+'</p></div>').join('')+'</div>'+
+      '<p class="muted" style="margin-top:10px">Recorde de hoje: <b class="gold">'+(done?SaveDB.slot.daily.score:0)+'</b> ondas aguentadas.</p>'+
+      '<div class="row">'+btn('JOGAR O DIA','daily','','primary')+btn('VOLTAR','title','','small')+'</div>');
+  }
+
+  // ---------- PAUSA ----------
+  function pause(){
+    setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:34px;color:var(--bone)">PAUSA</h2>'+
+      '<p class="muted">'+G.map.nome+' · '+String(G.map.resShort)+' · onda '+(G.survived+1)+' · '+Math.round(G.t)+'s<br>'+
+      'peças: '+G.machines.length+' · bichos mortos: '+G.kills+' · sucata: '+G.scrap+'</p>'+
+      '<div class="menu">'+btn('RETOMAR','resume','','primary')+btn('OPÇÕES','options','')+btn('BESTIÁRIO','codex','')+
+      btn('REINICIAR','retry','','danger')+btn('SALVAR','save','','small')+btn('SAIR PRO TÍTULO','title','','small')+'</div>'+
+      '<div class="bottomline">Salva automaticamente a cada onda e ao sair. P pausa, M silencia, 1–9 escolhe peça.<br>Legenda: 🟩 estrutura de pé · 🟥 destruída · ícones da vila = vidas.</div>');
+  }
+
+  // ---------- OPÇÕES ----------
+  function options(){
+    const o=SaveDB.options;
+    setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">OPÇÕES</h2>'+
+      '<div class="opts">'+
+      slider('master','VOLUME GERAL',o.master)+slider('music','MÚSICA',o.music)+slider('sfx','EFEITOS',o.sfx)+
+      '<div class="opt"><label>TREMER A TELA<span class="sub">Desligue se passar mal. É sério.</span></label>'+
+        '<select data-act="opt" data-arg="shake">'+(o.shake?'<option value="1" selected>LIGADO</option><option value="0">DESLIGADO</option>':'<option value="1">LIGADO</option><option value="0" selected>DESLIGADO</option>')+'</select></div>'+
+      '<div class="opt"><label>MODO DALTONISMO<span class="sub">Troca cores de estado e reforça bordas.</span></label>'+
+        '<select data-act="opt" data-arg="cb">'+(o.cb?'<option value="1" selected>LIGADO</option><option value="0">DESLIGADO</option>':'<option value="1">LIGADO</option><option value="0" selected>DESLIGADO</option>')+'</select></div>'+
+      '<div class="opt"><label>TAMANHO DA LETRA<span class="sub">Interface acima do canvas.</span></label>'+
+        '<select data-act="opt" data-arg="font">'+[.9,1,1.15,1.3].map(v=>'<option value="'+v+'" '+(o.font===v?'selected':'')+'>'+Math.round(v*100)+'%</option>').join('')+'</select></div>'+
+      '<div class="opt"><label>SOM<span class="sub">Também no M durante o jogo.</span></label>'+
+        '<select data-act="muteopt">'+(Snd.muted?'<option value="0">LIGADO</option><option value="1" selected>MUDO</option>':'<option value="0" selected>LIGADO</option><option value="1">MUDO</option>')+'</select></div>'+
+      '</div>'+
+      '<div class="row" style="margin-top:14px">'+btn('VOLTAR','back','','small')+btn('SALVAR TUDO','save','','small')+'</div>'+
+      '<p class="muted" style="margin-top:12px">Toda escolha do Zé pausa o jogo: não existe evento com tempo obrigatório.</p>');
+  }
+  function slider(id,label,v){
+    return '<div class="opt"><label>'+label+'<span class="sub">'+Math.round(v*100)+'%</span></label>'+
+      '<input type="range" min="0" max="1" step="0.05" value="'+v+'" data-act="vol" data-arg="'+id+'"></div>';
+  }
+
+  // ---------- CODEX ----------
+  let codexTab='bestiary';
+  function codex(tab?: string){
+    if(tab)codexTab=tab;
+    const s=SaveDB.slot;
+    const seenB=Object.keys(s.seenB||{}).length,seenM=Object.keys(s.seenM||{}).length;
+    const tabs=['bestiary','machines','radio','ach'];
+    let body='';
+    if(codexTab==='bestiary'){
+      body='<div class="codexGrid">'+ENEMY_ORDER.map(id=>{
+        const e=ENEMY[id],seen=!!s.seenB[id]||seenB>0&&false;
+        return '<div class="beast '+(seen?'seen':'locked')+'"><h4>'+(seen?e.nome:'???')+'</h4>'+
+          '<p>'+(seen?e.desc:'Você ainda não viu esse. Ou viu e não voltou pra contar.')+'</p>'+
+          '<div class="kill">'+(seen?'COMO RESOLVER: '+e.hint:'DICA: sobreviva.')+'</div></div>';}).join('')+
+        Object.entries(BOSSES).map(([id,b])=>'<div class="beast '+(s.seenB[id]?'seen':'locked')+'"><h4>'+(s.seenB[id]?b.nome:'???')+'</h4>'+
+          '<p>'+(s.seenB[id]?b.desc:'Chefe não catalogado.')+'</p><div class="kill">'+(s.seenB[id]?b.hint:'')+'</div></div>').join('')+'</div>'+
+        '<p class="muted" style="margin-top:8px">'+seenB+'/'+ENEMY_ORDER.length+' criaturas catalogadas. O que não viu continua borrado.</p>';
+    }else if(codexTab==='machines'){
+      body='<div class="codexGrid">'+MACH_ORDER.map(id=>{const m=MACH[id],seen=!!s.seenM[id];
+        return '<div class="beast '+(seen?'seen':'locked')+'"><h4>'+(seen?m.nome:'???')+'</h4><p>'+(seen?m.desc:'Ainda não construiu.')+'</p>'+
+          '<div class="kill">'+(seen?'SINERGIA: '+m.sin:'')+'</div></div>';}).join('')+'</div>'+
+        '<p class="muted" style="margin-top:8px">'+seenM+'/'+MACH_ORDER.length+' engenhocas na galeria.</p>';
+    }else if(codexTab==='radio'){
+      const unlocked=!!s.tree['historias']||true;
+      body='<div class="scroll"><div class="panel">'+
+        RADIO.map(r=>'<p style="margin-bottom:7px">'+(r.map<=s.campaign||unlocked?'<span class="acid">['+MAPS[r.map].nome+']</span> '+r.txt:'<span class="muted">[frequência morta]</span>')+'</p>').join('')+
+        '</div></div><p class="muted">A Voz do Rádio fala em todas as frequências. Nenhuma é oficial.</p>';
+    }else{
+     body='<div class="codexGrid">'+ACHIEVEMENTS.map(a=>{const got=!!s.ach[a.id];
+        return '<div class="beast '+(got?'seen':'locked')+'"><h4>'+(got?a.nome:'SELO OCULTO')+'</h4><p>'+(got?a.desc:'O Zé sabe. Não fala.')+'</p></div>';}).join('')+'</div>'+
+        '<p class="muted">Conquistas não dão vantagem. Dão assunto.</p>';
+    }
+    setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:30px;color:var(--bone)">CADERNO DO ZÉ</h2>'+
+      '<div class="tabs">'+tabs.map(t=>'<div class="tab '+(codexTab===t?'on':'')+'" data-act="codextab" data-arg="'+t+'">'+
+        ({bestiary:'BICHOS',machines:'ENGENHOCAS',radio:'RÁDIO',ach:'SELOS'})[t]+'</div>').join('')+'</div>'+body+
+      '<div class="space"></div>'+btn('VOLTAR','back','','small'));
+  }
+
+  // ---------- ÁRVORE ----------
+  function tree(){
+    const s=SaveDB.slot;
+    const branches=TREE_BRANCHES.map(b=>{
+      const nodes=TREE.filter(n=>n.br===b.id).map(n=>{
+        const lvl=SaveDB.nodeLvl(n.id),maxed=lvl>=n.max,cost=SaveDB.costOf(n,lvl);
+        const reqOk=!n.req||SaveDB.nodeLvl(n.req)>0;
+        const afford=s.oldScrap>=cost;
+        return '<div class="node '+(maxed?'max':'')+' '+(reqOk?'':'locked')+'"><h4>'+n.nome+'</h4><small>'+n.desc+'</small>'+
+          '<div class="cost"><span class="pips">'+'●'.repeat(lvl)+'○'.repeat(n.max-lvl)+'</span>'+
+          (maxed?'<span class="gold">COMPRADO</span>':
+            '<span>'+cost+' <button class="btn tiny" data-act="buynode" data-arg="'+n.id+'" '+(afford&&reqOk?'':'disabled')+'>PÔR</button></span>')+
+          '</div></div>';
+      }).join('');
+      return '<div class="branch '+b.id+'"><h3>'+b.nome+'</h3><p>'+b.desc+'</p>'+nodes+'</div>';
+    }).join('');
+    setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">ÁRVORE DA MARÉ</h2>'+
+      '<p class="muted">Sucata velha: <b class="gold">'+meta()+'</b> · ganha ao terminar partidas. Nada aqui conserta o mar.</p>'+
+      '<div class="branches">'+branches+'</div><div class="space"></div>'+btn('VOLTAR','back','','small'));
+  }
+  // ---------- COMO JOGAR ----------
+  function help(){
+    setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">COMO SOBREVIVER</h2>'+
+      '<div class="grid2" style="text-align:left">'+
+      '<div class="panel"><h3>O BÁSICO</h3><p>Clique numa carta e depois numa vaga do corredor. Botão direito ou ESC cancela. 1–9 seleciona. Shift planta várias com a mesma escolha.</p>'+
+      '<p>Clique na sucata boiando pra catar. O Ímã faz isso por você. Bichos mortos também largam sucata.</p>'+
+      '<p>Cada corredor tem duas estruturas. Quando um bicho chega, alguma coisa quebra pra sempre. Quando não sobra nada no corredor, ele come o Zé.</p></div>'+
+      '<div class="panel"><h3>DEFESAS QUE EXISTEM</h3><p>'+
+      Object.keys(ENEMY).length+' criaturas catalogáveis, seis chefes com fases, e '+MACH_ORDER.length+' engenhocas. Nenhuma resposta serve pra tudo.</p>'+
+      '<p><b>Voa</b> só cai com Holofote ou Ventilador. <b>Cava</b> pede bujão atrás. <b>Invisível</b> pede luz. <b>Espelho</b> devolve torrada: use corpo a corpo ou estilingue.</p>'+
+      '<p><b>Não mate</b> o Pescador: rádio e cachorro redirecionam. <b>Não mate</b> a baleia-filhote: ela só está passando.</p></div>'+
+      '<div class="panel"><h3>CLIMA E LUGAR</h3><p>CHUVA apaga o fogo do pneu. NÉVOA encurta a torrada. VENTANIA empurra projétil e bicho. CALOR deixa piranha mais rápida. CINZA atrasa a recarga.</p>'+
+      '<p>A luz do holofote muda o combate inteiro no Farol. A maré sobe no Cemitério e o espaço útil encolhe visualmente.</p></div>'+
+      '<div class="panel"><h3>O ZÉ</h3><p>Entre ondas ele oferece três coisas: desbloqueio, upgrade visível na peça ou sucata. A escolha pausa o jogo.</p>'+
+      '<p>Ele também fala besteira e, se você insistir com o mouse nele, uma verdade.</p></div></div>'+
+      '<div class="space"></div>'+btn('VOLTAR','back','','small'));
+  }
+
+  // ---------- LOJA DO ZÉ ----------
+  function shop(){
+    const offers=Game.offers||[];
+    const desc={unlock:o=>'DESBLOQUEAR: '+MACH[o.k].nome.toUpperCase(),up:o=>'ENFIAR '+UPG[o.k][(G.up[o.k]||0)].toUpperCase()+' NA '+MACH[o.k].nome.toUpperCase(),
+      repair:()=>'RECONSTRUIR UMA ESTRUTURA',heal:()=>'CURAR TODAS AS PEÇAS',
+      sucataVelha:()=>'CONVERTER '+ECONOMIA.sucataVelhaCusto+' SUCATA EM 1 SUCATA VELHA'};
+    const sub={unlock:o=>MACH[o.k].desc,up:()=>'Upgrade permanente. Fica visível na peça.',
+      repair:()=>'Volta torta, mas volta.',heal:()=>'Conserta tudo e prepara a próxima onda.',
+      sucataVelha:()=>'Sucata velha é moeda de meta: compra melhorias entre partidas.'};
+    shopEl.innerHTML='<div class="scr"><div class="scr-inner">'+
+      '<div class="logo" style="font-size:clamp(26px,5vw,54px)">O ZÉ TROUXE<br><em>UMAS COISAS</em></div>'+
+      '<p class="muted">Onda '+(G.survived||0)+' aguentada. Escolhe uma e volta pro corredor. Não tem tempo pra duas — tirando o tempo que você quiser.</p>'+
+      '<div class="offers">'+offers.map((o,i)=>'<div class="offer"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':o.kind==='sucataVelha'?'CONVERTER':'RECURSO')+'</div>'+
+        '<h4>'+desc[o.kind](o)+'</h4><p>'+sub[o.kind](o)+'</p>'+
+        (o.kind==='up'?'<p class="gold">nível '+(G.up[o.k||'']+1)+'/3</p>':'')+
+        '<div class="price">'+btn('ESCOLHER','offer',i,'small primary')+'</div></div>').join('')+'</div>'+
+      '<div class="hr"></div>'+
+      '<p class="muted">BANCA DO ZÉ — compra com a sucata do corredor. Pode levar quantas quiser.</p>'+
+      '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
+        it.nome+' · '+it.cost+'</button>').join('')+'</div>'+
+      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+G.scrap+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+'</p>'+
+      '<div class="bottomline">"+ reconstruir uma parede" pode salvar a partida. "Um ímã" também. O Zé não dá garantia.</div>'+
+      '</div></div>';
+    shopEl.classList.remove('hidden');scr.classList.add('hidden');top.classList.add('hidden');
+  }
+
+  // ---------- FIM ----------
+  function end(summary){
+    Snd.pauseDuck(true);
+    hide();
+    const lost=(summary.lost||[]);
+    let title,text;
+    const who=(summary.mapName||'A VILA');
+    if(summary.win){
+      title=summary.mode==='endless'?'A NOITE CANSou':'A VILA AGUENTOU';
+      text=lost.length?'Perdemos '+list(lost)+'. O mar continua podre. '+who+' continua de pé, do jeito que dá.'
+        :'Nada caiu hoje. '+who+' continua de pé. O mar continua podre. Amanhã tem mais.';
+    }else if(summary.mode==='endless'){
+      title='A NOITE GANHOU';
+      text='Chegou na onda '+(summary.survived+1)+'. Perdemos o Zé. Ele não era herói, era o que tinha.';
+    }else{
+      title='PERDEMOS O ZÉ';
+      text=(lost.length?'Perdemos '+list(lost)+'. ':'')+'O mar ficou com o resto. Ninguém aqui era bom. Só era daqui.';
+    }
+    const next=summary.mode==='campaign'&&summary.win&&summary.mapIndex!==MAPS.length-1;
+    setScreen('<div class="endTitle">'+title+'</div><div class="endText">'+text+'</div>'+
+      (summary.win?'<div class="stars" style="font-size:26px">'+'★'.repeat(summary.stars)+'☆'.repeat(3-summary.stars)+'</div>':'')+
+      '<div class="panel" style="max-width:560px;margin:12px auto"><div class="kv">'+
+      'BICHOS MORTOS: <b>'+summary.kills+'</b> · TEMPO: <b>'+Math.round(summary.time)+'s</b> · ONDAS: <b>'+summary.survived+'</b><br>'+
+      'SUCATA VELHA GANHA: <b class="gold">+'+summary.meta+'</b> · TOTAL: '+SaveDB.slot.oldScrap+'<br>'+
+      'BESTIÁRIO: '+Object.keys(SaveDB.slot.seenB||{}).length+'/'+ENEMY_ORDER.length+' · ESTRUTURAS: '+structuresAlive()+'/'+STRUCTURES+
+      '</div></div>'+
+      '<div class="menu">'+
+      (next?btn('PRÓXIMO MAPA','nextmap','','primary'):'')+
+      btn('DE NOVO','retry','',summary.win?'':'primary')+
+      btn('MAPA','maps','')+btn('ÁRVORE','tree','','small')+btn('TÍTULO','title','','small')+
+      '</div>');
+  }
+  function list(a){return a.length<=1?a.join(''):a.slice(0,-1).join(', ')+' e '+a[a.length-1];}
+
+  function epilogue(){
+    Snd.pauseDuck(true);
+    hide();
+    setScreen('<div class="logo" style="font-size:clamp(30px,6vw,64px)">O QUE FAZER<br><em>COM A MARÉ</em></div>'+
+      '<div class="epilogue"><p>A origem da podridão não era um monstro. Era o mar respondendo. A fábrica foi só o começo da conversa. A Voz do Rádio está na frequência há vinte anos e não é gravação.</p>'+
+      '<p class="ze">Não tem um jeito certo. Tem o que sobra pra cada um.</p></div>'+
+      '<div class="offers" style="grid-template-columns:repeat(3,1fr)">'+ENDINGS.map(e=>
+        '<div class="offer"><div class="kind">DECISÃO FINAL</div><h4>'+e.titulo+'</h4><p>'+e.escolha+'</p><div class="price">'+
+        btn('ESCOLHER','ending',e.id,'small primary')+'</div></div>').join('')+'</div>'+
+      '<p class="muted">As três decisões ficam salvas no seu caderno. Nenhuma dá um final limpo.</p>');
+  }
+  function ending(e,allThree){
+    Snd.setTrack('cemiterio');Snd.setIntensity(1);
+    hide();
+    setScreen('<div class="logo" style="font-size:clamp(26px,5vw,52px)"><em>'+e.titulo+'</em></div>'+
+      '<div class="endText">'+e.txt+'</div>'+
+      '<div class="epilogue">'+
+        '<p class="ze">ZÉ: '+e.ze+'</p>'+
+        '<p><b>DONA LÚ:</b> '+e.lu+'</p>'+
+        '<p><b>TOQUINHO:</b> '+e.toq+'</p>'+
+        '<p><b>A VOZ:</b> '+e.voz+'</p></div>'+
+      '<p class="gold">'+(allThree?'Você viu os três fins. Nenhum deles devolve o irmão do Zé.':'O mar não pede desculpa. Você também não precisa.')+'</p>'+
+      '<div class="menu">'+btn('TÍTULO','title','','primary')+btn('ÁRVORE','tree','')+btn('VER BICHOS','codex','','small')+'</div>');
+  }
+
+  // ---------- HUD ----------
+  function cardLayout(){
+    const list=availableMachines();
+    const x0=136,w=Math.min(48,Math.floor((W-146)/Math.max(1,list.length))-2),gap=2;
+    return list.map((k,i)=>({k,x:x0+i*(w+gap),y:6,w,h:58}));
+  }
+  function cardAt(x,y){
+    if(y>70)return null;
+    const hit=cardLayout().find(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h);
+    return hit?hit.k:null;
+  }
+  function drawHUD(g){
+    const p=g.map;
+    // recurso
+    ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,64,4);ctx.fill();
+    ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
+    ctx.fillStyle='#f0e4bd';ctx.font='bold 23px "Courier New",monospace';ctx.fillText(fmt(g.scrap),46,32);
+    ctx.fillStyle='#9aa08a';ctx.font='12px monospace';ctx.fillText(p.resShort,46,44);
+    ctx.fillStyle='#7a806a';ctx.font='11px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
+    ctx.fillStyle='#c8b070';ctx.font='11px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
+    // cartas
+    for(const r of cardLayout()){
+      const m=MACH[r.k],cost=machCost(r.k),cool=g.cds&&g.cds[r.k]||0,up=(g.up&&g.up[r.k])||0;
+      const can=g.scrap>=cost&&cool<=0&&g.selected!==r.k;
+      ctx.fillStyle=g.selected===r.k?'rgba(90,70,30,.92)':'rgba(14,18,16,.78)';rr(r.x,r.y,r.w,r.h,3);ctx.fill();
+      ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h-19);ctx.scale(.36,.36);ctx.globalAlpha=can||g.selected===r.k?1:.45;
+      drawMachine({type:r.k,x:0,lane:0,t:g.t,hp:1,maxhp:1,anim:0,act:0,flash:0,_icon:true});ctx.restore();
+      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 12px monospace';ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
+      const short=m.nome.split(' ')[0].toUpperCase().slice(0,7);
+      ctx.fillStyle='#a8aa94';ctx.font='9px monospace';ctx.fillText(short,r.x+3,r.y+9);
+      if(up){for(let j=0;j<3;j++){ctx.fillStyle=j<up?'#e8c84a':'#39402f';ctx.fillRect(r.x+r.w-8+j*2.4,r.y+3,2,4);}}
+      if(cool>0){ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(r.x,r.y,r.w,r.h*(cool/m.cd));}
+    }
+    // status do modo
+    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font='8px monospace';ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
+    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font='9px monospace';ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
+    if(g.boss&&!g.bossDeath){
+      const b=g.boss;
+      ctx.fillStyle='rgba(8,10,8,.72)';rr(W/2-180,3,360,22,3);ctx.fill();
+      ctx.fillStyle='#e8d9a8';ctx.font='11px monospace';ctx.textAlign='center';
+      ctx.fillText((BOSSES[b.b].nome)+' — FASE '+b.phase,W/2,13);
+      ctx.fillStyle='#3a1a16';ctx.fillRect(W/2-170,18,340,4);ctx.fillStyle='#c84a30';ctx.fillRect(W/2-170,18,340*clamp(b.hp/b.maxhp,0,1),4);
+      ctx.textAlign='left';
+    }
+  }
+  function drawScene(g){
+    // intro de chefe
+    const intro=Game.bossIntro;
+    if(intro){
+      const t=intro.t/intro.dur;
+      ctx.fillStyle='rgba(2,3,4,.85)';ctx.fillRect(0,0,W,H);
+      ctx.fillStyle=`rgba(120,20,10,${.12+Math.sin(g.t*8)*.04})`;ctx.fillRect(0,H/2-90,W,180);
+      ctx.save();ctx.translate(W/2,plantY(1)+30);ctx.scale(.9+Math.min(1,t)*.3,.9+Math.min(1,t)*.3);
+      const fake={boss:true,b:intro.b,type:intro.b,lane:1,x:W/2,anim:g.t,phase:3,hp:1,maxhp:1,rise:0,inflate:false,act:1,flash:0,revealed:1};
+      try{drawBoss(fake);}catch{}
+      ctx.restore();
+      ctx.textAlign='center';ctx.fillStyle='#e8d9a8';ctx.font='bold 30px Impact,sans-serif';
+      ctx.fillText(BOSSES[intro.b].nome,W/2,90);
+      ctx.fillStyle='#b06a4a';ctx.font='11px monospace';ctx.fillText(BOSSES[intro.b].desc,W/2,112);
+      ctx.textAlign='left';
+    }
+    // aviso de escuro e chefe
+    if(g.dark&&g.darkT>0){ctx.fillStyle='rgba(200,230,220,.5)';ctx.font='10px monospace';ctx.fillText('A LUZ NÃO ESTÁ AQUI. HOLOFOTE AINDA ACENDE.',20,H-16);}
+    if(g.mode==='boss'&&g.boss){ctx.fillStyle='#8a8f7a';ctx.font='9px monospace';ctx.fillText('MODO CHEFE · '+g.map.nome,W-190,H-16);}
+  }
+
+  // ---------- topo ----------
+  function updateTopbar(g){
+    if(!g||Game.screen==='title'){top.classList.add('hidden');return;}
+    top.classList.remove('hidden');
+    const tr=TRACKS[g.map.track]||TRACKS.barra;
+    must('trackName').textContent=(g.map.nome||'')+' · '+tr.nome;
+    const lamp=$('radioLamp');if(lamp)lamp.textContent=Snd.muted?'MUDO':'AM';
+  }
+
+  // ---------- ações ----------
+  function backTo(){
+    if(Game.screen==='pause'){pause();return;}
+    if(Game.screen==='play'||Game.screen==='shop')return;
+    title();
+  }
+  function bind(){
+    document.addEventListener('click',ev=>{
+      const el=(ev.target as HTMLElement|null)?.closest('[data-act]');if(!el)return;
+      const act=el.getAttribute('data-act'),arg=el.getAttribute('data-arg');
+      SFX.ui();
+      switch(act){
+        case 'pause':Game.pause();break;
+        case 'resume':Game.resume();break;
+        case 'toggleMute':Game.toggleMute();break;
+        case 'title':Game.quitToTitle();title();break;
+        case 'maps':maps();break;
+        case 'continue':Game.continueCampaign();break;
+        case 'slot':SaveDB.setSlot(Number(arg));title();break;
+        case 'slots':slots();break;
+        case 'newslot':if(arg===null)break;SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();break;
+        case 'map':Game.startFromOpts({kind:'campaign',map:Number(arg)});break;
+        case 'nextmap':Game.startCampaign(clamp(G.mapIndex+1,0,MAPS.length-1));break;
+        case 'endlessmenu':endlessMenu();break;
+        case 'endless':Game.startFromOpts({kind:'endless',level:Number(arg),map:clamp(SaveDB.slot.campaign,0,5)});break;
+        case 'bossmenu':bossMenu();break;
+        case 'boss':Game.startFromOpts({kind:'boss',map:Number(arg)});break;
+        case 'dailymenu':dailyMenu();break;
+        case 'daily':Game.startFromOpts({kind:'daily'});break;
+        case 'sandbox':Game.startFromOpts({kind:'sandbox'});break;
+        case 'options':Game.paused=true;options();break;
+        case 'back':backTo();break;
+        case 'codex':Game.paused=true;codex();break;
+        case 'codextab':codex(arg??undefined);break;
+        case 'tree':Game.paused=true;tree();break;
+        case 'buynode':Game.buyNode(arg);break;
+        case 'help':Game.paused=true;help();break;
+        case 'retry':retry();break;
+        case 'save':SaveDB.save();toast('ach','SALVO. NÃO QUE VIRE COSTUME.');break;
+        case 'offer':Game.chooseOffer(Number(arg));break;
+        case 'buyitem':Game.buyShopItem(arg);break;
+        case 'ending':Game.finishEnding(arg);break;
+      }
+    });
+    must('radioLamp').addEventListener('click',()=>Game.radioClick());
+    document.addEventListener('change',ev=>{
+      const el=ev.target as HTMLElement|null;if(!el||!el.getAttribute)return;
+      const act=el.getAttribute('data-act');
+      if(act==='opt'){
+        const k=el.getAttribute('data-arg');
+        let v: string|number=(el as HTMLSelectElement).value;
+        if(k==='shake'||k==='cb'||k==='font')v=Number(v);
+        Game.option(k,v);options();
+      }
+      if(act==='muteopt'){Snd.init();const o=SaveDB.options;o.mute=Number((el as HTMLInputElement).value);SaveDB.opt('mute',o.mute);Snd.applyVolumes();options();}
+    });
+    document.addEventListener('input',ev=>{
+      const el=ev.target as HTMLElement|null;if(!el||!el.getAttribute||el.getAttribute('data-act')!=='vol')return;
+      const k=el.getAttribute('data-arg');Game.option(k,Number((el as HTMLInputElement).value));
+      const opt=el.closest('.opt');const lab=opt?opt.querySelector('.sub'):null;if(lab)lab.textContent=Math.round(Number((el as HTMLInputElement).value)*100)+'%';
+    });
+  }
+  function retry(){
+    if(!G){Game.quitToTitle();return;}
+    const mode=G.mode;
+    if(mode==='boss')Game.startFromOpts({kind:'boss',map:G.mapIndex});
+    else if(mode==='endless')Game.startFromOpts({kind:'endless',level:G.endlessDiff||0,map:G.mapIndex});
+    else if(mode==='sandbox')Game.startFromOpts({kind:'sandbox'});
+    else if(mode==='daily')Game.startFromOpts({kind:'daily'});
+    else Game.startFromOpts({kind:'campaign',map:G.mapIndex});
+  }
+  bind();
+
+  const api={title,maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
+    hideOverlays:hide,updateTopbar,toast,cardAt,drawHUD,drawScene};
+  return api;
+})();
+// nextPhase usa isso quando entra na fase de chefe
+export function openBossIntro(){
+  Game.bossIntro={b:G.map.boss,t:0,dur:2.6,total:BOSSES[G.map.boss]};
+  Snd.setIntensity(4);(SFX as {alert?:()=>void}).alert?.();
+}
+

@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, 'release/**', 'hotfix/**', 'feature/**', 'bugfix/**', 'chore/**']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, lint, testes e build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes
+        run: npm run test
+
+      - name: A suíte de testes existe
+        run: test -n "$(ls tests/*.test.ts 2>/dev/null)"
+
+      - name: Build
+        run: npm run build
+
+      - name: Smoke test do artefato
+        run: node tools/smoke.mjs
+
+      - name: dist/ está em dia
+        run: git diff --exit-code -- dist
+
+  commitlint:
+    name: Padrão dos commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Commitlint
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi
+          # branch nova: não há base para comparar
+          if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "branch nova — nada a validar"
+            exit 0
+          fi
+          npx --no-install commitlint --from "$BASE" --to "$HEAD" --verbose

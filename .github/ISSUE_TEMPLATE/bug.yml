@@ -1,0 +1,52 @@
+name: Bug
+description: Algo no jogo está errado (bug, crash, texto quebrado, save corrompido)
+title: "🐛 "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: O que você fez e o que o jogo fez.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que deveria ter acontecido
+    validations:
+      required: true
+
+  - type: input
+    id: where
+    attributes:
+      label: Onde
+      description: Mapa, lane, onda, modo e engenhocas em uso (ex.: "Barra Suja, lane 3, onda 7, Holofote + Geladeira").
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versão
+      description: Versão do jogo (ou commit) e navegador.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Começar a campanha na Barra Suja
+        2. Plantar Holofote na lane 2
+        3. Deixar a onda 4 passar
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Erro no console (se houver)
+      description: Texto do erro do F12, se aparecer.

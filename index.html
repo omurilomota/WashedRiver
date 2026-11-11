@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MARÉ PODRE — a costa não perdoa</title>
+    <meta
+      name="description"
+      content="Tower defense de sucata numa costa que devolve tudo que a vila jogou nela."
+    />
+    <link rel="icon" href="./icon.png" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage">
+        <canvas id="cv" width="1280" height="846"></canvas>
+
+        <!-- HUD leve em DOM: só o que muda muito (sucata fica no canvas) -->
+        <div id="topbar" class="hidden">
+          <button class="mini" data-act="pause" title="Pause (P)">II</button>
+          <div id="trackName">—</div>
+          <div class="spacer"></div>
+          <div id="radioLamp" class="lamp" title="Rádio: clique pra sintonizar">AM</div>
+          <button class="mini" data-act="toggleMute" title="Mudo (M)">♪</button>
+        </div>
+
+        <!-- Telas: título, saves, campanha, opções, pause, codex, árvore, fim -->
+        <div id="screen" class="overlay hidden"></div>
+
+        <!-- Banca do Zé entre ondas (aparece só quando o jogo pede) -->
+        <div id="shop" class="overlay hidden"></div>
+
+        <!-- Avisos rápidos (rádio, conquistas, história) -->
+        <div id="toasts"></div>
+        <div id="flash"></div>
+      </div>
+      <div id="rotate">Melhor deitado. Não é exigência, é sugestão.</div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
