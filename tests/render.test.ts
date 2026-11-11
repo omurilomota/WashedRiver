@@ -118,3 +118,56 @@ describe('as lanes 4, 5 e 6 têm arte própria', () => {
     }
   });
 });
+
+describe('as estruturas das lanes 4, 5 e 6 têm silhueta própria', () => {
+  /** Ids de estrutura usados nas lanes de baixo. */
+  function idsLanesDeBaixo(): { id: string; map: (typeof MAPS)[number] }[] {
+    const vistos = new Set<string>();
+    const fora: { id: string; map: (typeof MAPS)[number] }[] = [];
+    for (const map of MAPS) {
+      for (const lane of [3, 4, 5]) {
+        for (const s of map.estruturas[lane]) {
+          if (!vistos.has(s.id)) {
+            vistos.add(s.id);
+            fora.push({ id: s.id, map });
+          }
+        }
+      }
+    }
+    return fora;
+  }
+
+  /** A casa genérica: referência do "caiu no fallback". Mesma lane, mesmo mapa. */
+  function assinaCasaGenérica(): string {
+    return assina(() =>
+      desenho.drawStructure({ id: 'casa', nome: 'Casa', msg: '', alive: true }, 3, 0, MAPS[0], 2.5),
+    );
+  }
+
+  it('todas desenham (e nenhuma cai na casa genérica)', () => {
+    const genérica = assinaCasaGenérica();
+    for (const { id, map } of idsLanesDeBaixo()) {
+      const própria = assina(() =>
+        desenho.drawStructure({ id, nome: 'x', msg: '', alive: true }, 3, 0, map, 2.5),
+      );
+      expect(própria.length, `${id} não desenhou nada`).toBeGreaterThan(60);
+      expect(própria, `${id} caiu no desenho genérico`).not.toBe(genérica);
+    }
+  });
+
+  it('o teste tem dente: um id sem desenho próprio dá no genérico', () => {
+    // Sem esta conferência, o teste acima passaria por vacuidade.
+    const semDesenho = assina(() =>
+      desenho.drawStructure({ id: 'estrutura_que_nao_existe', nome: 'x', msg: '', alive: true }, 3, 0, MAPS[0], 2.5),
+    );
+    expect(semDesenho).toBe(assinaCasaGenérica());
+  });
+
+  it('o estrago de cada uma também desenha', () => {
+    for (const { id, map } of idsLanesDeBaixo()) {
+      expect(() =>
+        desenho.drawStructure({ id, nome: 'x', msg: '', alive: false }, 4, 1, map, 1.5),
+        `estrago de ${id}`).not.toThrow();
+    }
+  });
+});

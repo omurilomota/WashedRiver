@@ -9,6 +9,26 @@ import { ctx, rr, waterLines } from '../core/canvas';
 import { G } from '../core/state';
 import { CARTAZES } from '../data';
 import { drawLaneFloorNova } from './lanes';
+import { drawEstruturaNova } from './structures';
+
+/**
+ * Família de cada estrutura: define o **estrago** quando ela cai.
+ *
+ * É tabela de propósito. A classificação antiga era
+ * `s.id.includes('caixa')`, `includes('valvula')` — e por isso cisterna,
+ * luminária e contêiner nasciam desenhados como casa. Quem tem desenho
+ * próprio em `structures.ts` não precisa de família: a família só serve
+ * para o escombro.
+ */
+const FAMILIA_ESTRUTURA: Record<string,'boat'|'post'|'tank'|'house'>={
+  barco:'boat',galpao:'boat',bote:'boat',navio:'boat',mastro:'boat',tenda:'boat',balsa:'boat',boia:'boat',
+  poste:'post',sinaleira:'post',lanterna:'post',chamine:'post',relogio:'post',cruz:'post',
+  luminaria:'post',relogio_ponto:'post',placa_fim:'post',marco:'post',farol_apagado:'post',farol_afundado:'post',
+  comporta:'tank',valvula:'tank',caixa:'tank',caixa2:'tank',caldeira:'tank',guinda:'tank',
+  cisterna:'tank',lata_agua:'tank',pilha_gelo:'tank',caldeirao:'tank',container:'tank',valvula_mestre:'tank',
+  caminhao_gelo:'tank',empilhadeira:'tank',carroca:'tank',base_farol:'tank',engrenagem:'tank',batente:'tank',
+  casco:'tank',guinda_quebrado:'tank',quilha:'tank',ancora:'tank',lona:'tank',painelon:'tank',fogareiro:'tank',
+};
 
 // `rr` e `waterLines` moram em core/canvas (são helper de canvas, não de
 // cenário). Reexportados aqui porque o resto do jogo já importava deste
@@ -269,9 +289,9 @@ export function drawWeather(G,t){
 // =====================================================================
 export function drawStructure(s,lane,i,map,t){
   const bx=i===0?58:126,by=plantY(lane);
-  const kind=['barco','galpao','bote','navio','mastro','tenda'].some(k=>s.id.includes(k))?'boat':
-    ['poste','sinaleira','lanterna','chaminé','chamine','relogio','cruz'].some(k=>s.id.includes(k))?'post':
-    ['comporta','valvula','válvula','caixa','caldeira','guinda'].some(k=>s.id.includes(k))?'tank':'house';
+  // Família da estrutura. É tabela, não advinhação por pedaço do nome:
+  // `s.id.includes('caixa')` já classificou cisterna como casa.
+  const kind=FAMILIA_ESTRUTURA[s.id]||'house';
   if(!s.alive){ // estrago permanente
     ctx.save();ctx.translate(bx,by);
     if(kind==='boat'){ctx.rotate(.5);ctx.fillStyle='#4a3a2a';ctx.beginPath();ctx.moveTo(-30,0);ctx.lineTo(30,0);ctx.lineTo(22,14);ctx.lineTo(-22,14);ctx.fill();
@@ -285,6 +305,8 @@ export function drawStructure(s,lane,i,map,t){
     return;
   }
   ctx.save();ctx.translate(bx,by);
+  // estruturas das lanes de baixo têm silhueta própria (structures.ts)
+  if(drawEstruturaNova(s,map,t)){ctx.restore();return;}
   if(kind==='boat'){
     ctx.fillStyle='#0a2024';ctx.beginPath();ctx.ellipse(0,2,42,7,0,0,7);ctx.fill();
     const bob=Math.sin(t*1.3+i*2)*2;ctx.translate(0,bob);
