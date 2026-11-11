@@ -1222,7 +1222,7 @@ Game.startFromOpts=function(o){
 Game.option=function(k,v){
   SaveDB.opt(k,v);
   document.body.classList.toggle('cb',!!SaveDB.options.cb);
-  document.documentElement.style.setProperty('--fs',String(SaveDB.options.font||1));
+  document.documentElement.style.setProperty('--fs',String(SaveDB.options.font||1.15));
   Snd.applyVolumes();
   if(k==='shake')document.body.classList.toggle('lowshake',!SaveDB.options.shake);
 };

@@ -178,7 +178,7 @@ export const UI=(function(){
       '<div class="opt"><label>MODO DALTONISMO<span class="sub">Troca cores de estado e reforça bordas.</span></label>'+
         '<select data-act="opt" data-arg="cb">'+(o.cb?'<option value="1" selected>LIGADO</option><option value="0">DESLIGADO</option>':'<option value="1">LIGADO</option><option value="0" selected>DESLIGADO</option>')+'</select></div>'+
       '<div class="opt"><label>TAMANHO DA LETRA<span class="sub">Interface acima do canvas.</span></label>'+
-        '<select data-act="opt" data-arg="font">'+[.9,1,1.15,1.3].map(v=>'<option value="'+v+'" '+(o.font===v?'selected':'')+'>'+Math.round(v*100)+'%</option>').join('')+'</select></div>'+
+        '<select data-act="opt" data-arg="font">'+[.9,1,1.15,1.3,1.45].map(v=>'<option value="'+v+'" '+(o.font===v?'selected':'')+'>'+Math.round(v*100)+'%</option>').join('')+'</select></div>'+
       '<div class="opt"><label>SOM<span class="sub">Também no M durante o jogo.</span></label>'+
         '<select data-act="muteopt">'+(Snd.muted?'<option value="0">LIGADO</option><option value="1" selected>MUDO</option>':'<option value="0" selected>LIGADO</option><option value="1">MUDO</option>')+'</select></div>'+
       '</div>'+
@@ -369,8 +369,8 @@ export const UI=(function(){
     // recurso
     ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,64,4);ctx.fill();
     ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
-    ctx.fillStyle='#f0e4bd';ctx.font='bold 23px "Courier New",monospace';ctx.fillText(fmt(g.scrap),46,32);
-    ctx.fillStyle='#9aa08a';ctx.font='12px monospace';ctx.fillText(p.resShort,46,44);
+    ctx.fillStyle='#f0e4bd';ctx.font='bold 26px "Courier New",monospace';ctx.fillText(fmt(g.scrap),46,32);
+    ctx.fillStyle='#9aa08a';ctx.font='13px monospace';ctx.fillText(p.resShort,46,44);
     ctx.fillStyle='#7a806a';ctx.font='11px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
     ctx.fillStyle='#c8b070';ctx.font='11px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
     // cartas
