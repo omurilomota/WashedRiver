@@ -787,7 +787,9 @@ function updateEnemies(dt: number): void {
     if(e.kb!==0){e.x+=e.kb*dt;e.kb*=Math.exp(-5*dt);if(Math.abs(e.kb)<2)e.kb=0;e.x=Math.min(e.x,SPAWN_X+40);}
     // contato com máquinas
     let blocked: Machine|null=null;
-    if(!(e.air&&e.grounded<=0)&&e.type!=='baleia'&&e.type!=='pescador'&&!e.saved){
+    // A Baleia-Filhote não é alvo, mas pisa nas peças e quebra: ela é
+    // visita, não bicho. (O Pescador é gente: não bloqueia, não quebra.)
+    if(!(e.air&&e.grounded<=0)&&e.type!=='pescador'&&!e.saved){
       for(const m of G.machines){if(m.lane!==e.lane||m.dead)continue;
         if(e.x-e.r*.8<=m.x+22&&e.x>=m.x-8){blocked=m;break;}}
     }
