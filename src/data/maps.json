@@ -13,9 +13,9 @@
         "PÍER",
         "RUA",
         "CANAL",
-        "PÍER",
-        "CANAL",
-        "BECO"
+        "JARDIM RIBEIRINHO",
+        "HORTA DO ZÉ",
+        "BECO DO ZÉ"
       ],
       "pal": {
         "sky1": "#5a3a22",
@@ -66,38 +66,38 @@
         ],
         [
           {
-            "id": "morador_beira",
-            "nome": "Morador da Beira",
-            "msg": "O MORADOR DA BEIRA SE FOI."
+            "id": "cisterna",
+            "nome": "Cisterna da Vila",
+            "msg": "A CISTERNA VIROU. O JARDIM BEBEU TUDO."
           },
           {
-            "id": "jardim_ribeirinho",
-            "nome": "Jardim Ribeirinho",
-            "msg": "O JARDIM RIBEIRINHO MURCHOU."
+            "id": "cerca",
+            "nome": "Cerca do Jardim",
+            "msg": "A CERCA CEDEU. ENTROU GENTE. OU BICHO."
           }
         ],
         [
           {
-            "id": "horta",
-            "nome": "Horta do Zé",
-            "msg": "A HORTA DO ZÉ FOI LEVADA."
+            "id": "carroca",
+            "nome": "Carroça do Zé",
+            "msg": "A CARROÇA DESMONTOU. O ZÉ NÃO VIU."
           },
           {
-            "id": "barraca",
-            "nome": "Barraca do Pescador",
-            "msg": "A BARRACA DO PESCADOR CAIU."
+            "id": "lata_agua",
+            "nome": "Lata d'Água",
+            "msg": "A LATA D'ÁGUA AMASSOU. VAI BUSCAR OUTRA."
           }
         ],
         [
           {
-            "id": "beco_ze",
-            "nome": "Beco do Zé",
-            "msg": "O BECO DO ZÉ DESMOROU. FALTAVA PAREDE."
+            "id": "monturo",
+            "nome": "Monturo do Beco",
+            "msg": "O MONTURO ROLOU. O BECO FE CHEIROU."
           },
           {
             "id": "muro_vila",
             "nome": "Muro da Vila",
-            "msg": "O MURO DA VILA CAIU. A VILA NEM DEU POR ELA."
+            "msg": "O MURO DA VILA CAIU. VILA MENOR."
           }
         ]
       ],
@@ -136,9 +136,9 @@
         "CAMINHO DE PEDRA",
         "ESCADARIA",
         "RESTINGA",
-        "CAMINHO DE PEDRA",
-        "RESTINGA",
-        "ROTA DO FAROL"
+        "FAROL VELHO",
+        "TRAPICHE VELHO",
+        "ROTA DO FAROLEIRO"
       ],
       "pal": {
         "sky1": "#14262e",
@@ -189,6 +189,18 @@
         ],
         [
           {
+            "id": "base_farol",
+            "nome": "Base do Farol Velho",
+            "msg": "A BASE RACHOU. O FAROL JÁ ERA SÓ SÍTIO."
+          },
+          {
+            "id": "engrenagem",
+            "nome": "Engrenagem Quebrada",
+            "msg": "A ENGRENAGEM PAROU. NUNCA TINHA GIRADO."
+          }
+        ],
+        [
+          {
             "id": "trapiche",
             "nome": "Trapiche Velho",
             "msg": "O TRAPICHE VELHO AFUNDOU."
@@ -201,26 +213,14 @@
         ],
         [
           {
-            "id": "morador_beira",
-            "nome": "Morador da Beira",
-            "msg": "O MORADOR DA BEIRA SE FOI."
+            "id": "marco",
+            "nome": "Marco de Pedra",
+            "msg": "O MARCO CAIU. A SUBIDA FICOU SEM MARCA."
           },
           {
-            "id": "jardim_ribeirinho",
-            "nome": "Jardim Ribeirinho",
-            "msg": "O JARDIM RIBEIRINHO MURCHOU."
-          }
-        ],
-        [
-          {
-            "id": "rota_faroleiro",
-            "nome": "Rota do Faroleiro",
-            "msg": "A ROTA DO FAROLEIRO SUMIU. NINGUÉM USAVA."
-          },
-          {
-            "id": "farol_velho",
-            "nome": "Farol Velho",
-            "msg": "O FAROL VELHO CAIU. O NOVO TAMBÉM, SO QUE DEPOIS."
+            "id": "farol_apagado",
+            "nome": "Farol Apagado",
+            "msg": "O FAROL ACENDEU UMA VEZ. DEPOIS NUNCA MAIS."
           }
         ]
       ],
@@ -257,9 +257,9 @@
         "TRILHO NORTE",
         "PLATAFORMA",
         "TRILHO CEGO",
-        "TRILHO NORTE",
-        "TRILHO CEGO",
-        "DEPÓSITO"
+        "ARMAZÉM DE BAGAGEM",
+        "DEPÓSITO",
+        "FIM DE LINHA"
       ],
       "pal": {
         "sky1": "#2e3640",
@@ -310,38 +310,38 @@
         ],
         [
           {
-            "id": "horta",
-            "nome": "Horta do Zé",
-            "msg": "A HORTA DO ZÉ FOI LEVADA."
+            "id": "engradado",
+            "nome": "Engradado de Malas",
+            "msg": "O ENGRADADO ABRIU. MALAS POR TODO LADO."
           },
           {
-            "id": "barraca",
-            "nome": "Barraca do Pescador",
-            "msg": "A BARRACA DO PESCADOR CAIU."
+            "id": "palete",
+            "nome": "Palete de Carga",
+            "msg": "A PALETE VIROU. A CARGA TAMBÉM."
           }
         ],
         [
           {
-            "id": "trapiche",
-            "nome": "Trapiche Velho",
-            "msg": "O TRAPICHE VELHO AFUNDOU."
+            "id": "prateleira",
+            "nome": "Prateleira do Depósito",
+            "msg": "A PRATELEIRA CEDEU. TUDO JUNTO NO CHÃO."
           },
           {
-            "id": "cais",
-            "nome": "Cais do Fundo",
-            "msg": "O CAIS DO FUNDO DESABOU."
+            "id": "luminaria",
+            "nome": "Luminária do Depósito",
+            "msg": "A LUMINÁRIA APAGOU. O DEPÓSITO FICOU SEM DONO."
           }
         ],
         [
           {
-            "id": "deposito",
-            "nome": "Depósito de Bagagem",
-            "msg": "O DEPÓSITO DE BAGAGEM ABRIU. SÓ TINHA BAGAGEM."
+            "id": "batente",
+            "nome": "Batente do Trilho",
+            "msg": "O BATENTE SAIU DO LUGAR. FIM DE LINHA MESMO."
           },
           {
-            "id": "fim_de_linha",
-            "nome": "Sinal de Fim de Linha",
-            "msg": "O SINAL DE FIM DE LINHA APAGOU. A LINHA CONTINUA."
+            "id": "placa_fim",
+            "nome": "Placa de Fim de Linha",
+            "msg": "A PLACA CAIU. NINGUÉM LIA MESMO."
           }
         ]
       ],
@@ -377,9 +377,9 @@
         "CORREDOR DE BARRACAS",
         "CALÇADA DO PEIXE",
         "DESCARGA",
-        "CORREDOR DE BARRACAS",
-        "DESCARGA",
-        "CAMELÔ"
+        "CAMELÔ DO PEIXE",
+        "GELO",
+        "CALDEIRÃO"
       ],
       "pal": {
         "sky1": "#7a4a22",
@@ -430,38 +430,38 @@
         ],
         [
           {
-            "id": "morador_beira",
-            "nome": "Morador da Beira",
-            "msg": "O MORADOR DA BEIRA SE FOI."
+            "id": "lona",
+            "nome": "Lona do Camelô",
+            "msg": "A LONA RASGOU. O PEIXE FOI PRA OUTRO DONO."
           },
           {
-            "id": "jardim_ribeirinho",
-            "nome": "Jardim Ribeirinho",
-            "msg": "O JARDIM RIBEIRINHO MURCHOU."
+            "id": "sombrinha",
+            "nome": "Sombrinha da Feira",
+            "msg": "A SOMBRINHA VOOU. FICOU SÓ O CALOR."
           }
         ],
         [
           {
-            "id": "horta",
-            "nome": "Horta do Zé",
-            "msg": "A HORTA DO ZÉ FOI LEVADA."
+            "id": "caminhao_gelo",
+            "nome": "Caminhão de Gelo",
+            "msg": "O CAMINHÃO DE GELO PAROU. O GELO VIROU ÁGUA."
           },
           {
-            "id": "barraca",
-            "nome": "Barraca do Pescador",
-            "msg": "A BARRACA DO PESCADOR CAIU."
+            "id": "pilha_gelo",
+            "nome": "Pilha de Gelo",
+            "msg": "A PILHA DERRETEU. CHÃO DE ÁGUA SUJA."
           }
         ],
         [
           {
-            "id": "camelo",
-            "nome": "Camelô do Peixe",
-            "msg": "O CAMELÔ DO PEIXE LEVOU TUDO. MENOS O PEIXE."
+            "id": "painelon",
+            "nome": "Panelão Grande",
+            "msg": "O PANELÃO TOMBOU. O CALDO FOI PRO MAR."
           },
           {
-            "id": "caixa_peixe",
-            "nome": "Caixa de Peixe",
-            "msg": "A CAIXA DE PEIXE TRANSBORDOU. O GELO NÃO AJUDOU."
+            "id": "fogareiro",
+            "nome": "Fogareiro",
+            "msg": "O FOGAREIRO APAGOU. O PEIXE FRIOU."
           }
         ]
       ],
@@ -498,9 +498,9 @@
         "ESTEIRA",
         "CORREDOR DE CANOS",
         "VALA QUÍMICA",
-        "ESTEIRA",
-        "VALA QUÍMICA",
-        "PÁTIO"
+        "PÁTIO DE CARGA",
+        "CALDEIRAS",
+        "ESCRITÓRIO DO GERENTE"
       ],
       "pal": {
         "sky1": "#3a1e18",
@@ -551,38 +551,38 @@
         ],
         [
           {
-            "id": "trapiche",
-            "nome": "Trapiche Velho",
-            "msg": "O TRAPICHE VELHO AFUNDOU."
+            "id": "container",
+            "nome": "Contêiner Encalhado",
+            "msg": "O CONTÊINER TOMBOU. SUCATA DE SEGUNDA."
           },
           {
-            "id": "cais",
-            "nome": "Cais do Fundo",
-            "msg": "O CAIS DO FUNDO DESABOU."
+            "id": "empilhadeira",
+            "nome": "Empilhadeira Parada",
+            "msg": "A EMPILHADEIRA VIROU. CARGA NO CHÃO."
           }
         ],
         [
           {
-            "id": "morador_beira",
-            "nome": "Morador da Beira",
-            "msg": "O MORADOR DA BEIRA SE FOI."
+            "id": "caldeirao",
+            "nome": "Caldeirão Grande",
+            "msg": "O CALDEIRÃO RACHOU. VAPOR EM TODO LUGAR."
           },
           {
-            "id": "jardim_ribeirinho",
-            "nome": "Jardim Ribeirinho",
-            "msg": "O JARDIM RIBEIRINHO MURCHOU."
+            "id": "valvula_mestre",
+            "nome": "Válvula Mestre",
+            "msg": "A VÁLVULA MESTRE ABRIU. IDEIA PIOR NÃO HOUVE."
           }
         ],
         [
           {
-            "id": "patio_carga",
-            "nome": "Pátio de Carga",
-            "msg": "O PÁTIO DE CARGA FICOU CHEIO DE ÁGUA. E DE CARGA."
+            "id": "mesa_gerente",
+            "nome": "Mesa do Gerente",
+            "msg": "A MESA DO GERENTE VIROU JUNTO COM O CARGO."
           },
           {
-            "id": "portao_carga",
-            "nome": "Portão de Carga",
-            "msg": "O PORTÃO DE CARGA NÃO FECHA MAIS. NUNCA FECHOU."
+            "id": "relogio_ponto",
+            "nome": "Relógio de Ponto",
+            "msg": "O RELÓGIO PAROU. NINGUÉM BATEU PONTO."
           }
         ]
       ],
@@ -619,8 +619,8 @@
         "CONVÉS APODRECIDO",
         "CAIS QUEBRADO",
         "ÁGUA RASA",
-        "CONVÉS APODRECIDO",
-        "ÁGUA RASA",
+        "CASCO ENCALHADO",
+        "OSSOS DO CASCO",
         "MARGEM"
       ],
       "pal": {
@@ -672,33 +672,33 @@
         ],
         [
           {
-            "id": "horta",
-            "nome": "Horta do Zé",
-            "msg": "A HORTA DO ZÉ FOI LEVADA."
+            "id": "casco",
+            "nome": "Casco Encalhado",
+            "msg": "O CASCO RACHOU MAIS. JÁ ERA OSSO."
           },
           {
-            "id": "barraca",
-            "nome": "Barraca do Pescador",
-            "msg": "A BARRACA DO PESCADOR CAIU."
+            "id": "guinda_quebrado",
+            "nome": "Guindaste Quebrado",
+            "msg": "O GUINDASTE QUEBRADO QUEBROU MAIS. AGORA É FIO."
           }
         ],
         [
           {
-            "id": "trapiche",
-            "nome": "Trapiche Velho",
-            "msg": "O TRAPICHE VELHO AFUNDOU."
+            "id": "quilha",
+            "nome": "Quilha de Navio",
+            "msg": "A QUILHA ARQUEBOU. O OSSO SENTOU."
           },
           {
-            "id": "cais",
-            "nome": "Cais do Fundo",
-            "msg": "O CAIS DO FUNDO DESABOU."
+            "id": "ancora",
+            "nome": "Âncora Cravada",
+            "msg": "A ÂNCORA SOLTOU. O FUNDO ENGOLIU."
           }
         ],
         [
           {
-            "id": "margem",
-            "nome": "Margem do Cemitério",
-            "msg": "A MARGEM CEDEU. ELA JÁ ESTAVA CEDENDO DESDE 1998."
+            "id": "lapides",
+            "nome": "Lápides",
+            "msg": "AS LÁPIDES TOMBARAM. O CEMITÉRIO ANDOU."
           },
           {
             "id": "farol_afundado",
