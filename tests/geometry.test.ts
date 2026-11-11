@@ -27,13 +27,13 @@ describe('geometria do campo', () => {
     expect(FIELD_BOTTOM).toBe(H);
   });
 
-  it('tem 6 lanes e 5 colunas', () => {
+  it('tem 6 lanes e 7 colunas', () => {
     expect(LANES).toBe(6);
-    expect(COLS).toBe(5);
+    expect(COLS).toBe(7);
   });
 
-  it('tem 30 slots de plantio', () => {
-    expect(SLOTS).toBe(30);
+  it('tem 42 slots de plantio', () => {
+    expect(SLOTS).toBe(42);
     expect(SLOTS).toBe(LANES * COLS);
   });
 

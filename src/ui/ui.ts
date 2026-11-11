@@ -30,7 +30,7 @@ import { SaveDB } from '../save/storage';
 import { SFX, Snd, TRACKS } from '../audio/audio';
 import { drawMachine, rr } from '../render/sprites';
 import { drawBoss } from '../render/creatures';
-import { availableMachines, machCost, structuresAlive } from '../game/economy';
+import { availableMachines, impostoDoRound, machCost, structuresAlive } from '../game/economy';
 
 export const UI=(function(){
   const $=(id: string): HTMLElement|null=>document.getElementById(id);
@@ -164,7 +164,7 @@ export const UI=(function(){
       'peças: '+G.machines.length+' · bichos mortos: '+G.kills+' · sucata: '+G.scrap+'</p>'+
       '<div class="menu">'+btn('RETOMAR','resume','','primary')+btn('OPÇÕES','options','')+btn('BESTIÁRIO','codex','')+
       btn('REINICIAR','retry','','danger')+btn('SALVAR','save','','small')+btn('SAIR PRO TÍTULO','title','','small')+'</div>'+
-      '<div class="bottomline">Salva automaticamente a cada onda e ao sair. P pausa, M silencia, 1–9 escolhe peça.<br>Legenda: 🟩 estrutura de pé · 🟥 destruída · ícones da vila = vidas.</div>');
+      '<div class="bottomline">Salva automaticamente a cada onda e ao pausar. ESC ou P pausa, M silencia, 1–9 escolhe peça.<br>Legenda: 🟩 estrutura de pé · 🟥 destruída · ícones da vila = vidas.</div>');
   }
 
   // ---------- OPÇÕES ----------
@@ -178,7 +178,7 @@ export const UI=(function(){
       '<div class="opt"><label>MODO DALTONISMO<span class="sub">Troca cores de estado e reforça bordas.</span></label>'+
         '<select data-act="opt" data-arg="cb">'+(o.cb?'<option value="1" selected>LIGADO</option><option value="0">DESLIGADO</option>':'<option value="1">LIGADO</option><option value="0" selected>DESLIGADO</option>')+'</select></div>'+
       '<div class="opt"><label>TAMANHO DA LETRA<span class="sub">Interface acima do canvas.</span></label>'+
-        '<select data-act="opt" data-arg="font">'+[.9,1,1.15,1.3].map(v=>'<option value="'+v+'" '+(o.font===v?'selected':'')+'>'+Math.round(v*100)+'%</option>').join('')+'</select></div>'+
+        '<select data-act="opt" data-arg="font">'+[.9,1,1.15,1.3,1.45].map(v=>'<option value="'+v+'" '+(o.font===v?'selected':'')+'>'+Math.round(v*100)+'%</option>').join('')+'</select></div>'+
       '<div class="opt"><label>SOM<span class="sub">Também no M durante o jogo.</span></label>'+
         '<select data-act="muteopt">'+(Snd.muted?'<option value="0">LIGADO</option><option value="1" selected>MUDO</option>':'<option value="0" selected>LIGADO</option><option value="1">MUDO</option>')+'</select></div>'+
       '</div>'+
@@ -252,13 +252,14 @@ export const UI=(function(){
   function help(){
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">COMO SOBREVIVER</h2>'+
       '<div class="grid2" style="text-align:left">'+
-      '<div class="panel"><h3>O BÁSICO</h3><p>Clique numa carta e depois numa vaga do corredor. Botão direito ou ESC cancela. 1–9 seleciona. Shift planta várias com a mesma escolha.</p>'+
-      '<p>Clique na sucata boiando pra catar. O Ímã faz isso por você. Bichos mortos também largam sucata.</p>'+
-      '<p>Cada corredor tem duas estruturas. Quando um bicho chega, alguma coisa quebra pra sempre. Quando não sobra nada no corredor, ele come o Zé.</p></div>'+
+      '<div class="panel"><h3>O BÁSICO</h3><p>Clique numa carta e depois numa vaga do corredor. Botão direito cancela. 1–9 seleciona. Shift planta várias com a mesma escolha. ESC ou P pausa.</p>'+
+      '<p>Passe o mouse na sucata boiando pra catar (clique também vale). O Ímã faz isso por você. Bichos mortos também largam sucata.</p>'+
+      '<p>Cada corredor tem duas estruturas. Quando um bicho chega, alguma coisa quebra pra sempre. Quando as 12 caem, ele come o Zé.</p>'+
+      '<p>A Dona Lú cobra imposto no fim de cada onda: quanto mais peça na rua, maior a conta.</p></div>'+
       '<div class="panel"><h3>DEFESAS QUE EXISTEM</h3><p>'+
       Object.keys(ENEMY).length+' criaturas catalogáveis, seis chefes com fases, e '+MACH_ORDER.length+' engenhocas. Nenhuma resposta serve pra tudo.</p>'+
-      '<p><b>Voa</b> só cai com Holofote ou Ventilador. <b>Cava</b> pede bujão atrás. <b>Invisível</b> pede luz. <b>Espelho</b> devolve torrada: use corpo a corpo ou estilingue.</p>'+
-      '<p><b>Não mate</b> o Pescador: rádio e cachorro redirecionam. <b>Não mate</b> a baleia-filhote: ela só está passando.</p></div>'+
+      '<p><b>Voa</b> cai com Holofote, Ventilador, Canhão de Lata, Estilingue ou Bujão. <b>Cava</b> pede bujão atrás. <b>Invisível</b> pede luz. <b>Espelho</b> devolve três torradas e cansa: a quarta entra.</p>'+
+      '<p><b>Não mate</b> o Pescador: rádio e cachorro redirecionam. <b>Não mate</b> a baleia-filhote: o Ventilador espanta e ela volta pro mar.</p></div>'+
       '<div class="panel"><h3>CLIMA E LUGAR</h3><p>CHUVA apaga o fogo do pneu. NÉVOA encurta a torrada. VENTANIA empurra projétil e bicho. CALOR deixa piranha mais rápida. CINZA atrasa a recarga.</p>'+
       '<p>A luz do holofote muda o combate inteiro no Farol. A maré sobe no Cemitério e o espaço útil encolhe visualmente.</p></div>'+
       '<div class="panel"><h3>O ZÉ</h3><p>Entre ondas ele oferece três coisas: desbloqueio, upgrade visível na peça ou sucata. A escolha pausa o jogo.</p>'+
@@ -284,9 +285,10 @@ export const UI=(function(){
         '<div class="price">'+btn('ESCOLHER','offer',i,'small primary')+'</div></div>').join('')+'</div>'+
       '<div class="hr"></div>'+
       '<p class="muted">BANCA DO ZÉ — compra com a sucata do corredor. Pode levar quantas quiser.</p>'+
-      '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
+      '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" title="'+it.desc+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
         it.nome+' · '+it.cost+'</button>').join('')+'</div>'+
-      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+G.scrap+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+'</p>'+
+      '<p class="muted" style="margin-top:6px;font-size:12px">'+(Game.shopItems||[]).map(it=>'<b>'+it.nome+':</b> '+it.desc).join(' · ')+'</p>'+
+      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+G.scrap+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+' · imposto do próximo round: <b>'+impostoDoRound(G.machines.length,G.survived)+'</b></p>'+
       '<div class="bottomline">"+ reconstruir uma parede" pode salvar a partida. "Um ímã" também. O Zé não dá garantia.</div>'+
       '</div></div>';
     shopEl.classList.remove('hidden');scr.classList.add('hidden');top.classList.add('hidden');
@@ -367,10 +369,10 @@ export const UI=(function(){
     // recurso
     ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,64,4);ctx.fill();
     ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
-    ctx.fillStyle='#f0e4bd';ctx.font='bold 23px "Courier New",monospace';ctx.fillText(fmt(g.scrap),46,32);
-    ctx.fillStyle='#9aa08a';ctx.font='12px monospace';ctx.fillText(p.resShort,46,44);
-    ctx.fillStyle='#7a806a';ctx.font='11px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
-    ctx.fillStyle='#c8b070';ctx.font='11px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
+    ctx.fillStyle='#f0e4bd';ctx.font='bold 26px "Courier New",monospace';ctx.fillText(fmt(g.scrap),46,32);
+    ctx.fillStyle='#9aa08a';ctx.font='13px monospace';ctx.fillText(p.resShort,46,44);
+    ctx.fillStyle='#7a806a';ctx.font='12px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
+    ctx.fillStyle='#c8b070';ctx.font='12px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
     // cartas
     for(const r of cardLayout()){
       const m=MACH[r.k],cost=machCost(r.k),cool=g.cds&&g.cds[r.k]||0,up=(g.up&&g.up[r.k])||0;
@@ -379,15 +381,19 @@ export const UI=(function(){
       ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();
       ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h-19);ctx.scale(.36,.36);ctx.globalAlpha=can||g.selected===r.k?1:.45;
       drawMachine({type:r.k,x:0,lane:0,t:g.t,hp:1,maxhp:1,anim:0,act:0,flash:0,_icon:true});ctx.restore();
-      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 12px monospace';ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
+      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 13px monospace';ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
       const short=m.nome.split(' ')[0].toUpperCase().slice(0,7);
       ctx.fillStyle='#a8aa94';ctx.font='9px monospace';ctx.fillText(short,r.x+3,r.y+9);
       if(up){for(let j=0;j<3;j++){ctx.fillStyle=j<up?'#e8c84a':'#39402f';ctx.fillRect(r.x+r.w-8+j*2.4,r.y+3,2,4);}}
       if(cool>0){ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(r.x,r.y,r.w,r.h*(cool/m.cd));}
     }
+    // descrição da peça sob o mouse (item sem descrição é item que ninguém entende)
+    if(Game.mouse){const hov=cardLayout().find(r=>Game.mouse!.x>=r.x&&Game.mouse!.x<=r.x+r.w&&Game.mouse!.y>=r.y&&Game.mouse!.y<=r.y+r.h);
+      if(hov)drawCardTip(hov);}
+    if(g.savedT>0){ctx.fillStyle='#7fb3a6';ctx.font='bold 10px monospace';ctx.fillText('SALVO',W-52,70);}
     // status do modo
-    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font='8px monospace';ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
-    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font='9px monospace';ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
+    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font='9px monospace';ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
+    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font='10px monospace';ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
     if(g.boss&&!g.bossDeath){
       const b=g.boss;
       ctx.fillStyle='rgba(8,10,8,.72)';rr(W/2-180,3,360,22,3);ctx.fill();
@@ -396,6 +402,30 @@ export const UI=(function(){
       ctx.fillStyle='#3a1a16';ctx.fillRect(W/2-170,18,340,4);ctx.fillStyle='#c84a30';ctx.fillRect(W/2-170,18,340*clamp(b.hp/b.maxhp,0,1),4);
       ctx.textAlign='left';
     }
+  }
+  /** Quebra uma linha de texto no número de caracteres da caixa. */
+  function wrap(text: string, max: number): string[]{
+    const out: string[]=[];let line='';
+    for(const word of String(text).split(' ')){
+      if((line+' '+word).trim().length>max&&line){out.push(line);line=word;}
+      else line=(line+' '+word).trim();
+    }
+    if(line)out.push(line);
+    return out;
+  }
+  /** Ficha da peça: nome, número e o que ela faz (e com quem combina). */
+  function drawCardTip(r: {k: string;x: number;y: number;w: number;h: number}){
+    const m=MACH[r.k],w=300,h=108;
+    const x=clamp(r.x-40,8,W-w-8),y=72;
+    ctx.fillStyle='rgba(8,12,10,.95)';rr(x,y,w,h,4);ctx.fill();
+    ctx.strokeStyle='#5a6248';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='#e8d9a8';ctx.font='bold 13px monospace';ctx.fillText(m.nome,x+9,y+17);
+    ctx.fillStyle='#9aa08a';ctx.font='10px monospace';
+    ctx.fillText('custo '+machCost(r.k)+' · vida '+m.hp+' · recarga '+m.cd+'s',x+9,y+31);
+    ctx.fillStyle='#d8d0b0';ctx.font='10px monospace';
+    wrap(m.desc,46).slice(0,3).forEach((l,i)=>ctx.fillText(l,x+9,y+47+i*12));
+    ctx.fillStyle='#b8a060';ctx.font='9px monospace';
+    wrap(m.sin,54).slice(0,2).forEach((l,i)=>ctx.fillText(l,x+9,y+88+i*11));
   }
   function drawScene(g){
     // intro de chefe

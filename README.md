@@ -23,20 +23,25 @@ npm run build      # dist/index.html — UM arquivo, abre com duplo clique
 |---|---|
 | Clique numa carta e depois numa vaga | planta a engenhoca |
 | `Shift` + clique | planta várias com a mesma carta |
-| Botão direito / `Esc` | cancela a seleção |
+| Botão direito | cancela a seleção |
+| `Esc` / `P` | pausa e despausa |
+| Passar o mouse na sucata | cata (clique também vale) |
+| Passar o mouse numa carta | mostra a ficha da peça |
 | `1`–`9` | escolhe engenhoca pelo teclado |
-| `P` | pausa |
 | `M` | mudo |
+
+O jogo salva sozinho ao entrar no break, ao pausar e ao sair. A Dona Lú cobra
+imposto no fim de cada onda — quanto mais peça na rua, maior a conta.
 
 **A regra da casa:** todo dano é visível, toda morte tem piada, toda onda deixa
 marca permanente na vila.
 
 **Dicas que salvam partida:**
-- **Voa** só cai com Holofote ou Ventilador.
+- **Voa** cai com Holofote, Ventilador, Canhão de Lata, Estilingue ou Bujão.
 - **Cava** (Tatu de Areia) pede Bujão atrás.
 - **Invisível** (Fantasma) e **Água-Viva** pedem luz — ou explosão.
-- **Peixe-Lata** devolve a torrada: use corpo a corpo ou Estilingue.
-- **Baleia-Filhote** e **O Pescador** não são para matar. Desvie, hipnotize, redirecione.
+- **Peixe-Lata** devolve três torradas; a quarta entra. Corpo a corpo resolve.
+- **Baleia-Filhote** se espanta com Ventilador. **O Pescador** se redireciona com Rádio.
 
 ## 🗺️ Mapas
 
@@ -46,6 +51,23 @@ marca permanente na vila.
 4. **Feira do Peixe** — defenda o que ainda dá pra comer
 5. **Fábrica Podre** — a origem tem expediente até domingo
 6. **Cemitério de Barcos** — o fim da costa e o começo do mar
+
+## ☁️ Deploy na Vercel
+
+O jogo é estático: o build gera `dist/index.html` e a Vercel só precisa servir
+`dist/`. O [`vercel.json`](vercel.json) já traz o build e o rewrite de SPA.
+
+```bash
+npm i -g vercel   # ou npx vercel
+vercel login      # login na SUA conta
+vercel            # preview
+vercel --prod     # produção
+```
+
+O deploy **não é automático** e exige a conta Vercel do dono do projeto —
+nenhum agente deve publicar sem autorização. Se preferir, importe o repositório
+em [vercel.com/new](https://vercel.com/new): framework **Vite**, build
+`npm run build`, output `dist`.
 
 ## 🏗️ Arquitetura
 

@@ -28,7 +28,7 @@ Object.defineProperty(window, 'G', { get: () => G, configurable: true });
 
 // Opções salvas → aparência.
 document.body.classList.toggle('cb', !!SaveDB.options.cb);
-document.documentElement.style.setProperty('--fs', String(SaveDB.options.font || 1));
+document.documentElement.style.setProperty('--fs', String(SaveDB.options.font || 1.15));
 document.body.classList.toggle('lowshake', !SaveDB.options.shake);
 
 SaveDB.ensureAll();

@@ -30,7 +30,7 @@ barco que era do irmão do Zé, uma escolha no final que ninguém vai achar boa.
 
 ## O campo
 
-- **6 lanes** (índices 0–5) × **5 colunas** = **30 slots** de plantio.
+- **6 lanes** (índices 0–5) × **7 colunas** = **42 slots** de plantio.
 - Canvas lógico **1280×846** (`LANE_Y0=90`, `LANE_H=126`).
 - A vila fica à esquerda (`VX=170`); os inimigos entram pela direita.
 - Cada lane tem nome próprio por mapa (o corredor nasce do cenário, não de um
@@ -49,20 +49,36 @@ Cada mapa tem 2 estruturas por lane. A estrutura **não é vida do jogador**:
 
 Contagem de estruturas é sempre `LANES * 2` derivada — nunca `/10` solto.
 
+## Controles e leitura
+
+| Controle | Ação |
+|---|---|
+| Clique numa carta e depois numa vaga | planta a engenhoca |
+| `Shift` + clique | planta várias com a mesma carta |
+| Botão direito | cancela a seleção |
+| `ESC` / `P` | pausa e despausa |
+| Passar o mouse na sucata | cata (clique e Ímã também valem) |
+| Passar o mouse numa carta | ficha da peça: custo, vida, recarga, descrição e sinergia |
+| `1`–`9` | escolhe engenhoca |
+| `M` | mudo |
+
+O jogo **salva sozinho** ao entrar no break, ao pausar e ao sair. A onda em
+andamento não é salva: o save continua sendo por onda.
+
 ## Engenhocas (18)
 
 | Engenhoca | Custo | CD | HP | Papel |
 |---|---|---|---|---|
-| Boia Catadora | 50 | 5 | 80 | cata sucata do chão (click manual) |
+| Boia Catadora | 50 | 5 | 80 | cata sucata do chão (clique ou hover) |
 | Torradeira | 100 | 6 | 120 | dano em linha reta |
-| Canhão de Lata | 120 | 7 | 110 | projétil mais pesado, linha reta |
-| Ventilador | 75 | 8 | 100 | empurra/derruba voador |
+| Canhão de Lata | 120 | 7 | 110 | projétil pesado, linha reta; **acerta voador** |
+| Ventilador | 75 | 8 | 100 | empurra/derruba voador; **espanta a Baleia-Filhote** |
 | Geladeira | 50 | 10 | 450 | parede; quebra virando sucata |
 | Bujão P13 | 125 | 15 | 60 | explosão 3×3 |
 | Holofote | 110 | 12 | 90 | revela, derruba voador, impede escavação |
 | Ímã de Geladeira | 60 | 9 | 70 | coleta sucata sozinho |
 | Rádio Velho | 95 | 11 | 85 | hipnotiza 2s / redireciona Pescador |
-| Estilingue | 110 | 7 | 100 | dano alto, silencioso (acerta fantasma) |
+| Estilingue | 110 | 7 | 100 | dano alto, silencioso (acerta fantasma e voador) |
 | Aspirador Hidráulico | 100 | 9 | 110 | **atrai** bichos pequenos |
 | Batedeira Velha | 90 | 7 | 120 | dano em área curta |
 | Espelho | 80 | 8 | 100 | devolve o que o Peixe-Lata manda |
@@ -109,7 +125,7 @@ contra, não o lore.
 | Gaivota-Ladra | 70 | **voa** | Ventilador / Holofote |
 | Gaivota-Rei | 130 | **voa**, carrega peça | abate antes |
 | Tatu de Areia | 120 | **escava** | Bujão no fundo / Holofote |
-| Peixe-Lata | 110 | **devolve** o tiro | corpo a corpo, explosão, estilingue |
+| Peixe-Lata | 110 | **devolve até 3 torradas** | corpo a corpo, explosão; a quarta entra |
 | Peixe-Fantasma | 55 | **invisível** | Ataque/Holofote/Estilingue |
 | Polvo-Garrafa | 140 | **sabotagem** (desliga peça) | matar rápido |
 | Água-Viva-Fantasma | 60 | **voa + invisível** | **só luz ou explosão** |
@@ -117,14 +133,17 @@ contra, não o lore.
 | Sapo de Óleo | 100 | pula 2 colunas | cobertura atrás |
 | Piranha-Coral | 25 | cardume forte | área / Bujão |
 | Caranguejo-Mártir | 120 | fúria dos amigos | matar por último |
-| Baleia-Filhote | 400 | **neutral** — imune a tudo | desvie |
-| O Pescador | 60 | **human** — não morre | Rádio redireciona |
+| Baleia-Filhote | 400 | **neutral** — imune a tudo | Ventilador espanta; ou desvie |
+| O Pescador | 60 | **human** — não morre, não quebra | Rádio redireciona; sem resposta, cobra pedágio em sucata |
 | Passageiro do Trilho | 90 | troca de trilho | corredor protegido |
 
 **Regra de imortalidade:** `human` e `neutral` significam "não mate". HP é só
-número de combate. A Baleia é imune inclusive a explosão. A MARÉ (chefe final)
-é `unbeatable: true`, sem número mágico. Nenhum inimigo comum passa de 500 HP
-(teste automático).
+número de combate. A Baleia é imune inclusive a explosão — mas o **Ventilador
+a espanta** (ela sai pelo lado direito). A MARÉ (chefe final) é
+`unbeatable: true`, sem número mágico. **Nada com trait `human` destrói
+estrutura:** o Pescador chega na vila, cobra `economia.pescadorTaxa` de sucata
+e volta pro mar. Nenhum inimigo comum passa de 500 HP
+(teste automático). **Todo bicho tem contramedida** (mandato 13 do `AGENTS.md`).
 
 ## Chefes (6)
 
@@ -133,7 +152,7 @@ Chefes são **fases**, não sacos de vida:
 | Chefe | Mapa | HP | 아이디어 |
 |---|---|---|---|
 | Seu Bento, o Comeu-Pescador | Barra Suja | 2400 | 3 fases: anda → sem chapéu → chama reforço |
-| O Faroleiro | Farol do Fim | 2200 | apaga o campo; luz sai do peito dele |
+| O Faroleiro | Farol do Fim | 2200 | apaga o campo; a fase 2 teleporta, mas sempre para dentro do campo (`x ≤ W`) |
 | O Maquinista | Estação Afogada | 2600 | telegrafa passagens com apito |
 | A Peixe-Mãe | Feira do Peixe | 3000 | infla e reflete tiro |
 | O Gerente | Fábrica Podre | 3200 | 7 fases, 7 reuniões |
@@ -199,6 +218,15 @@ peça custam **120 / 220 / 380**.
 
 **Alvo de aceite:** saldo final entre **100 e 700** por partida, com ≥60% do
 ganho gasto. (Ver ADR 005.)
+
+### Imposto dos moradores
+
+A Dona Lú cobra **imposto no fim de cada onda**:
+`base + porPeca × peças + porOnda × ondas vencidas` (valores em
+`balance.json`). Se a sucata não cobre, a diferença vira `impostoDevido` e
+rola para o próximo round — o saldo não é zerado. A banca mostra a conta do
+próximo round antes de plantar, então encher a rua de peça barata tem custo
+recorrente. Ver ADR 008.
 
 ## Modos
 

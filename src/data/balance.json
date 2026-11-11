@@ -24,7 +24,8 @@
       "cd": 7,
       "hp": 110,
       "unlock": false,
-      "desc": "Cospe latas amassadas em linha reta. Mais lento que a torradeira, mas dói mais.",
+      "air": true,
+      "desc": "Cospe latas amassadas em linha reta. Pesada o bastante pra derrubar voador sem holofote.",
       "sin": "com Holofote: alcance firme. Com Ímã: munição extra de sucata."
     },
     "ventilador": {
@@ -87,7 +88,8 @@
       "cd": 7,
       "hp": 100,
       "unlock": false,
-      "desc": "Atira lata, dano alto, recarga lenta. Silencioso: acerta fantasma e lata sem levar troco.",
+      "air": true,
+      "desc": "Atira lata, dano alto, recarga lenta. Silencioso: acerta fantasma, lata e voador sem levar troco.",
       "sin": "com Holofote: alcance maior. Com Espelho: risca o tiro."
     },
     "aspirador": {
@@ -402,8 +404,9 @@
       "dps": 18,
       "scrap": 22,
       "r": 22,
+      "reflect": 3,
       "desc": "Escamas de lata, espelho no lugar da cara. Reflete a torrada na sua torradeira.",
-      "hint": "Dano corpo a corpo, explosão, estilingue. Não insista no tiro."
+      "hint": "Dano corpo a corpo, explosão ou estilingue. Três torradas devolvidas e a lata cansa: a quarta entra."
     },
     "fantasma": {
       "nome": "Peixe-Fantasma",
@@ -486,7 +489,7 @@
       "r": 50,
       "neutral": true,
       "desc": "Atravessa o mapa. Não machuca ninguém. Pisa nas suas peças e quebra. Não devia estar aqui.",
-      "hint": "NÃO MATE. Use geladeira longe do caminho. Se ela morrer, o Zé fica uma onda calado."
+      "hint": "Não é alvo. Ventilador espanta e ela volta pro mar; geladeira fora do caminho evita o esmagamento."
     },
     "pescador": {
       "nome": "O Pescador",
@@ -496,8 +499,8 @@
       "scrap": 0,
       "r": 24,
       "human": true,
-      "desc": "Um homem pela metade. Ainda fala. Ainda reconhece o barco. Não dá para matar o que já era gente.",
-      "hint": "Rádio hipnotiza e redireciona. Cachorro late e confunde. Mata não dá."
+      "desc": "Um homem pela metade. Ainda fala. Ainda reconhece o barco. Não dá para matar o que já era gente — e ele não quebra a vila: leva sucata e volta pro mar.",
+      "hint": "Rádio hipnotiza, redireciona e ainda rende sucata. Cachorro late e confunde. Sem resposta, ele cobra o pedágio."
     },
     "passageiro": {
       "nome": "Passageiro do Trilho",
@@ -942,6 +945,12 @@
       "tabua": 220,
       "recarga": 120
     },
+    "imposto": {
+      "base": 15,
+      "porPeca": 2,
+      "porOnda": 6
+    },
+    "pescadorTaxa": 15,
     "meta": {
       "base": 45,
       "estrela": 40,

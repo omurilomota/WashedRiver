@@ -18,8 +18,15 @@ export const H = 846;
 /** Número de lanes (índices 0–5). */
 export const LANES = 6;
 
-/** Número de colunas de plantio por lane. */
-export const COLS = 5;
+/**
+ * Número de colunas de plantio por lane.
+ *
+ * Sete colunas (42 slots) cabem em `W` com o `COLW` atual: 170 + 7 × 152 =
+ * 1234, sobrando 46 px de mar à direita. Com cinco colunas o campo acabava
+ * antes do inimigo entrar e sobrava espaço de plantio para menos cartas do
+ * que o jogo dá.
+ */
+export const COLS = 7;
 
 /** Largura de uma coluna, em pixels. */
 export const COLW = 152;
