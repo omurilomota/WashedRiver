@@ -19,6 +19,38 @@ export interface MachineDef {
   special?: boolean;
 }
 
+/**
+ * Economia de partida (ADR 005).
+ *
+ * Os números do dinheiro moram aqui e em mais lugar nenhum: renda
+ * passiva, encarecimento das peças, preço da melhoria, a conversão de
+ * sucata em sucata velha, os preços da banca e a recompensa de meta.
+ */
+export interface EconomiaDef {
+  /** Sucata por segundo, sozinha. */
+  passiva: number;
+  /** Multiplicador geral no custo das engenhocas. */
+  fatorCustoMaquina: number;
+  /** Custo do nível 1, 2 e 3 de melhoria de peça. */
+  upgradeCusto: number[];
+  /** Sucata paga por 1 de sucata velha. */
+  sucataVelhaCusto: number;
+  /** Preços da Banca do Zé (todos sumidouros). */
+  banca: {
+    reforco: number;
+    reparoDuplo: number;
+    tabua: number;
+    recarga: number;
+  };
+  /** Recompensa de sucata velha no fim da partida. */
+  meta: {
+    base: number;
+    estrela: number;
+    laneIntacta: number;
+    kill: number;
+  };
+}
+
 // ---------- criaturas ----------
 
 export type Trait = 'air' | 'neutral' | 'human' | 'unbeatable';

@@ -926,5 +926,27 @@
       "nome": "TESTADOR DE GAMBIARRA",
       "desc": "Cinquenta engenhocas na areia. Nenhuma boa."
     }
-  ]
+  ],
+  "economia": {
+    "passiva": 3,
+    "fatorCustoMaquina": 1.1,
+    "upgradeCusto": [
+      120,
+      220,
+      380
+    ],
+    "sucataVelhaCusto": 500,
+    "banca": {
+      "reforco": 150,
+      "reparoDuplo": 300,
+      "tabua": 220,
+      "recarga": 120
+    },
+    "meta": {
+      "base": 45,
+      "estrela": 40,
+      "laneIntacta": 15,
+      "kill": 0.4
+    }
+  }
 }

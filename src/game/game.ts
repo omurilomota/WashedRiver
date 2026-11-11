@@ -38,6 +38,7 @@ import { dayKey, hashStr, mulberry } from '../core/rng';
 import {
   BOSSES,
   DAILY_MODS,
+  ECONOMIA,
   ENDINGS,
   ENEMY,
   LU_LINES,
@@ -586,9 +587,13 @@ function destroyMachine(m: Machine, violent?: boolean): void {
     if(m.type==='geladeira_bomba')explode(m.x,m.lane,170,60,true);
   }
 }
-function upgradeMachine(k: string): boolean {
+export function upgradeMachine(k: string): boolean {
   if(!UPG[k])return false;
-  G.up[k]=Math.min(3,(G.up[k]||0)+1);
+  const nivel=(G.up[k]||0)+1;
+  const custo=ECONOMIA.upgradeCusto[nivel-1];
+  if(G.scrap<custo){announce('SUCATA DE MENOS PARA MELHORAR.','story');return false;}
+  G.scrap-=custo;
+  G.up[k]=Math.min(3,nivel);
   if(k==='geladeira')for(const m of G.machines)if(m.type==='geladeira'){const bonus=Math.round(MACH.geladeira.hp*(1+.6*(G.up[k]-1)));m.hp+=bonus-m.maxhp;m.maxhp=bonus;m.act=.5;}
   for(const m of G.machines)if(m.type===k){m.act=.6;}
   addText(480,300,'+ '+(UPG[k][G.up[k]-1]||''),'#e8c84a');SFX.level();
@@ -625,7 +630,7 @@ export function update(dt: number){
   updatePhase(dt);
   G.tideT-=dt;
   if(G.tideT<=0){G.tideT=G.map.weather==='rain'?3.5:6;const l=randLane();dropScrap(rnd(FIELD_R-60,FIELD_R),plantY(l)-20,Math.round(25*(G.resMult||1)),false);}
-  G.scrap += 8*dt;
+  G.scrap += ECONOMIA.passiva * dt;
   for(const k in G.cds)G.cds[k]=Math.max(0,G.cds[k]-dt);
 
   // Zé e NPCs
@@ -1007,12 +1012,18 @@ function bossDefeated(e: Enemy): void {
   if(e.b==='faroleiro'&&!G.machines.some(m=>m.type==='holofote'))SaveDB.achievement('sem_farol');
   announce('ACABOU. UM DELES, PELO MENOS.','story');
 }
+function metaReward(stars: number): number {
+  const lanesIntactas=G.structures.filter((lane)=>lane.every((s)=>s.alive)).length;
+  return Math.round((ECONOMIA.meta.base
+    + stars*ECONOMIA.meta.estrela
+    + lanesIntactas*ECONOMIA.meta.laneIntacta
+    + G.kills*ECONOMIA.meta.kill)*(1+(eff().metaBonus||0)/100));
+}
 function completeMap(): void {
   if(Game.screen==='end')return;
   const loss=STRUCTURES-structuresAlive();
   const stars=loss===0?3:loss<=2?2:1;
-  const base=Math.round((55+stars*30+G.kills*.5+G.survived*8)*(1+(eff().metaBonus||0)/100));
-  const meta=G.mode==='sandbox'?0:base;
+  const meta=G.mode==='sandbox'?0:metaReward(stars);
   if(meta)SaveDB.addScrap(meta);
   if(G.mode==='campaign'){
     SaveDB.setStars(G.mapIndex,99,stars);
@@ -1032,7 +1043,7 @@ function endRun(win: boolean): void {
   if(Game.screen==='end'||G.over)return;
   G.over=true;G.win=win;
   const stars=win?3:Math.max(0,structuresAlive()>=2?1:0);
-  const meta=G.mode==='sandbox'?0:Math.round((10+G.kills*.4+G.survived*5)*(1+(eff().metaBonus||0)/100));
+  const meta=G.mode==='sandbox'?0:metaReward(stars);
   if(meta)SaveDB.addScrap(meta);
   SaveDB.finishRun({kills:G.kills,time:G.t});
   SaveDB.save();
@@ -1055,15 +1066,16 @@ function openShop(): void {
   if(notOwned.length)offers.push({kind:'unlock',k:pick(notOwned)});
   const ups=MACH_ORDER.filter(k=>isMachUnlocked(k)&&UPG[k]&&(G.up[k]||0)<3&&k!=='coisa_ze'&&k!=='remover');
   if(ups.length)offers.push({kind:'up',k:pick(ups)});
-  offers.push({kind:'scrap'});
   offers.push({kind:'repair'});
   offers.push({kind:'heal'});
+  offers.push({kind:'sucataVelha'});
   const chosen: Offer[]=[];for(const o of shuffle(offers)){if(!chosen.some(c=>c.kind===o.kind))chosen.push(o);if(chosen.length>=(eff().extraOffer?4:3))break;}
   Game.offers=chosen;
   Game.shopItems=[
-    {id:'repair',nome:'REBOCAR UMA PAREDE',desc:'Conserta uma estrutura caída. Fica torta.',cost:90},
-    {id:'heal',nome:'GRAXA NAS PEÇAS',desc:'Cura todas as engenhocas e +10% de dano nesta partida.',cost:120},
-    {id:'shield',nome:'TÁBUA DE RESERVA',desc:'Barra a próxima invasão. Só uma.',cost:80}
+    {id:'reforco',nome:'REFORÇAR ESTRUTURA',desc:'Gasta sucata pra nada quebrar tão cedo.',cost:ECONOMIA.banca.reforco},
+    {id:'reparoDuplo',nome:'REPARO DE DUAS PAREDES',desc:'Conserta duas estruturas caídas. Ficam tortas.',cost:ECONOMIA.banca.reparoDuplo},
+    {id:'tabua',nome:'TÁBUA DE RESERVA',desc:'Barra a próxima invasão. Só uma.',cost:ECONOMIA.banca.tabua},
+    {id:'recarga',nome:'RECARGA RÁPIDA',desc:'Zera o cooldown de todas as peças.',cost:ECONOMIA.banca.recarga},
   ];
   Game.zeGiftPending=true;
   UI.shop();
@@ -1081,7 +1093,12 @@ Game.chooseOffer=function(i){
   if(o.kind==='unlock'&&o.k){G.unlockedMach[o.k]=true;G.pendingUnlock=o.k;SaveDB.seenMach(o.k);
     announce('DESBLOQUEADO: '+MACH[o.k].nome+'. Já vai aparecer na sua banca.','ach');}
   else if(o.kind==='up'&&o.k)upgradeMachine(o.k);
-  else if(o.kind==='scrap'){G.scrap+=150;addText(60,50,'+150','#e8c84a');SFX.cash();}
+  else if(o.kind==='sucataVelha'){
+    if(G.scrap<ECONOMIA.sucataVelhaCusto){announce('SUCATA DE MENOS PARA CONVERTER.','story');return;}
+    G.scrap-=ECONOMIA.sucataVelhaCusto;
+    const velha=SaveDB.addScrap(1);
+    addText(60,50,'+1 SUCATA VELHA','#e8c84a');SFX.cash();
+    announce('O ZÉ GUARDOU 1 SUCATA VELHA. TOTAL: '+velha+'.','story');}
   else if(o.kind==='repair'){const d=G.structures.flat().find(s=>!s.alive);if(d){d.alive=true;announce('REBOCOU '+d.nome+'. NÃO FICOU BONITO.','story');}}
   else if(o.kind==='heal'){for(const m of G.machines)m.hp=m.maxhp;G.dmgBonus+=.1;announce('GRAXA: PEÇAS NOVAS EM FOLHA. +10% DE DANO.','story');}
   SaveDB.save();advanceFromBreak();
@@ -1090,9 +1107,10 @@ Game.buyShopItem=function(id){
   const it=Game.shopItems.find(s=>s.id===id);if(!it)return;
   if(G.scrap<it.cost){announce('SUCATA DE MENOS.','story');return;}
   G.scrap-=it.cost;
-  if(id==='repair'){const d=G.structures.flat().find(s=>!s.alive);if(d){d.alive=true;}else G.scrap+=it.cost;}
-  if(id==='heal'){for(const m of G.machines)m.hp=m.maxhp;G.dmgBonus+=.1;}
-  if(id==='shield')G.shields++;
+  if(id==='reforco'){announce('ESTRUTURA REFORÇADA. O ZÉ COBROU E FICOU COM A SUCATA.','story');}
+  else if(id==='reparoDuplo'){let n=0;for(const lane of G.structures)for(const s of lane)if(!s.alive&&n<2){s.alive=true;n++;}if(n===0)G.scrap+=it.cost;else announce('REBOCOU '+n+' ESTRUTURA'+(n>1?'S':'')+'. TORTAS, MAS VOLTARAM.','story');}
+  else if(id==='tabua'){G.shields++;announce('TÁBUA NA MÃO. UMA INVASÃO MENOS.','story');}
+  else if(id==='recarga'){for(const k in G.cds)G.cds[k]=0;announce('TODAS AS PEÇAS RECARREGADAS. VAI COM TUDO.','story');}
   SFX.cash();UI.shop();
 };
 Game.pause=function(){if(Game.screen!=='play')return;Game.paused=true;Game.screen='pause';Snd.pauseDuck(true);UI.pause();};

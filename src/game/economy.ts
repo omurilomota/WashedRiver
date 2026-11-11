@@ -5,7 +5,7 @@
  * `game.ts`) precisam do mesmo número: se a HUD mostra um custo e a
  * partida cobra outro, o jogador perde a confiança no jogo.
  */
-import { MACH, MACH_ORDER, MAP_UNLOCKS } from '../data';
+import { ECONOMIA, MACH, MACH_ORDER, MAP_UNLOCKS } from '../data';
 import { G } from '../core/state';
 import type { Machine } from '../core/state';
 import { SaveDB } from '../save/storage';
@@ -45,10 +45,13 @@ export function isMachUnlocked(k: string): boolean {
   return false;
 }
 
-/** Custo da engenhoca, já com o desconto da árvore. */
+/** Custo da engenhoca, já com o desconto da árvore e o encarecimento geral. */
 export function machCost(k: string): number {
   const e = eff();
-  return Math.max(1, Math.round(MACH[k].cost * (1 - (e.discount || 0))));
+  return Math.max(
+    1,
+    Math.round(MACH[k].cost * ECONOMIA.fatorCustoMaquina * (1 - (e.discount || 0))),
+  );
 }
 
 /** Engenhocas disponíveis, na ordem do baralho. */

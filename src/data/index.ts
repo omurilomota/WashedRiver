@@ -12,6 +12,7 @@ import type {
   BossDef,
   Cartazes,
   DailyMod,
+  EconomiaDef,
   Ending,
   EnemyDef,
   MapDef,
@@ -29,6 +30,7 @@ export const MACH = balanceJson.mach as Record<string, MachineDef>;
 export const SHOP_BASE = balanceJson.shopBase as string[];
 export const MACH_ORDER = balanceJson.machOrder as string[];
 export const UPG = balanceJson.upgrades as Record<string, string[]>;
+export const ECONOMIA = balanceJson.economia as EconomiaDef;
 
 export const ENEMY = balanceJson.enemy as Record<string, EnemyDef>;
 export const ENEMY_ORDER = balanceJson.enemyOrder as string[];
