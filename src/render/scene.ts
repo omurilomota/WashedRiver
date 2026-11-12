@@ -4,7 +4,7 @@
  * Recebe o estado da partida e devolve pixels. Não decide nada: quem
  * manda é o jogo. A HUD e os overlays de tela ficam em `ui.ts`.
  */
-import { COLS, COLW, H, LANES, LANE_H, LANE_Y0, SPAWN_X, VX, W, colX, lerp, plantY, rnd } from '../core/constants';
+import { COLS, COLW, FIELD_R, H, LANES, LANE_H, LANE_Y0, SPAWN_X, VX, W, colX, lerp, plantY, rnd } from '../core/constants';
 import { ctx } from '../core/canvas';
 import { G, Game } from '../core/state';
 import { BOSSES } from '../data';
@@ -78,6 +78,9 @@ export function drawField(){
     if(G.boss&&G.boss.lane===l&&!G.bossDeath)drawEnemy(G.boss);
   }
   for(const d of G.deaths)if(BOSSES[d.type])drawBossDeath({...d,b:d.type});
+  // apresentações diegéticas (BLOCO M.3): sombra passando no horizonte e
+  // desenho na parede da vila. É a descoberta, não um banner de sistema.
+  drawIntros(G);
   for(const p of G.projs)drawProjectile(p);
   for(const h of G.hazards)drawHazard(h);
   for(const p of G.pickups)drawPickup(p,G);
@@ -114,6 +117,93 @@ export function drawHazard(h){
     }
   }
 }
+// ---------------------------------------------------------------------
+//  Apresentações diegéticas (BLOCO M.3)
+// ---------------------------------------------------------------------
+
+/**
+ * Silhueta de um bicho no horizonte: forma escura passando pela margem
+ * d'água antes dele entrar. Uma por bicho novo, e some sozinha.
+ */
+function silhuetaIntro(it: { type: string; lane: number; t: number; dur: number }): void {
+  const g = G!;
+  const r = (g.enemies.find((e) => e.type === it.type)?.r) || 18;
+  const y = LANE_Y0 + it.lane * LANE_H + 40;
+  const p = it.t / it.dur;
+  // entra pela direita, atravessa a margem e sai — sem parar no campo
+  const x = lerp(SPAWN_X + 60, FIELD_R - 40, Math.min(1, p * 1.4));
+  ctx.save();
+  ctx.globalAlpha = 0.55 * Math.sin(Math.min(1, p * 1.2) * Math.PI);
+  ctx.fillStyle = '#050708';
+  // corpo: silhueta genérica com o tamanho do bicho
+  ctx.beginPath();
+  ctx.ellipse(x, y - r, r * 0.9, r * 0.7, 0, 0, 7);
+  ctx.fill();
+  // traço que diferencia: espinha, asa, garra
+  if (it.type === 'baiacu' || it.type === 'peixe_mae') {
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.6 + i * r * 0.3, y - r - r * 0.5);
+      ctx.lineTo(x - r * 0.6 + i * r * 0.3, y - r - r * 0.95);
+      ctx.stroke();
+    }
+  }
+  if (it.type === 'gaivota' || it.type === 'gaivota_r' || it.type === 'mariposa') {
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.quadraticCurveTo(x - r * 1.4, y - r * 2.2, x - r * 1.9, y - r * 0.7);
+    ctx.quadraticCurveTo(x - r * 1.1, y - r * 1.2, x, y - r * 0.8);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.quadraticCurveTo(x + r * 1.4, y - r * 2.2, x + r * 1.9, y - r * 0.7);
+    ctx.quadraticCurveTo(x + r * 1.1, y - r * 1.2, x, y - r * 0.8);
+    ctx.fill();
+  }
+  if (it.type === 'enguia' || it.type === 'agua') {
+    ctx.lineCap = 'round';
+    ctx.lineWidth = r * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x - r, y - r * 0.8);
+    ctx.quadraticCurveTo(x, y - r * 1.6, x + r, y - r * 0.8);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+  ctx.restore();
+}
+
+/**
+ * Desenho na parede da vila: cartaz tosco mostrando o bicho que vem.
+ * Fica pendurado um tempo e some — o jogador que quiser, olha.
+ */
+function cartazIntro(it: { type: string; lane: number; t: number; dur: number }): void {
+  const y = plantY(it.lane);
+  const some = it.t > it.dur - 2; // pisca antes de cair
+  ctx.save();
+  if (Math.floor(it.t * 4) % 2 === 0 || !some) {
+    ctx.translate(60, y - 92);
+    ctx.rotate(-0.05);
+    ctx.fillStyle = '#d7c9a0';
+    ctx.fillRect(0, 0, 44, 34);
+    ctx.fillStyle = '#8a6a3a';
+    ctx.fillRect(20, -6, 4, 8);
+    ctx.fillStyle = '#3a3020';
+    ctx.font = '6px monospace';
+    ctx.fillText('TEM', 4, 12);
+    ctx.fillText('BICHO', 4, 20);
+    ctx.fillText('NOVO', 4, 28);
+  }
+  ctx.restore();
+}
+
+/** Desenha as apresentações rolando. */
+export function drawIntros(g: { intros: { type: string; lane: number; kind: string; t: number; dur: number }[] }): void {
+  for (const it of g.intros) {
+    if (it.kind === 'silhueta') silhuetaIntro(it);
+    else if (it.kind === 'cartaz') cartazIntro(it);
+  }
+}
+
 export function drawProp(p){
   const y=plantY(p.lane),step=Math.sin(p.anim*5);
   ctx.fillStyle='#2a2a30';ctx.fillRect(p.x-22+step*5,y-14,16,14);ctx.fillRect(p.x+4-step*5,y-14,16,14);

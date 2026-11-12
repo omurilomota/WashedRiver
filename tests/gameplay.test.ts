@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from 'vitest';
-import { DAILY_MODS, ECONOMIA, MACH, MAPS } from '../src/data';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { DAILY_MODS, ECONOMIA, ENEMY_ORDER, INTROS, MACH, MAPS } from '../src/data';
 import { STRUCTURES, VX, W } from '../src/core/constants';
 import { KEY } from '../src/save/storage';
 
@@ -43,6 +43,7 @@ function fakeContext(): CanvasRenderingContext2D {
 
 let game: typeof import('../src/game/game');
 let state: typeof import('../src/core/state');
+let save: typeof import('../src/save/storage');
 
 beforeAll(async () => {
   document.body.innerHTML = `
@@ -58,6 +59,7 @@ beforeAll(async () => {
     ctx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   game = await import('../src/game/game');
   state = await import('../src/core/state');
+  save = await import('../src/save/storage');
 });
 
 /** Modo silencioso: os testes não precisam de som nem de timer. */
@@ -221,6 +223,88 @@ describe('onda não pode travar (regra de fim de onda)', () => {
     // desgrudou (jam é temporária) e nunca ficou preso mais que a jam dura
     expect(soltou).toBe(true);
     expect(maxPreso).toBeLessThanOrEqual(7);
+  });
+});
+
+describe('onboarding diegético (BLOCO M.3)', () => {
+  // o save persiste entre testes do arquivo: cada teste precisa de bichos
+  // ainda não vistos, então o bestiário começa vazio aqui.
+  beforeEach(() => {
+    save.SaveDB.resetSlot(0);
+    save.SaveDB.setSlot(0);
+  });
+
+  it('bicho novo não aparece como banner de sistema', () => {
+    state.Game.startCampaign(0);
+    const antes = state.G.msg;
+    state.Game.startCampaign(0);
+    game.spawnEnemy('agua', 0, 900); // método: silhueta
+    // não existe "NOVO: ..." em nenhum announce: a medição é pelo texto
+    expect(state.G.msg || '').not.toContain('NOVO:');
+    expect(antes).not.toContain('NOVO:');
+  });
+
+  it('silhueta entra no campo e expira sozinha', () => {
+    const bicho = ENEMY_ORDER.find((t) => !save.SaveDB.slot.seenB[t] && INTROS[t].metodo === 'silhueta');
+    expect(bicho, 'nenhum bicho de silhueta novo sobrou').toBeDefined();
+    state.Game.startCampaign(0);
+    const b = game.spawnEnemy(bicho!, 2, 900);
+    expect(b).not.toBeNull();
+    expect(state.G.intros.some((i) => i.type === bicho && i.kind === 'silhueta')).toBe(true);
+    for (let i = 0; i < 40; i++) game.update(0.1); // 4s > 1,6s de duração
+    expect(state.G.intros.some((i) => i.type === bicho)).toBe(false);
+  });
+
+  it('rádio no campo diferencia a introdução', () => {
+    // sem rádio: o Zé comenta o bicho novo (a fala do dado). O save persiste
+    // entre testes do mesmo arquivo, então usa um bicho que ainda não foi
+    // visto nesta rodada.
+    const bicho = ENEMY_ORDER.find((t) => !save.SaveDB.slot.seenB[t]);
+    expect(bicho, 'nenhum bicho novo sobrou pra testar').toBeDefined();
+    state.Game.startCampaign(0);
+    game.spawnEnemy(bicho!, 1, 900);
+    const falas: string[] = [state.G.ze.say];
+    for (let i = 0; i < 5; i++) { game.update(0.1); falas.push(state.G.ze.say); }
+    expect(falas).toContain(INTROS[bicho!].fala);
+
+    // com rádio: o chiado sai como rádio (DOM real dos toasts). O bicho do
+    // bloco anterior já foi visto, então escolhe outro ainda novo.
+    const bicho2 = ENEMY_ORDER.find((t) => !save.SaveDB.slot.seenB[t] && INTROS[t].metodo === 'radio');
+    expect(bicho2, 'nenhum bicho novo sobrou pro rádio').toBeDefined();
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('radio', 3, 2, true)).toBe(true);
+    const caixa = document.getElementById('toasts')!;
+    let viuTch = false, viuBanner = false;
+    game.spawnEnemy(bicho2!, 1, 900);
+    for (let i = 0; i < 5; i++) {
+      game.update(0.1);                       // o chiado nasce aqui dentro
+      const txt = caixa.textContent || '';
+      if (txt.includes('...tch')) viuTch = true;
+      if (txt.includes('NOVO:')) viuBanner = true;
+      caixa.innerHTML = '';                   // limpa para o próximo lance
+    }
+    expect(bicho2, 'nenhum bicho de rádio novo sobrou').toBeDefined();
+    expect(viuTch, 'rádio não chiou a apresentação').toBe(true);
+    expect(viuBanner, 'ainda existe banner de sistema').toBe(false);
+  });
+
+  it('cartaz aparece na vila e some', () => {
+    const bicho = ENEMY_ORDER.find((t) => !save.SaveDB.slot.seenB[t] && INTROS[t].metodo === 'cartaz');
+    expect(bicho, 'nenhum bicho de cartaz novo sobrou').toBeDefined();
+    state.Game.startCampaign(0);
+    game.spawnEnemy(bicho!, 4, 900);
+    expect(state.G.intros.some((i) => i.type === bicho && i.kind === 'cartaz')).toBe(true);
+    for (let i = 0; i < 200; i++) game.update(0.1); // 20s > 14s
+    expect(state.G.intros.some((i) => i.type === bicho)).toBe(false);
+  });
+
+  it('todo bicho do bestiário tem método de introdução válido', () => {
+    for (const tipo of ENEMY_ORDER) {
+      const it = INTROS[tipo];
+      expect(it, `${tipo} sem introdução`).toBeDefined();
+      expect(['silhueta', 'ze', 'radio', 'cartaz', 'marca', 'nada']).toContain(it.metodo);
+      if (it.metodo !== 'nada') expect(it.fala.length, `${tipo} sem fala`).toBeGreaterThan(3);
+    }
   });
 });
 

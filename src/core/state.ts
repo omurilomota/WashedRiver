@@ -315,6 +315,10 @@ export interface GameState {
   toqBoost: number;
   dogSay: number;
   luTalking: string;
+  /** Apresentações diegéticas rolando (BLOCO M.3). */
+  intros: { type: string; lane: number; kind: string; t: number; dur: number }[];
+  /** Bicho cujo primeiro cadáver deixa uma marca estranha. */
+  marcaPendente: string | null;
   /** Vizinhos das lanes de baixo (3, 4 e 5): fala, timer e cliques de cada um. */
   vizinhoSay: string[];
   vizinhoT: number[];
@@ -460,6 +464,8 @@ function emptyState(): GameState {
     toqBoost: 0,
     dogSay: 0,
     luTalking: '',
+    intros: [],
+    marcaPendente: null,
     vizinhoSay: ['', '', ''],
     vizinhoT: [0, 0, 0],
     vizinhoClicks: [0, 0, 0],

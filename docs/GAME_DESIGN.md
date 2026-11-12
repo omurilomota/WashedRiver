@@ -174,6 +174,21 @@ Chefes são **fases**, não sacos de vida:
 | Fábrica Podre | energia (×1.25) | cinzas | O Gerente | a origem tem expediente até domingo |
 | Cemitério de Barcos | tudo (×1.4) | vendaval | A MARÉ | o fim da costa e o começo do mar |
 
+### Descoberta (BLOCO M.3)
+
+Bicho novo não avisa com banner de sistema. Cada um se apresenta de um jeito
+(`intros` em `balance.json`, método por bicho):
+
+- **silhueta** — uma forma escura passa pela margem antes dele entrar
+- **ze** — o Zé comenta, em deboche ("Olha o tamanho da garra desse aí.")
+- **radio** — se houver rádio no campo, chiado e a voz distante; sem rádio, o Zé
+- **cartaz** — um desenho tosco aparece pendurado na vila
+- **marca** — o primeiro cadáver deixa uma marca estranha e "TEM MAIS VINDO."
+- **nada** — o bicho só aparece, e o jogador descobre no susto
+
+O bestiário (codex) continua escondido até o bicho ser visto — a descoberta é
+na tela, não na interface.
+
 ### Curva de dificuldade (BLOCO M.2)
 
 Os números de onda moram em `src/data/balance.json` (`dificuldade`), não

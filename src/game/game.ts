@@ -42,6 +42,7 @@ import {
   DAILY_MODS,
   DIFICULDADE,
   ECONOMIA,
+  INTROS,
   ENDINGS,
   ENEMY,
   LU_CLICKS,
@@ -165,6 +166,7 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     ze:{alive:true,say:'',sayT:0,nextSay:12,anim:0,repeat:0},zeSilent:0,zeHat:false,
     luAtWindow:true,toqAlive:true,toqSay:'',toqSayT:0,toqClicks:0,zeClicks:0,toqBoost:0,
     dogSay:0,luTalking:'',vizinhoSay:['','',''],vizinhoT:[0,0,0],vizinhoClicks:[0,0,0],vizinhoSegredo:false,
+    intros:[],marcaPendente:null,
     up:{},unlockedMach:{},dmgBonus:0,shields:e.shield||0,repairBank:e.repair||0,
     boss:null,bossDeath:null,
     // "NOITE PERMANENTE": o mapa já começa no escuro.
@@ -534,9 +536,38 @@ export function spawnEnemy(type: string, lane: number, x?: number, scale?: numbe
   SFX.enter(type);
   if (!SaveDB.slot.seenB[type]) {
     SaveDB.seenEnemy(type);
-    announce('NOVO: ' + d.nome + ' — ' + d.hint, 'ach');
+    apresentar(type, lane);
   }
   return e;
+}
+
+/**
+ * Como o bicho novo se apresenta (BLOCO M.3).
+ *
+ * Nada de "NOVO: BAIACU — dica". O jogador descobre: sombra passando no
+ * mar, o Zé comentando, o rádio chiando, um desenho na parede da vila, uma
+ * marca estranha no primeiro cadáver — ou nada, e ele descobre no susto.
+ */
+function apresentar(type: string, lane: number): void {
+  const it = INTROS[type];
+  if (!it || it.metodo === 'nada') return;
+  const fala = it.fala || '';
+  if (it.metodo === 'silhueta' || it.metodo === 'cartaz') {
+    G.intros.push({ type, lane, kind: it.metodo, t: 0, dur: it.metodo === 'silhueta' ? 1.6 : 14 });
+    if (fala) { G.ze.say = fala; G.ze.sayT = 4; }
+    return;
+  }
+  if (it.metodo === 'radio') {
+    // rádio no campo? Chiado e a voz distante. Sem rádio, o Zé comenta.
+    if (G.machines.some((m) => m.type === 'radio') && fala) {
+      announce('...tch ...' + fala, 'radio');
+      return;
+    }
+    if (fala) { G.ze.say = fala; G.ze.sayT = 4; }
+    return;
+  }
+  if (it.metodo === 'marca') { G.marcaPendente = type; return; }
+  if (fala) { G.ze.say = fala; G.ze.sayT = 4.5; }
 }
 function spawnBoss(id: string, lane?: number, noIntro?: boolean): void {
   const B=BOSSES[id];if(!B)return;
@@ -620,6 +651,10 @@ function killEnemy(e: Enemy, noChain?: boolean): void {
   if(ENEMY[e.type].scrap>0)dropScrap(e.x,y-e.r,Math.round(ENEMY[e.type].scrap*(1+eff().luck)*(G.resMult||1)),true);
   const _swimBack = e.type==='piranha' && !G.enemies.some(o=>o!==e&&o.type==='piranha'&&o.lane===e.lane);
   G.deaths.push({type:e.type,x:e.x,y,lane:e.lane,t:0,dur:deathDur(e.type),dir:Math.random()<.5?-1:1,swimBack:_swimBack});
+  if(G.marcaPendente){G.marcaPendente=null;
+    stain(e.x,plantY(e.lane),'#3a1a2a',26);
+    addText(e.x,plantY(e.lane)-30,'TEM MAIS VINDO.','#c88');
+    announce('A MARCA NAO E DESSA.','story');}
   SFX.death(e.type);
   if(noChain)return;
   if(e.type==='ova'){for(let k=0;k<3;k++){const l=spawnEnemy('larva',e.lane,e.x+rnd(-20,20));if(l)l.kb=rnd(-70,110);}
@@ -726,6 +761,7 @@ export function update(dt: number){
   if(G.ze.sayT>0)G.ze.sayT-=dt;
   if(G.toqSayT>0)G.toqSayT-=dt;
   for(let i=0;i<3;i++)if(G.vizinhoT[i]>0)G.vizinhoT[i]-=dt;
+  for(const it of G.intros)it.t+=dt;G.intros=G.intros.filter(it=>it.t<it.dur);
   G.toqBoost=Math.sin(G.t*.8)*10;
   if(!semMovimento())G.shake*=Math.exp(-6*dt);else G.shake=0;G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
   if(G.savedT>0)G.savedT-=dt;if(G.dogSay>0)G.dogSay-=dt;

@@ -993,5 +993,87 @@
       "hpPorDegrau": 0.1,
       "tetoHp": 0.6
     }
+  },
+  "intros": {
+    "baiacu": {
+      "metodo": "nada",
+      "fala": ""
+    },
+    "enguia": {
+      "metodo": "silhueta",
+      "fala": "Tem coisa comprida entrando na água."
+    },
+    "ova": {
+      "metodo": "cartaz",
+      "fala": "Aquilo é ovo. Não deixa chocar."
+    },
+    "larva": {
+      "metodo": "nada",
+      "fala": ""
+    },
+    "caranguejo": {
+      "metodo": "ze",
+      "fala": "Olha o tamanho da garra desse aí."
+    },
+    "bomba": {
+      "metodo": "ze",
+      "fala": "Esse aí estoura. Não oferece torrada."
+    },
+    "gaivota": {
+      "metodo": "silhueta",
+      "fala": "Passou uma sombra grande aí em cima."
+    },
+    "gaivota_r": {
+      "metodo": "silhueta",
+      "fala": "Sombra maior ainda. Ela vem buscar coisa."
+    },
+    "tatu": {
+      "metodo": "ze",
+      "fala": "Esse cava. Buracão fundo."
+    },
+    "lata": {
+      "metodo": "ze",
+      "fala": "Esse aí veio de outra mãe. Devolve tiro."
+    },
+    "fantasma": {
+      "metodo": "nada",
+      "fala": ""
+    },
+    "polvo": {
+      "metodo": "radio",
+      "fala": "Atenção: coisa nova na água. Tem braço."
+    },
+    "agua": {
+      "metodo": "silhueta",
+      "fala": "Isso não é peixe. É ideia errada."
+    },
+    "mariposa": {
+      "metodo": "ze",
+      "fala": "Mariposa. Na luz ela para e pensa."
+    },
+    "sapo": {
+      "metodo": "ze",
+      "fala": "Esse pula. Cuida das costas."
+    },
+    "piranha": {
+      "metodo": "nada",
+      "fala": ""
+    },
+    "caranguejo_m": {
+      "metodo": "silhueta",
+      "fala": "Esse aí tá de luto. E com raiva."
+    },
+    "baleia": {
+      "metodo": "silhueta",
+      "fala": "OLHA A BALEIA."
+    },
+    "pescador": {
+      "metodo": "ze",
+      "fala": "É gente. Não é bicho. Não atira."
+    },
+    "passageiro": {
+      "metodo": "radio",
+      "fala": "Passageiro no trilho. Também não é bicho."
+    }
   }
 }

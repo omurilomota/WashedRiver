@@ -112,6 +112,18 @@ export interface BossDef {
   unbeatable?: boolean;
 }
 
+/**
+ * Como um bicho novo se apresenta (BLOCO M.3).
+ *
+ * Onboarding diegético: o jogador descobre, não recebe banner de sistema.
+ * `metodo` é silhueta | ze | radio | cartaz | marca | nada.
+ */
+export interface IntroDef {
+  metodo: 'silhueta' | 'ze' | 'radio' | 'cartaz' | 'marca' | 'nada';
+  /** O que o Zé (ou o rádio) fala. Vazio em `nada`. */
+  fala: string;
+}
+
 // ---------- sinergias ----------
 
 export interface SynergyDef {

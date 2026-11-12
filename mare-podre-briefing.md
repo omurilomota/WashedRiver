@@ -134,8 +134,11 @@
   (partida travada); bicho comendo peça curada a cada break nunca matava a
   peça (onda nunca acabava — agora a fome cresce enquanto ele come); polvo
   grudado na peça não soltava nunca (jam virou temporária de 5s).
-- **M.3:** onboarding diegético (silhueta no horizonte, fala do Zé, rádio, cartaz
-  ou nada — nada de banner de sistema).
+- **M.3 (feito):** onboarding diegético. Banner "NOVO: ..." removido; cada um
+  dos 20 bichos tem método em `balance.json` (`intros`): silhueta, ze, radio
+  (chiado se houver rádio no campo), cartaz na vila, marca no primeiro
+  cadáver ou nada. `drawIntros` em `scene.ts` desenha silhueta e cartaz;
+  5 testes em `gameplay.test.ts` cobrem.
 - **M.4:** seleção de plantas (deck de 7 antes da partida, salvo por mapa).
 - **M.5:** enciclopédia (bestiário, galeria de peças, chefes; descoberta persistente).
 - **M.6:** molho (eventos aleatórios entre ondas, micro-surpresas na onda, ondas temáticas).

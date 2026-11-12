@@ -230,14 +230,15 @@ export const Snd=(function(){
 
   // ---------- primitivas ----------
   S.tone=function(t,dur,type,f0,f1,gain,dest){
-    const c=S.ctx,o=c.createOscillator();o.type=type;o.frequency.setValueAtTime(f0,t);
+    const c=S.ctx;if(!c)return; // sem contexto (jsdom/teste): som é opcional
+    const o=c.createOscillator();o.type=type;o.frequency.setValueAtTime(f0,t);
     if(f1)o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);
     const g=c.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain,t+Math.min(.02,dur*.2));
     g.gain.exponentialRampToValueAtTime(.0008,t+dur);
     o.connect(g);g.connect(dest||S.sfx);o.start(t);o.stop(t+dur+.05);return o;
   };
   S.noiseHit=function(t,dur,type,freq,Q,gain,dest){
-    const c=S.ctx,s=c.createBufferSource();s.buffer=S.noise;s.loop=true;
+    const c=S.ctx;if(!c)return;const s=c.createBufferSource();s.buffer=S.noise;s.loop=true;
     const flt=c.createBiquadFilter();flt.type=type;flt.frequency.value=freq;flt.Q.value=Q;
     const g=c.createGain();g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.0008,t+dur);
     s.connect(flt);flt.connect(g);g.connect(dest||S.sfx);s.start(t);s.stop(t+dur+.05);return flt;
@@ -253,7 +254,7 @@ export const Snd=(function(){
 
   // ---------- instrumentos melódicos ----------
   S.instr=function(kind,midi,t,dur,g=.07){
-    const c=S.ctx,fq=f(midi);
+    const c=S.ctx;if(!c)return;const fq=f(midi);
     const bus=S.music;
     if(kind==='acc'){ // acordeão: três palhetas desafinadas
       const flt=c.createBiquadFilter();flt.type='lowpass';flt.frequency.value=1600;flt.Q.value=1.6;
@@ -296,7 +297,7 @@ export const Snd=(function(){
     }
   };
   S.bass=function(midi,t,dur){
-    const c=S.ctx,fq=f(midi);
+    const c=S.ctx;if(!c)return;const fq=f(midi);
     const o=c.createOscillator();o.type='sawtooth';o.frequency.value=fq;
     const flt=c.createBiquadFilter();flt.type='lowpass';flt.frequency.value=260;
     const g=c.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.22,t+.03);
