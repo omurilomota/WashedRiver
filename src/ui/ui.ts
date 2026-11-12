@@ -308,14 +308,14 @@ export const UI=(function(){
     const who=(summary.mapName||'A VILA');
     if(summary.win){
       title=summary.mode==='endless'?'A NOITE CANSou':'A VILA AGUENTOU';
-      text=lost.length?'Perdemos '+list(lost)+'. O mar continua podre. '+who+' continua de pé, do jeito que dá.'
-        :'Nada caiu hoje. '+who+' continua de pé. O mar continua podre. Amanhã tem mais.';
+      text=lost.length?'Perdemos '+list(lost)+'. O mar continuou podre, do jeito que ele gosta. '+who+' continua de pé, do jeito que dá.'
+        :'Nada caiu hoje. '+who+' continua de pé. O mar continuou podre. Amanhã tem mais bicho.';
     }else if(summary.mode==='endless'){
       title='A NOITE GANHOU';
-      text='Chegou na onda '+(summary.survived+1)+'. Perdemos o Zé. Ele não era herói, era o que tinha.';
+      text='Chegou na onda '+(summary.survived+1)+'. O Zé foi. O chapéu ficou. A gente continua.';
     }else{
       title='PERDEMOS O ZÉ';
-      text=(lost.length?'Perdemos '+list(lost)+'. ':'')+'O mar ficou com o resto. Ninguém aqui era bom. Só era daqui.';
+      text=(lost.length?'Perdemos '+list(lost)+'. ':'')+'O mar levou o resto. A gente era ruim, mas era daqui.';
     }
     const next=summary.mode==='campaign'&&summary.win&&summary.mapIndex!==MAPS.length-1;
     setScreen('<div class="endTitle">'+title+'</div><div class="endText">'+text+'</div>'+

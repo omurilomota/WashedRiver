@@ -119,6 +119,19 @@
 - Save: toda mudança de formato tem migração e teste
 - Gitflow + Conventional Commits + gitmoji; um arquivo por vez; commit por mudança
 
+## BLOCO M — reforma de alma (em andamento, na ordem)
+- **M.1 (feito):** arrancar a conscientização. Textos melancólicos/ecoconscientes
+  reescritos no registro do deboche: cenas de morte (`creatures.ts`), avisos
+  (`game.ts`), telas de fim (`ui.ts`), `zeRaro`/`vozLines`/finais (`maps.json`) e
+  descrições com pena (`balance.json`). Build verificado: zero textos antigos.
+- **M.2:** curva de dificuldade (onda 1 tutorial passável, onda 3 exige atenção,
+  chefe como pico, mapa N+1 um degrau acima, Noite Infinita começa igual).
+- **M.3:** onboarding diegético (silhueta no horizonte, fala do Zé, rádio, cartaz
+  ou nada — nada de banner de sistema).
+- **M.4:** seleção de plantas (deck de 7 antes da partida, salvo por mapa).
+- **M.5:** enciclopédia (bestiário, galeria de peças, chefes; descoberta persistente).
+- **M.6:** molho (eventos aleatórios entre ondas, micro-surpresas na onda, ondas temáticas).
+
 ## Próximos passos planejados (não fazer agora, só contexto)
 - As Partes 1/2/3 são **independentes** (podem ser feitas em qualquer ordem),
   mas a **ordem de prioridade atual é 1 → 2 → 3**.

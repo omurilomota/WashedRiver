@@ -838,7 +838,7 @@
     "O Bento não era pra estar ali. Nem o peixe.",
     "Se sobrar um, a gente come. Se sobrar dois, a gente negocia."
   ],
-  "zeRaro": "Meu irmão foi no barco. Ele não voltou. O peixe voltou com o boné dele. Eu não contei isso pra ninguém.",
+  "zeRaro": "Meu irmão foi no barco. Voltou o boné dele. Eu uso até hoje. Não conta pra ninguém.",
   "luClicks": [
     "Imposto é todo round. Arma na rua não é de graça.",
     "Eu cobro. Não é gosto, é contabilidade.",
@@ -893,7 +893,7 @@
   "vozLines": [
     "Boa noite, costa podre. Você está ouvindo a Voz da Maré.",
     "Não sou gravação. Gravação não erra o seu nome.",
-    "Eu era gente. Isso não é um pedido de desculpa, é informação.",
+    "Eu era gente. Não é pedido de desculpa. É currículo.",
     "O mar não odeia vocês. O mar só carrega. Carregar cansa.",
     "Amanhã, às seis, a maré vira. Escolha antes."
   ],
@@ -940,31 +940,31 @@
       "id": "farol",
       "titulo": "ACENDER O FAROL",
       "escolha": "Acender o farol e apontar a luz pro mar",
-      "txt": "A vila acendeu o farol. Não como desculpa: como aviso. A luz entrou na água e o mar foi descendo, devagar, como quem se retira de uma conversa. Barra Suja não afundou. Ficou mais longe da costa. O peixe voltou a ter um olho só. Não todo peixe.",
-      "ze": "A gente acendeu. Não consertou nada. Mas dá pra ver o horizonte, e isso já é uma diferença.",
+      "txt": "A vila acendeu o farol. O mar deu meia-volta devagar, com vergonha. Barra Suja não afundou: só ficou mais longe da costa. O peixe voltou a ter um olho só. Um ou outro.",
+      "ze": "Acendeu. Não consertou nada, mas agora dá pra ver de onde vem a próxima onda.",
       "lu": "Eu vou ficar na casa. Com a luz acesa, a vista até que presta.",
-      "toq": "O farol tem uma manivela. Se eu girar sozinho, ele fica aceso a noite inteira?",
-      "voz": "A Voz do Rádio não falou mais depois daquela noite."
+      "toq": "Tem uma manivela. Se eu girar sozinho a noite inteira, ganho o quê?",
+      "voz": "A Voz do Rádio calou a boca naquela noite. Melhor assim."
     },
     {
       "id": "fechar",
       "titulo": "FECHAR A BAÍA",
       "escolha": "Fechar a baía com os navios e os escombros",
-      "txt": "A vila fechou a baía com o que existia: barcaça, pneu, portão de galpão, duas geladeiras. Parou de chegar. Também parou de sair. Barra Suja virou uma tampa. O peixe dentro apodreceu. O que restou de gente aprendeu a viver de pé, no escuro, com a água no tornozelo.",
+      "txt": "A vila fechou a baía com barcaça, pneu, portão de galpão e duas geladeiras. Parou de entrar. Também parou de sair. O peixe de dentro apodreceu com cheiro de vitória. A gente aprendeu a andar no escuro com água no tornozelo.",
       "ze": "Fechou. Pronto. Não tem mar, não tem peixe, não tem problema. Só tem a gente, que é o problema.",
       "lu": "Tem uma toalha no varal que nunca mais secou. Umidade.",
-      "toq": "Eu ainda escuto o peixe batendo do outro lado. Ele quer entrar. Ou quer que eu saia?",
-      "voz": "A Voz do Rádio ficou do lado de fora. Repetia nomes. Nunca os mesmos."
+      "toq": "Ainda escuto o peixe batendo do outro lado. Quer entrar. Ou quer que eu saia. Um dos dois.",
+      "voz": "A Voz ficou do lado de fora, lendo nome. Nenhum era meu."
     },
     {
       "id": "ouvir",
       "titulo": "RESPONDER AO RÁDIO",
       "escolha": "Responder a Voz do Rádio e aceitar o que ela é",
-      "txt": "A vila respondeu ao rádio. A Voz agradeceu. O mar não ficou limpo: ficou quieto. A maré entrou sem quebrar nada, cobriu a rua, a casa, o barco, tudo, e ficou. Debaixo da água, a vila continua igual, e o peixe passa entre as portas sem comer o que não é peixe. Quem escuta o rádio de madrugada diz que a Voz agora lê uma lista de nomes. O primeiro é o irmão do Zé.",
-      "ze": "Ela não mentiu. O mar só carregava. Agora ele tem com quem falar. É diferente.",
-      "lu": "Eu fui embora. Não da vila. Da costa. Ainda abro a janela. A água tem a mesma cor de antes.",
-      "toq": "A Voz disse meu nome certo. Do jeito que a minha mãe dizia. Eu não tenho medo.",
-      "voz": "A Voz do Rádio não era o mar. Era uma mulher que o mar carregou e nunca devolveu. Ela só queria responder."
+      "txt": "A vila respondeu ao rádio. A Voz agradeceu e desligou. O mar não ficou limpo: ficou quieto, que é o melhor que ele faz. A maré entrou, cobriu a rua, a casa e o barco, e parou aí, como visita mal-educada. O peixe passa entre as portas e não come nada: não é educação, é falta de interesse. Quem escuta de madrugada diz que a Voz agora lê uma lista de mercado. O primeiro item é café.",
+      "ze": "Ela não mentiu. O mar só carregava. Agora tem com quem conversar. Sina de quem não tem mais o que fazer.",
+      "lu": "Eu fui embora. Da costa, não da vila. Abro a janela do mesmo jeito. A água continua com a mesma cor, o que me irrita.",
+      "toq": "A Voz disse meu nome certo, do jeito que minha mãe dizia quando eu tava encrencado.",
+      "voz": "A Voz não era o mar. Era gente que o mar carregou e não devolveu. Ela só queria terminar a conversa."
     }
   ],
   "dailyMods": [

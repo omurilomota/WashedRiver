@@ -612,7 +612,7 @@ function killEnemy(e: Enemy, noChain?: boolean): void {
   else if(e.type==='sapo'){const near=G.enemies.filter(o=>o.lane===e.lane&&Math.abs(o.x-e.x)<90)[0];
     if(near){damageEnemy(near,35,'splat');addText(e.x,y-34,'COLO DE ALGUÉM','#c8d070');}}
   else if(e.type==='caranguejo_m'){for(const o of G.enemies)if(o.type==='caranguejo'&&Math.abs(o.x-e.x)<220){o.rage=7;o.speed*=1.5;addText(o.x,plantY(o.lane)-40,'VINGANÇA','#e0a040');}}
-  else if(e.type==='baleia'){G.zeSilent=1;G.ze.say='...';G.ze.sayT=4;SaveDB.achievement('baleia');announce('O ZÉ NÃO VAI FALAR NESSA ONDA.','story');}
+  else if(e.type==='baleia'){G.zeSilent=1;G.ze.say='Pelo menos agora ela não pisa.';G.ze.sayT=4;SaveDB.achievement('baleia');announce('O ZÉ CALOU A BOCA. DEPOIS FOI CATAR SUCATA.','story');}
 }
 function steal(p: Pickup, e: Enemy): void {
   e.carry+=p.v;e.flee=true;e.act=.6;e.revealed=1;
@@ -946,8 +946,8 @@ function updateEnemies(dt: number): void {
       e.eating=null;
       const sp=e.speed*(e.slow>0?.45:1)*(e.type==='piranha'&&e.school>=3?2.0:1)*(1+(e.rage?0:0));
       e.x-=sp*dt;
-      if(e.type==='baleia'&&e.x<VX+20){G.enemies.splice(n,1);G.ze.say='Ela não sabia.';G.ze.sayT=4;
-        addText(VX+20,plantY(e.lane)-60,'ELA NÃO SABIA.','#e8d9a8');
+      if(e.type==='baleia'&&e.x<VX+20){G.enemies.splice(n,1);G.ze.say='Ela não sabia. Agora sabe.';G.ze.sayT=4;
+        addText(VX+20,plantY(e.lane)-60,'ELA NÃO SABIA. DEU PRO GASTO.','#e8d9a8');
         SaveDB.achievement('baleia_ok');announce('A BALEIA-FILHOTE PASSOU. NINGUÉM MORREU.','radio');continue;}
       if(e.x<VX+8&&e.type!=='baleia')breach(e);
     }
@@ -1089,7 +1089,7 @@ function breach(e: Enemy): void {
     e.saved=true;e.taxed=true;e.flee=true;e.speed=34;e.act=1;
     addText(e.x,plantY(e.lane)-e.r-20,taxa>0?'ELE LEVOU '+taxa:'ELE NÃO LEVOU NADA','#f0d0a0');
     announce('O PESCADOR PASSOU. NÃO QUEBROU NADA; LEVOU '+taxa+' DE SUCATA.','story');
-    G.ze.say='Ele só queria o que era dele.';G.ze.sayT=3.5;
+    G.ze.say='Veio buscar o que era dele. Levou.';G.ze.sayT=3.5;
     return;
   }
   const idx=G.enemies.indexOf(e);if(idx>=0&&!e.boss)G.enemies.splice(idx,1);
@@ -1101,7 +1101,7 @@ function breach(e: Enemy): void {
   if(G.sandbox){announce('SANDBOX: nada quebrou. O ZÉ AGRADECE.','radio');if(!e.boss)G.enemies.push(e);e.x=SPAWN_X;return;}
   if(s){
     s.alive=false;G.destroyed.push(s.nome);G.ze.say=pick(['Ai.','Já era.','Não.','Levanta, Zé.']);G.ze.sayT=3;
-    if(!G.firstVillageLost){G.firstVillageLost=true;announce('A vila sentiu isso. Não deixa de novo.','story');}
+    if(!G.firstVillageLost){G.firstVillageLost=true;announce('Perdeu. Anota aí.','story');}
     announce(s.msg,'story');
   }
   // A lane abriu brecha. A partida continua: só acaba quando todas as

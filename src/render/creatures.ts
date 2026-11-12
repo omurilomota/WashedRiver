@@ -466,7 +466,7 @@ export function drawDeath(d){
     ctx.save();ctx.rotate(.2);ctx.fillStyle='#5a7078';ctx.beginPath();ctx.ellipse(0,-18,40,22,0,0,7);ctx.fill();
     ctx.fillStyle='#3a4a50';ctx.beginPath();ctx.arc(-26,-18,6,0,7);ctx.fill();ctx.restore();
     ctx.fillStyle='#c8d8d8';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(-6+i*12,-44-t*8%12,4,0,7);ctx.fill();}
-    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('ELA NÃO SABIA.',-40,-62);
+    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('ELA NÃO SABIA. AGORA SABE. TARDE.',-52,-62);
   }else if(B==='pescador'){ // ele tira o boné, agradece e entra no mar
     ctx.fillStyle='#3a5a6a';ctx.fillRect(-8,-26,16,22);
     ctx.fillStyle='#8aa8a0';ctx.beginPath();ctx.ellipse(0,-34,12,10,0,0,7);ctx.fill();
@@ -503,8 +503,8 @@ export function drawBossDeath(d){
     ctx.fillStyle='#e8c84a';ctx.beginPath();ctx.ellipse(20,hatY,26,6,0,0,7);ctx.fill();ctx.fillRect(6,hatY-16,28,16);
     ctx.fillStyle='#c8a83a';ctx.fillRect(6,hatY-6,28,4);
     ctx.fillStyle='#e8d9a8';ctx.font='10px monospace';
-    ctx.fillText('AS BOTAS CONTINUARAM.',-44,-98);
-    if(t>2.4)ctx.fillText('O CHAPÉU VOLTOU. O DONO NÃO.',-62,-84);
+    ctx.fillText('AS BOTAS FICARAM. O DONO NÃO.',-44,-98);
+    if(t>2.4)ctx.fillText('O CHAPÉU VOLTOU. O RESTO NÃO QUIS.',-62,-84);
     if(t>4.2)ctx.fillText('E A TATUAGEM FICOU NA AREIA.',-66,-72);
     ctx.fillStyle='rgba(60,48,90,.5)';for(let i=0;i<8;i++){ctx.beginPath();ctx.arc(rnd(-40,40),rnd(-60,-10)-((t*8)%20),rnd(1,3),0,7);ctx.fill();}
   }else if(B==='faroleiro'){ // a luz sai dele e entra no mar; ele fica pequeno
@@ -516,7 +516,7 @@ export function drawBossDeath(d){
     ctx.fillStyle='#0e1618';ctx.beginPath();ctx.arc(0,-82,10*(1-p*.4),Math.PI,0);ctx.fill();
     ctx.fillStyle='#3a3a2a';ctx.fillRect(-30,-4,60,4);
     ctx.fillStyle='#0e0e0c';ctx.beginPath();ctx.arc(30+((t*14)%40),-8,8,0,7);ctx.fill();
-    if(t>1.2){ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('A LUZ ENTROU NO MAR.',-52,-100);}
+    if(t>1.2){ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('A LUZ ENTROU NO MAR. ELE FICOU NO ESCURO.',-72,-100);}
     if(t>3){ctx.fillStyle='#c8d8c0';ctx.font='9px monospace';ctx.fillText('O POSTO FICOU VAZIO. O CHAPÉU TAMBÉM.',-80,-86);}
     ctx.fillStyle=`rgba(255,245,190,${.4*(1-p)})`;ctx.fillRect(-90,-140,180,150);
   }else if(B==='maquinista'){ // descarrilha, apita, as rodas continuam
@@ -524,7 +524,7 @@ export function drawBossDeath(d){
     ctx.fillStyle='#1a1412';ctx.beginPath();ctx.moveTo(40,-40);ctx.lineTo(60,-60);ctx.lineTo(60,-40);ctx.fill();ctx.restore();
     for(const s of[-1,1]){const cx=s*(30+t*80);ctx.strokeStyle='#6a5a40';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,-10,13,0,7);ctx.stroke();}
     ctx.fillStyle='rgba(200,200,190,.35)';for(let i=0;i<8;i++){ctx.beginPath();ctx.arc(-40+i*24,-52-Math.sin(t*3+i)*14,10+i*2,0,7);ctx.fill();}
-    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('O APITO CONTINUA.',-40,-100);
+    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('O APITO AINDA APITA. NINGUÉM VEM.',-56,-100);
     ctx.fillStyle='#8a7a5a';ctx.fillRect(-8,-70,16,8);ctx.fillStyle='#e8d070';ctx.fillRect(12,-64,10,4);
     if(t>3)ctx.fillText('NINGUÉM VIU O CONDUTOR.',-52,-86);
   }else if(B==='peixe_mae'){ // explode em 50 peixes: a maternidade
@@ -550,8 +550,8 @@ export function drawBossDeath(d){
     const dawn=clamp(p*1.6,0,1);
     ctx.fillStyle=`rgba(255,180,110,${dawn*.35})`;ctx.fillRect(FIELD_R-100,0,W-FIELD_R+100,H);
     ctx.fillStyle='#e8d9a8';ctx.font='bold 12px monospace';ctx.fillText('AMANHECEU.',-40,-80);
-    if(t>2){ctx.fillStyle='#f0e4bd';ctx.fillText('O MAR NÃO FOI EMBORA.',-56,-62);}
-    if(t>4){ctx.fillStyle='#c8d8c0';ctx.fillText('ELE SÓ PAROU DE GRITAR.',-56,-46);}
+    if(t>2){ctx.fillStyle='#f0e4bd';ctx.fillText('O MAR NÃO FOI EMBORA. MUDOU DE IDEIA.',-72,-62);}
+    if(t>4){ctx.fillStyle='#c8d8c0';ctx.fillText('PAROU DE GRITAR. ATÉ QUE ENFIM.',-70,-46);}
     ctx.fillStyle='rgba(220,240,230,.3)';for(let i=0;i<10;i++){ctx.beginPath();ctx.arc(rnd(-60,60),rnd(-100,-10),rnd(2,5),0,7);ctx.fill();}
   }
   ctx.restore();ctx.globalAlpha=1;
