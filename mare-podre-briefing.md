@@ -21,6 +21,9 @@
   **não** é aceita.
 - Build single-file: `npm run build` → `dist/index.html`
 - Jogar o build: abrir `dist/index.html` no navegador
+- **Ver sem abrir o jogo:** `node tools/shot.mjs --map 0 --zoom` (Chrome
+  headless: começa a partida, planta peças pelo HUD e salva PNG em
+  `/tmp/opencode/`)
 - Commits: Conventional Commits + gitmoji (`npm run commit` / `cz`)
 - Branch: `feature/*`, `bugfix/*`, `chore/*` → PR para `develop`
 
@@ -54,16 +57,19 @@
 - Áudio WebAudio: trilha por mapa, rádio, efeitos; morte única por criatura,
   cena de morte de cada chefe
 - Save v3 em localStorage com migração, autosave e export/import
-- 106 testes verdes (`npm run check`: typecheck + lint + test + build + smoke)
+- 109 testes verdes (`npm run check`: typecheck + lint + test + build + smoke)
 
 ## O que está quebrado ou pendente
-### Parte 1 — padronizar lanes (em progresso)
+### Parte 1 — padronizar lanes (concluída: ADR 011 + ADR 013)
 - Lanes 3–5 desenhavam o **mesmo** piso (`l = 3` em `src/render/lanes.ts`) e os
   blocos `l === 4`/`else` eram código morto (~400 linhas) — **removidos**
 - `maps.json` ainda nomeia as lanes 4/5 diferente do que aparece (`map.lanes`
   não é usado em lugar nenhum) — **pendente**
-- `tests/render.test.ts` passa por vacuidade: comparava assinatura **com Y**,
-  não a arte — **pendente**
+- Teste agora compara a sequência de traços (arte sem Y) e exige arranjo
+  diferente por lane (ADR 013) — a padronização não virou textura
+- Sessão de screenshots (`tools/shot.mjs`) confirmou o campo; o zoom mostra
+  que ainda é o mesmo *formato* repetido — variação de layout (silhueta
+  diferente por lane) é a próxima etapa de arte, se vocês quiserem
 
 ### Parte 2 — corpo das máquinas (pendente)
 - "Sombra de ventre" das máquinas e dos bichos é desenhada **antes** do corpo:
