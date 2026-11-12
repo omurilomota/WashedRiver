@@ -14,14 +14,14 @@
   --screenNoise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Courier New",Courier,monospace;overflow:hidden}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Consolas","Menlo","Monaco","Liberation Mono",monospace;overflow:hidden}
 body{background:
   radial-gradient(1200px 700px at 50% 40%, #1a2320 0%, #0a0c0b 62%, #050605 100%);
 }
 #app{height:100%;display:flex;align-items:center;justify-content:center}
 #stage{position:relative;width:100vw;height:100vh;background:#050807;
   display:flex;align-items:center;justify-content:center;overflow:hidden}
-#cv{max-width:100%;max-height:100%;width:auto;height:auto;aspect-ratio:1280/846;display:block;image-rendering:crisp-edges;cursor:crosshair}
+#cv{max-width:100%;max-height:100%;width:auto;height:auto;aspect-ratio:1280/846;display:block;image-rendering:auto;cursor:crosshair}
 .hidden{display:none !important}
 
 /* ---------- HUD mínimo ---------- */
@@ -71,7 +71,7 @@ body{background:
 .btn:hover{background:linear-gradient(#6b4c26,#3a2c16);border-color:#a07d3c;color:#fff;transform:translateY(-1px)}
 .btn:active{transform:translateY(1px)}
 .btn.small{font-size:calc(13px * var(--fs));padding:7px 11px;border-bottom-width:3px}
-.btn.tiny{font-family:"Courier New",monospace;font-size:calc(10px * var(--fs));letter-spacing:.06em;
+.btn.tiny{font-family:"Consolas","Menlo","Monaco","Liberation Mono",monospace;font-size:calc(10px * var(--fs));letter-spacing:.06em;
   padding:6px 9px;border-width:1px;border-color:#4a5142;background:#222922;color:#cfc3a1}
 .btn.tiny:hover{background:#2f3a2d;border-color:#8b8f6c;color:#fff}
 .btn.primary{background:linear-gradient(#7d5a2a,#4b3417);border-color:#b88a3f;color:#fff2c9}
@@ -164,7 +164,7 @@ body{background:
 .node{background:#1c231e;border:1px solid #394237;padding:7px 8px;margin-bottom:7px}
 .node.max{border-color:#6c5b21;background:#232a1f}
 .node.locked{opacity:.5}
-.node h4{margin:0 0 2px;font-family:"Courier New",monospace;font-size:calc(11px * var(--fs));color:#e3d6ab;letter-spacing:.03em}
+.node h4{margin:0 0 2px;font-family:"Consolas","Menlo","Monaco","Liberation Mono",monospace;font-size:calc(11px * var(--fs));color:#e3d6ab;letter-spacing:.03em}
 .node small{display:block;color:#9aa08a;font-size:calc(9px * var(--fs));line-height:1.45;margin-bottom:5px}
 .node .cost{display:flex;justify-content:space-between;align-items:center;font-size:calc(9px * var(--fs));color:#c8b783}
 .pips{letter-spacing:2px;color:var(--gold);font-size:10px}
@@ -211,5 +211,6 @@ body.cb .tag.hot{border-style:dashed}
 body.cb .beast.seen{border-left:4px solid #ffe27a}
 body.lowshake #stage{box-shadow:none}
 body.lowshake .toast{animation:none}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important;}}
 /* Acessibilidade de toque/mouse: foco visível */
 button:focus-visible,.slot:focus-visible,.mapcard:focus-visible,.node:focus-visible{outline:2px solid #ffe27a;outline-offset:2px}
