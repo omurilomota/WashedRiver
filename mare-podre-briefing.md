@@ -54,7 +54,7 @@
 - Áudio WebAudio: trilha por mapa, rádio, efeitos; morte única por criatura,
   cena de morte de cada chefe
 - Save v3 em localStorage com migração, autosave e export/import
-- 99 testes verdes (`npm run check`: typecheck + lint + test + build + smoke)
+- 106 testes verdes (`npm run check`: typecheck + lint + test + build + smoke)
 
 ## O que está quebrado ou pendente
 ### Parte 1 — padronizar lanes (em progresso)
@@ -65,26 +65,32 @@
 - `tests/render.test.ts` passa por vacuidade: comparava assinatura **com Y**,
   não a arte — **pendente**
 
-### Parte 2 — corpo das máquinas (concluída, pendente commit)
-- "Sombra de ventre" das máquinas e dos bichos era desenhada **antes** do
-  corpo e ficava escondida → agora é **oclusão de base** pintada **depois**
-  do desenho, dimensionada pelo corpo (`CORPO_MAQUINA` em `sprites.ts`)
-- `rim light` das máquinas era arco fixo `(0,-24)` r=24 → agora segue
-  `w`/`h` reais de cada peça
-- `src/render/structures.ts`: `sombra()` faltava em `cerca`, `lata_agua`,
-  `trapiche` e `quilha` → sombra adicionada e arame da lata d'água prolongado
-- `tests/machines.test.ts` (7 testes): corpo declarado, dimensões cabem na
-  lane, acabamento acontece no campo e fica de fora no ícone
+### Parte 2 — corpo das máquinas (pendente)
+- "Sombra de ventre" das máquinas e dos bichos é desenhada **antes** do corpo:
+  fica escondida atrás do desenho
+- `rim light` das máquinas é arco fixo `(0,-24)` r=24, não segue a peça
+- `src/render/structures.ts`: `sombra()` falta em `cerca`, `lata_agua`,
+  `trapiche` e `quilha`
 
-### Parte 3 — auditória "commitado ≠ feito" (pendente)
-- HUD multi-linha (`ADR 010`) é ramo morto: 19 cartas nunca quebram linha
-- HUD em canvas ignora `--fs`: a opção de fonte não escala o HUD nem a ficha
-- Modo daltonismo (`body.cb`) é só CSS; o campo em canvas não muda
-- Loja promete reforço "mais teimosa" — a estrutura não tem vida pra endurecer
-- Cache `bgStaticCanvas` é 1× com canvas DPR 2 (borrado no retina)
-- `brush.shade()` existe e não é usado
-- Docs contradizem o código: ADR 008 e AGENTS.md ainda dizem que a Baleia é
-  `neutral`/imune (ADR 004 já a fez matável); `Enemy.spooked` não está declarado
+### Parte 3 — auditória "commitado ≠ feito" (concluída, com sobras)
+- HUD multi-linha (`ADR 010`) era ramo morto: 19 cartas nunca quebram linha
+  → linha única restaurada, ADR 010 substituída pela nova **ADR 012**
+- HUD em canvas ignorava `--fs` → `fmono()` aplica a escala das opções no
+  HUD, na ficha de carta, na intro de chefe e nos avisos
+- Modo daltonismo era só CSS → **parcial**: agora o posicionamento (vaga
+  livre/cara) e as cartas indisponíveis têm pista de forma (tracejado,
+  luminância), sem depender de matiz. A arte dos bichos/peças continua sem
+  variante daltônica
+- Loja prometia reforço "mais teimosa" → texto agora descreve o que o código
+  faz (reboque; sucata de volta se nada caiu)
+- Cache `bgStaticCanvas` e da calçada eram 1× com canvas DPR 2 → passaram a
+  nascer em DPR 2 (fim do fundo borrado no retina)
+- `brush.shade()` existia e não era usado → removido
+- Docs contradiziam o código (ADR 008 e AGENTS.md diziam Baleia `neutral`/
+  imune; ADR 004 já a fez matável) → alinhados; `Enemy.spooked` declarado
+- **Ainda pendente:** reduced-motion só zera o `shake` (as animações do canvas
+  continuam); texto da Água-Viva ("bala atravessa") ainda não casou 100% com
+  o código — decidir se a bala passa ou é consumida
 
 ## Decisões de design fechadas (não reabrir)
 - Tom: cartunesco, sujo, humor errado, violência cômica. NADA de fofo,
@@ -111,13 +117,20 @@
 
 ## Status do git (atualizar toda sessão)
 - Branch atual: `feature/lanes-e-corpos` (criada de `7649bf2`)
-- Último commit verde: `7649bf2` — "adiciona sombra de ventre às máquinas"
-- **Trabalho não commitado: sim** — `src/render/lanes.ts` reescrito (blocos
-  mortos removidos, um piso por mapa, helper `drawLaneFloorNovaEm` exportado
-  para o teste); `tests/` e `maps.json` **ainda não** atualizados; `check`
-  provavelmente vermelho até fechar.
-- `dist/index.html` atual: reflete `src/` até `7649bf2` (build de `2026-11-12`)
-- PRs abertas: nenhuma
+- Parte 1: **concluída** — commit `a2cef32` (código, dados, testes, ADR 011)
+- Parte 2: **concluída** — commits `7a6a278` (sprites/creatures/structures +
+  `tests/machines.test.ts`) e `f6e17d4` (dist)
+- Parte 3: **concluída com sobras** — `1e42b3c` (fonte + daltonismo no HUD),
+  `bd389aa` (ADR 012, cartas em linha única), `f787155` (texto do reforço),
+  `105d7c7` (daltonismo no posicionamento), `99bd04a` (cache DPR 2, `spooked`
+  tipado, `shade` morto, docs), mais o dist no commit final
+- Último commit verde: `99bd04a` (verde: typecheck + lint + 106 testes)
+- `dist/index.html` atual: reflete `src/` até o último commit de build deste
+  ciclo (ver `git log -1 --format=%h` após o `📦 build(build)`)
+- PRs abertas: nenhuma — `develop` está defasada (parada em `9340a0a`,
+  antes do release 0.4.0); o destino do PR precisa ser decidido
+  (`main → develop` para sincronizar, depois PR desta branch)
+- Trabalho não commitado: não (exceto `dist/` até o commit de build)
 
 ## Changelog
 - v0.1 — base: 3 corredores, 7 criaturas, 8 máquinas, menu do Zé, dois modos
@@ -125,8 +138,10 @@
 - v0.3 — código completo; save migrado; documentação de regras
 - v0.4.0 — 6 lanes em 1280×846, 7 colunas (42 slots), combate justo,
   imposto da Dona Lú, economia com sumidouros, HUD multi-linha, ADR 008/009/010
-- em andamento — Parte 1 (lanes unificadas), Parte 2 (corpo das máquinas),
-  Parte 3 (consertos da auditória)
+- branch `feature/lanes-e-corpos` — Parte 1 (ADR 011: lanes 3–5 com piso único),
+  Parte 2 (corpo das máquinas dimensionado), Parte 3 (fonte do HUD, cartas em
+  linha única, reforço honesto, cache DPR 2, daltonismo no campo e nas cartas,
+  docs alinhados) — ADR 012
 
 ## Regra do ritual de sessão (novo setup)
 - **Não anexe `dist/index.html`** — é build, não se edita à mão.
