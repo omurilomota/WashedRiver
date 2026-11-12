@@ -671,24 +671,77 @@ const MACHINE_DRAWERS: Record<string, (c: MachineDrawerCtx) => void> = {
 };
 
 
+/**
+ * Corpo de cada engenhoca: largura, altura e base de apoio.
+ *
+ * Existe para o acabamento comum (`drawMachine`) poder dimensionar sombra
+ * de contato, oclusão de base e rim light **da peça**, em vez de um arco
+ * fixo em `(0,-24)` que não acompanha geladeira (74 px) nem espelho (88 px).
+ * Números derivados dos próprios desenhos em `MACHINE_DRAWERS`.
+ */
+const CORPO_MAQUINA: Record<string, { w: number; h: number; base: number }> = {
+  boia: { w: 48, h: 68, base: 26 },
+  torradeira: { w: 48, h: 58, base: 22 },
+  lancador_lata: { w: 44, h: 42, base: 20 },
+  ventilador: { w: 48, h: 64, base: 18 },
+  geladeira: { w: 44, h: 76, base: 22 },
+  geladeira_bomba: { w: 44, h: 76, base: 22 },
+  bujao: { w: 34, h: 70, base: 18 },
+  holofote: { w: 40, h: 58, base: 16 },
+  ima: { w: 36, h: 42, base: 16 },
+  radio: { w: 44, h: 72, base: 22 },
+  estilingue: { w: 56, h: 90, base: 18 },
+  aspirador: { w: 40, h: 52, base: 16 },
+  batedeira: { w: 40, h: 58, base: 14 },
+  espelho: { w: 36, h: 90, base: 12 },
+  pneu: { w: 48, h: 46, base: 22 },
+  aranha: { w: 48, h: 86, base: 12 },
+  cachorro: { w: 34, h: 56, base: 14 },
+  coisa_ze: { w: 40, h: 68, base: 20 },
+};
+
+/** Corpo padrão: peça sem entrada própria (ex.: `remover`). */
+const CORPO_PADRAO = { w: 40, h: 48, base: 22 };
+
+/** Corpo de uma engenhoca, com padrão para peça sem desenho. */
+export function corpoMaquina(tipo: string): { w: number; h: number; base: number } {
+  return CORPO_MAQUINA[tipo] || CORPO_PADRAO;
+}
+
 export function drawMachine(m){
   const icon=m._icon, x=m.x,y=icon?0:plantY(m.lane), t=icon?G.t:(m.t||0);m.t=t;
   const P=pose(m,t),f=P.f,act=P.st==='action',hurt=P.st==='hurt';
   const dmg=m.maxhp?clamp(1-m.hp/m.maxhp,0,1):0;
+  const corpo=corpoMaquina(m.type);
   ctx.save();ctx.translate(x,y);
-  if(!icon){ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,2,26,6,0,0,7);ctx.fill();}
+  // contato com o chão, proporcional à base da peça (não elipse solta)
+  if(!icon){ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,2,corpo.base,corpo.base*.24,0,0,7);ctx.fill();}
   ctx.rotate(P.tilt);ctx.scale(P.sx,P.sy);
-  // volume: sombra de ventre dá "corpo" às máquinas
-  if(!m._icon){ctx.fillStyle='rgba(0,0,0,.14)';ctx.beginPath();ctx.ellipse(0,-14,16,6,0,0,7);ctx.fill();}
   const k=m.type;
   const __drawer = MACHINE_DRAWERS[k];
   if(__drawer){__drawer({m,k,t,act,hurt,f,dmg});}
   drawUpgrades(m);
   if(hurt){ctx.fillStyle='#ffb040';for(let i=0;i<3;i++)ctx.fillRect(rnd(-16,16),rnd(-40,-10),2,2);}
-  // rim light (luz global topo-esquerda)
-  ctx.strokeStyle='rgba(230,220,180,.16)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,-24,24,Math.PI*1.05,Math.PI*1.65);ctx.stroke();
+  if(!icon){
+    // oclusão na base (a peça "tem" barriga) e luz de topo-esquerda,
+    // ambas dimensionadas pelo corpo. Antes era uma elipse em y=-14 que
+    // ficava escondida atrás do desenho, e um rim light fixo em (0,-24) r=24.
+    const oclusao=ctx.createRadialGradient(0,-corpo.h*.18,1,0,-corpo.h*.18,corpo.w*.62);
+    oclusao.addColorStop(0,'rgba(0,0,0,.20)');
+    oclusao.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=oclusao;
+    ctx.beginPath();ctx.ellipse(0,-corpo.h*.18,corpo.w*.5,corpo.h*.18,0,0,7);ctx.fill();
+    const brilho=ctx.createRadialGradient(-corpo.w*.16,-corpo.h*.6,1,-corpo.w*.16,-corpo.h*.6,corpo.w*.6);
+    brilho.addColorStop(0,'rgba(235,225,190,.10)');
+    brilho.addColorStop(1,'rgba(235,225,190,0)');
+    ctx.fillStyle=brilho;
+    ctx.beginPath();ctx.ellipse(-corpo.w*.16,-corpo.h*.6,corpo.w*.46,corpo.h*.16,0,0,7);ctx.fill();
+    // rim light (luz global topo-esquerda) seguindo o corpo
+    ctx.strokeStyle='rgba(230,220,180,.16)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(0,-corpo.h*.5,corpo.w*.5,corpo.h*.5,0,Math.PI*1.05,Math.PI*1.65);ctx.stroke();
+  }
   ctx.restore();
-  if(dmg>.02&&!icon){ctx.fillStyle='#222';ctx.fillRect(x-18,y+6,36,4);ctx.fillStyle='#b8b060';ctx.fillRect(x-18,y+6,36*(1-dmg),4);}
+  if(dmg>.02&&!icon){ctx.fillStyle='#222';ctx.fillRect(x-corpo.w/2,y+6,corpo.w,4);ctx.fillStyle='#b8b060';ctx.fillRect(x-corpo.w/2,y+6,corpo.w*(1-dmg),4);}
 }
 
 // =====================================================================

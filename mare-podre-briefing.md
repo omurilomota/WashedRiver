@@ -65,12 +65,16 @@
 - `tests/render.test.ts` passa por vacuidade: comparava assinatura **com Y**,
   não a arte — **pendente**
 
-### Parte 2 — corpo das máquinas (pendente)
-- "Sombra de ventre" das máquinas e dos bichos é desenhada **antes** do corpo:
-  fica escondida atrás do desenho
-- `rim light` das máquinas é arco fixo `(0,-24)` r=24, não segue a peça
-- `src/render/structures.ts`: `sombra()` falta em `cerca`, `lata_agua`,
-  `trapiche` e `quilha`
+### Parte 2 — corpo das máquinas (concluída, pendente commit)
+- "Sombra de ventre" das máquinas e dos bichos era desenhada **antes** do
+  corpo e ficava escondida → agora é **oclusão de base** pintada **depois**
+  do desenho, dimensionada pelo corpo (`CORPO_MAQUINA` em `sprites.ts`)
+- `rim light` das máquinas era arco fixo `(0,-24)` r=24 → agora segue
+  `w`/`h` reais de cada peça
+- `src/render/structures.ts`: `sombra()` faltava em `cerca`, `lata_agua`,
+  `trapiche` e `quilha` → sombra adicionada e arame da lata d'água prolongado
+- `tests/machines.test.ts` (7 testes): corpo declarado, dimensões cabem na
+  lane, acabamento acontece no campo e fica de fora no ícone
 
 ### Parte 3 — auditória "commitado ≠ feito" (pendente)
 - HUD multi-linha (`ADR 010`) é ramo morto: 19 cartas nunca quebram linha

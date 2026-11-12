@@ -39,8 +39,6 @@ export function drawEnemy(e){
   if(e.grounded>0)ctx.rotate(.12);
   if(e.hypno>0){ctx.translate(Math.sin(t*9)*2,0);}
   ctx.rotate(P.tilt);ctx.scale(P.sx,P.sy);
-  // volume: sombra de ventre dá "corpo" a todos os bichos
-  if(!flying){ctx.fillStyle='rgba(0,0,0,.16)';ctx.beginPath();ctx.ellipse(0,-(e.r||12)*.45,(e.r||12)*.8,(e.r||12)*.32,0,0,7);ctx.fill();}
   const bite=e.eating?Math.abs(Math.sin(t*10))*6:0;
   if(e.lit>0){ctx.strokeStyle='rgba(255,240,170,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-e.r*.9,e.r+5,0,7);ctx.stroke();}
   if(e.hypno>0){ctx.fillStyle='#d8c0e0';ctx.font='bold 12px monospace';ctx.fillText('@',-4,-e.r-16+Math.sin(t*8)*3);}
@@ -224,6 +222,17 @@ export function drawEnemy(e){
     ctx.fillStyle='#5a4a3a';ctx.fillRect(12,-22,14,12);ctx.fillStyle='#d8c8a0';ctx.fillRect(14,-20,10,3);
     ctx.strokeStyle='#4a4a44';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-8,-4);ctx.lineTo(-8,6);ctx.moveTo(8,-4);ctx.lineTo(8,6);ctx.stroke();
     if(e.switching){ctx.fillStyle='#ffd070';ctx.font='9px monospace';ctx.fillText('PRÓXIMO!',-24,-70);}
+  }
+  // volume: oclusão na base do corpo. Desenhada DEPOIS do bicho de propósito —
+  // a "sombra de ventre" antiga era pintada antes e desaparecia atrás do
+  // próprio corpo, não dando volume nenhum.
+  if(!flying){
+    const br=(e.r||12);
+    const ocl=ctx.createRadialGradient(0,-br*.3,1,0,-br*.3,br*.95);
+    ocl.addColorStop(0,'rgba(0,0,0,.18)');
+    ocl.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=ocl;
+    ctx.beginPath();ctx.ellipse(0,-br*.3,br*.72,br*.3,0,0,7);ctx.fill();
   }
   // "quase morrendo": sangue, contorno, peça faltando
   if(low&&e.type!=='baleia'&&e.type!=='pescador'){
