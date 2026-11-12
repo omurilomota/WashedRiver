@@ -436,7 +436,7 @@
       "scrap": 12,
       "r": 20,
       "air": true,
-      "desc": "É intangível: bala atravessa, peça não segura. Vive no breu; contra luz, evapora e deixa o formato no chão.",
+      "desc": "É intangível: o tiro não encosta e a peça não segura. Vive no breu; contra luz, evapora e deixa o formato no chão.",
       "hint": "SÓ luz ou explosão. Bala não pega. O Holofote é a arma."
     },
     "mariposa": {

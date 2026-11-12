@@ -131,7 +131,7 @@ contra, não o lore.
 | Peixe-Lata | 110 | **devolve até 3 torradas** | corpo a corpo, explosão; a quarta entra |
 | Peixe-Fantasma | 55 | **invisível** | Ataque/Holofote/Estilingue |
 | Polvo-Garrafa | 140 | **sabotagem** (desliga peça) | matar rápido |
-| Água-Viva-Fantasma | 60 | **voa + invisível** | **só luz ou explosão** |
+| Água-Viva-Fantasma | 60 | **voa + intangível** | **só luz ou explosão** (nem `airPierce` fura) |
 | Mariposa de Espelho | 80 | **voa**, atraída pela luz | deixar na luz |
 | Sapo de Óleo | 100 | pula 2 colunas | cobertura atrás |
 | Piranha-Coral | 25 | cardume forte | área / Bujão |
