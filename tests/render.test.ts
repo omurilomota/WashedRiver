@@ -117,6 +117,38 @@ describe('o campo tem 6 lanes e cada uma desenha', () => {
   });
 });
 
+describe('o cache do piso não pode nascer vazio', () => {
+  // Regression: o cache (pisoCanvas) chamava a arte sem passar o contexto,
+  // a arte desenhava na TELA e o offscreen nascia vazio — o piso piscava a
+  // cada refresh. Os testes assinavam `drawLaneFloor`, que continua ao vivo,
+  // e não viam nada. Este teste assina o caminho que o jogo usa.
+  it('o offscreen recebe tinta de verdade, não a tela', () => {
+    const map = MAPS[0];
+    const off = document.createElement('canvas');
+    off.width = 256; off.height = 256;
+    const alvo: Record<string, unknown> = { canvas: off };
+    const especiais: Record<string, unknown> = {};
+    const opsOff: string[] = [];
+    especiais.createLinearGradient = () => { opsOff.push('grad'); return { addColorStop: () => undefined }; };
+    especiais.createRadialGradient = () => { opsOff.push('grad'); return { addColorStop: () => undefined }; };
+    const offCtx = new Proxy(alvo, {
+      get: (t, p: string) => (p in t ? t[p] : p in especiais ? especiais[p] : (...a: unknown[]) => { opsOff.push(`${p}(${a.map(String).join()})`); }),
+      set: (t, p, v) => { (t as Record<string, unknown>)[String(p)] = v; return true; },
+    }) as unknown as CanvasRenderingContext2D;
+
+    // 6 lanes no MESMO contexto: é o que o cache faz
+    for (let l = 0; l < LANES; l++) {
+      lanes.drawLaneFloorNovaEm(map, map.pal, 1.5, l * 126 + 90, l, offCtx);
+    }
+    // o offscreen tem que ter recebido milhares de operações, não zero
+    expect(opsOff.length, 'offscreen vazio: a arte foi pra tela de novo').toBeGreaterThan(500);
+    // e o caminho ao vivo (ctx do jogo) continua assinando a mesma arte:
+    // o parâmetro de contexto não mudou a forma do desenho.
+    const viva = assina(() => lanes.drawLaneFloorNovaEm(map, map.pal, 1.5, 90, 0));
+    expect(viva.length, 'arte ao vivo perdeu ops depois do refactor').toBeGreaterThan(500);
+  });
+});
+
 describe('o campo tem um terreno só por mapa, nas 6 lanes', () => {
   // ADR 014: um lugar por mapa — rio nas seis, penhasco nas seis, trilho
   // nas seis. O teste antigo comparava assinaturas com Y e passava mesmo

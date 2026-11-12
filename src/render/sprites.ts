@@ -271,7 +271,7 @@ function pisoCanvas(map, t: number): HTMLCanvasElement {
   c2.save();
   c2.setTransform(DPR, 0, 0, DPR, 0, 0);
   c2.clearRect(0, 0, W, H);
-  for (let l = 0; l < LANES; l++) drawLaneFloorNovaEm(map, map.pal, t, LANE_Y0 + l * LANE_H, l);
+  for (let l = 0; l < LANES; l++) drawLaneFloorNovaEm(map, map.pal, t, LANE_Y0 + l * LANE_H, l, c2);
   c2.restore();
   _pisoCache.t = t;
   return _pisoCache.canvas;
