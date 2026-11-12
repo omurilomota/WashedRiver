@@ -160,6 +160,35 @@ describe('Baleia-Filhote', () => {
   });
 });
 
+describe('Água-Viva-Fantasma', () => {
+  it('apagada não é alvo: tiro atravessa, só luz ou explosão pegam', () => {
+    state.Game.startCampaign(0);
+    const agua = game.spawnEnemy('agua', 0, 600);
+    expect(agua).not.toBeNull();
+    // voador e apagada: nenhum tiro encosta (a bala passa)
+    expect(game.isTargetable(agua!, false)).toBe(false);
+    expect(game.isTargetable(agua!, true)).toBe(false);
+    expect(game.isTargetable(agua!, false, true)).toBe(false);
+    // se algum corpo a corpo encostar, ela é revelada e não toma dano
+    const hp = agua!.hp;
+    game.damageEnemy(agua!, 20, 'blade');
+    expect(agua!.hp).toBe(hp);
+    // explosão e fogo passam por cima da intangibilidade
+    game.damageEnemy(agua!, 20, 'boom');
+    expect(agua!.hp).toBeLessThan(hp);
+  });
+
+  it('com a luz do holofote ela fica revelada e leva tiro', () => {
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('holofote', 0, 3, true)).toBe(true);
+    const agua = game.spawnEnemy('agua', 0, state.G.machines[0].x + 100);
+    expect(agua).not.toBeNull();
+    game.update(0.2);
+    expect(agua!.lit > 0 || agua!.grounded > 0).toBe(true);
+    expect(game.isTargetable(agua!, false)).toBe(true);
+  });
+});
+
 describe('regra de derrota', () => {
   it('perder uma lane inteira abre brecha, mas não acaba a partida', () => {
     state.Game.startCampaign(0);

@@ -86,6 +86,28 @@ function autosave(): void {
 }
 
 /**
+ * O usuário pediu menos movimento (`prefers-reduced-motion`).
+ *
+ * Antes só o tremor era zerado no fim do update — mas o flash de tela e os
+ * tremores por evento (fase de chefe, trem de carga, brecha, morte de chefe)
+ * continuavam disparando. Aqui a checagem é uma só e cada efeito passa por
+ * estes dois funis.
+ */
+function semMovimento(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Tremor de câmera, respeitando quem pediu menos movimento. */
+function tremer(n: number): void {
+  if (!semMovimento()) G.shake = Math.max(G.shake, n);
+}
+
+/** Flash de tela, respeitando quem pediu menos movimento. */
+function piscar(n: number): void {
+  if (!semMovimento()) G.flash = n;
+}
+
+/**
  * A Dona Lú cobra o imposto do round: base + por peça + por onda.
  *
  * Sem sucata suficiente, ela leva o que tem e anota o resto. A dívida
@@ -535,12 +557,18 @@ function spawnBoss(id: string, lane?: number, noIntro?: boolean): void {
  * `airPierce` é a resposta do Canhão de Lata e do Estilingue: projétil
  * pesado acerta voador sem precisar do holofote. Voador nunca é imune —
  * só exige a ferramenta certa (política de combate justo, AGENTS.md).
+ *
+ * A Água-Viva é a exceção declarada no bestiário ("só luz ou explosão"):
+ * intangível, nenhum projétil encosta nela enquanto não estiver acesa —
+ * `airPierce` não furaria a intangibilidade, só consumiria a bala sem dar
+ * dano. Explosão e fogo não passam por aqui: chamam `damageEnemy` direto.
  */
 export function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean, airPierce?: boolean): boolean {
   if(!e||e.burrow>0)return false;
   if(e.boss)return true;
   if(ENEMY[e.type]&&ENEMY[e.type].human)return false;
   if(e.neutral)return false;
+  if(e.type==='agua'&&e.lit<=0)return false;
   if(e.air&&e.lit<=0&&e.grounded<=0&&!airPierce)return false;
   if(e.type==='enguia'&&e.dived&&e.lit<=0)return false;
   if(e.type==='fantasma'&&!e.revealed&&e.lit<=0&&!allowHidden)return false;
@@ -555,7 +583,7 @@ export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
     e.revealed=1;e.spoke=pick(['Zé?','Meu barco...','Eu não quero machucar.']);e.act=.5;
     addText(e.x,plantY(e.lane)-e.r-16,'ELE É GENTE','#f0d0a0');SFX.human();return;
   }
-  if(e.type==='agua'&&e.lit<=0&&src!=='boom'&&src!=='fire'){e.revealed=1;addText(e.x,plantY(e.lane)-e.r-10,'ATRAVESSA A BALA. SÓ LUZ.','#a8c8c8');return;}
+  if(e.type==='agua'&&e.lit<=0&&src!=='boom'&&src!=='fire'){e.revealed=1;addText(e.x,plantY(e.lane)-e.r-10,'NÃO PEGA. SÓ LUZ.','#a8c8c8');return;}
   if(e.buff)dmg*=.4;
   if(e.type==='lata'&&src==='toast'){ /* torradeira nem chega a chamar */ }
   e.hp-=dmg;e.flash=.18;e.act=.25;e.revealed=1.2;e.lit=Math.max(e.lit,.4);
@@ -588,7 +616,7 @@ function steal(p: Pickup, e: Enemy): void {
   SFX.steal();addText(p.x,p.y-12,'-'+p.v,'#e08080');
 }
 function explode(x: number, lane: number, dmgE: number, dmgM: number, big?: boolean): void {
-  SFX.explode();G.shake=Math.max(G.shake,big?18:10);
+  SFX.explode();tremer(big?18:10);
   burst(x,plantY(lane)-30,big?60:36,'#ffb040',big?460:360,200,rnd(4,9),.6);
   burst(x,plantY(lane)-30,big?40:26,'#333',160,-60,rnd(5,10),1.2);
   stain(x,plantY(lane),'#1a1410',big?60:46);
@@ -678,7 +706,7 @@ export function update(dt: number){
   if(G.ze.sayT>0)G.ze.sayT-=dt;
   if(G.toqSayT>0)G.toqSayT-=dt;
   G.toqBoost=Math.sin(G.t*.8)*10;
-  G.shake*=Math.exp(-6*dt);if(typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)G.shake=0;G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
+  if(!semMovimento())G.shake*=Math.exp(-6*dt);else G.shake=0;G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
   if(G.savedT>0)G.savedT-=dt;if(G.dogSay>0)G.dogSay-=dt;
 
   if(Game.screen!=='play'||Game.paused)return;
@@ -925,8 +953,8 @@ function updateBossBase(e: Enemy, dt: number): void {
   e.anim+=dt;e.flash=Math.max(0,e.flash-dt);e.phaseT+=dt;e.actT-=dt;
   const frac=e.hp/e.maxhp;
   const wantPhase=e.b==='gerente'?clamp(1+Math.floor((1-frac)*7),1,7):frac>.66?1:frac>.33?2:3;
-  if(wantPhase>e.phase){e.phase=wantPhase;e.act=1;G.shake=12;SFX.enter(e.b);Snd.setIntensity(4);
-    addText(e.x,plantY(e.lane)-140,'FASE '+e.phase,'#e8c84a');G.flash=.4;}
+  if(wantPhase>e.phase){e.phase=wantPhase;e.act=1;tremer(12);SFX.enter(e.b);Snd.setIntensity(4);
+    addText(e.x,plantY(e.lane)-140,'FASE '+e.phase,'#e8c84a');piscar(.4);}
   if(e.b==='mare'){e.rise=clamp(e.phaseT/120,0,1)*100;e.hp=e.maxhp;e.actT-=dt;
     if(e.actT<=0){e.actT=rnd(2.2,3.4);const lane=randLane();const t=pick(['baiacu','enguia','piranha','polvo','agua','fantasma']);spawnEnemy(t,lane,SPAWN_X+rnd(0,80),1.2);}
     e.maeT=(e.maeT||0)+dt;if(e.maeT>120){bossDefeated(e);}return;}
@@ -1016,7 +1044,7 @@ function updateHazards(dt: number): void {
   for(let i=G.hazards.length-1;i>=0;i--){
     const h=G.hazards[i];h.t+=dt;
     if(h.t>=h.warn&&h.t<h.warn+h.dur){
-      if(!h.hit){h.hit=true;SFX.crash();G.shake=16;
+      if(!h.hit){h.hit=true;SFX.crash();tremer(16);
         for(const m of G.machines)if(m.lane===h.lane)damageMachine(m,h.dmg);
         for(const e of G.enemies)if(e.lane===h.lane&&!e.boss&&e.type!=='pescador')damageEnemy(e,h.kind==='train'?90:25,'boom');}
     }
@@ -1060,7 +1088,7 @@ function breach(e: Enemy): void {
     return;
   }
   const idx=G.enemies.indexOf(e);if(idx>=0&&!e.boss)G.enemies.splice(idx,1);
-  G.shake=20;G.flash=1;SFX.crash();
+  tremer(20);piscar(1);SFX.crash();
   burst(120,plantY(e.lane)-30,40,'#6a5a4a',260,500,rnd(3,7),1);
   const lane=G.structures[e.lane];
   const s=lane.find(s=>s.alive);
@@ -1099,7 +1127,7 @@ function bossDefeated(e: Enemy): void {
   const bId=e.b||e.type;
   G.bossDeath={b:bId,x:Math.min(e.x,W-120),y:plantY(e.lane),lane:e.lane,t:0,dur:deathDur(bId)};
   G.deaths.push({type:bId,x:Math.min(e.x,W-120),y:plantY(e.lane),lane:e.lane,t:0,dur:deathDur(bId)});
-  SFX.death(e.b);G.shake=20;G.flash=.6;Snd.setIntensity(1);
+  SFX.death(e.b);tremer(20);piscar(.6);Snd.setIntensity(1);
   G.kills++;dropScrap(e.x,plantY(e.lane)-40,120,true);G.zeHat=(e.b==='bento');
   if(e.b==='mare'){SaveDB.achievement('maré');}
   if(e.b==='faroleiro'&&!G.machines.some(m=>m.type==='holofote'))SaveDB.achievement('sem_farol');
