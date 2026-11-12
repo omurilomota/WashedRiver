@@ -67,6 +67,7 @@ function faixa(y: number, col: string, h: number): void {
 //  BARRA SUJA — vila à chuva
 // =====================================================================
 function barraNova(p: Palette, l: number, y: number, t: number): void {
+  l = 3; // unificado: mesmo piso em todas as lanes de baixo
   if (l === 3) {
     // JARDIM RIBEIRINHO — terra, canteiro, água de chuva
     faixa(y, '#2f3a2c', LANE_H);
@@ -203,6 +204,7 @@ function barraNova(p: Palette, l: number, y: number, t: number): void {
 //  FAROL DO FIM — penhascos, neblina
 // =====================================================================
 function farolNova(p: Palette, l: number, y: number, t: number): void {
+  l = 3; // unificado: mesmo piso em todas as lanes de baixo
   if (l === 3) {
     // FAROL VELHO — a base de um farol que ninguém acende mais
     faixa(y, '#3c4038', LANE_H);
@@ -319,6 +321,7 @@ function farolNova(p: Palette, l: number, y: number, t: number): void {
 //  ESTAÇÃO AFOGADA — tempestade
 // =====================================================================
 function estacaoNova(p: Palette, l: number, y: number, t: number): void {
+  l = 3; // unificado: mesmo piso em todas as lanes de baixo
   if (l === 3) {
     // ARMAZÉM DE BAGAGEM — trilho de carga, engradado, malas
     faixa(y, p.ground, LANE_H);
@@ -431,6 +434,7 @@ function estacaoNova(p: Palette, l: number, y: number, t: number): void {
 //  FEIRA DO PEIXE — calor
 // =====================================================================
 function feiraNova(p: Palette, l: number, y: number, t: number): void {
+  l = 3; // unificado: mesmo piso em todas as lanes de baixo
   if (l === 3) {
     // CAMELÔ DO PEIXE — lonas, caixas, gelo derretendo
     faixa(y, '#6a5a42', LANE_H);
@@ -571,6 +575,7 @@ function feiraNova(p: Palette, l: number, y: number, t: number): void {
 //  FÁBRICA PODRE — cinzas
 // =====================================================================
 function fabricaNova(p: Palette, l: number, y: number, t: number): void {
+  l = 3; // unificado: mesmo piso em todas as lanes de baixo
   if (l === 3) {
     // PÁTIO DE CARGA — contêineres, empilhadeira, marcação
     faixa(y, '#3a3a32', LANE_H);
@@ -716,6 +721,7 @@ function fabricaNova(p: Palette, l: number, y: number, t: number): void {
 //  CEMITÉRIO DE BARCOS — vendaval
 // =====================================================================
 function cemiterioNova(p: Palette, l: number, y: number, t: number): void {
+  l = 3; // unificado: mesmo piso em todas as lanes de baixo
   if (l === 3) {
     // CASCO ENCALHADO — navio encalhado, corrente e guindaste
     faixa(y, '#2c3234', LANE_H);
