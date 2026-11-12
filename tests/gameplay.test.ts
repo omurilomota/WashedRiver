@@ -387,7 +387,8 @@ describe('o Pescador não quebra a vila', () => {
     expect(state.G.scrap).toBeCloseTo(100 - ECONOMIA.pescadorTaxa, 0);
     expect(pescador!.saved).toBe(true);
     expect(pescador!.taxed).toBe(true);
-    expect(game.isTargetable(pescador!, false)).toBe(false);
+    // Mesmo fugindo, o Pescador é alvo: o jogador pode punir o que passou.
+    expect(game.isTargetable(pescador!, false)).toBe(true);
   });
 });
 
