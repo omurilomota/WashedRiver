@@ -275,8 +275,6 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ripado(2, -54, 20, 14, '#7a6a44');
       ripado(-22, -40, 16, 14, '#4a5a4a');
       ripado(6, -40, 18, 14, '#5a4a3a');
-      ctx.fillStyle = '#3a3428';
-      ctx.fillRect(-26, 0, 4, 0);
       return true;
     case 'luminaria': // luminária do depósito
       ctx.strokeStyle = '#3a3e3a';
