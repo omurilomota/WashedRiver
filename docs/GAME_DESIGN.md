@@ -33,11 +33,12 @@ barco que era do irmão do Zé, uma escolha no final que ninguém vai achar boa.
 - **6 lanes** (índices 0–5) × **7 colunas** = **42 slots** de plantio.
 - Canvas lógico **1280×846** (`LANE_Y0=90`, `LANE_H=126`).
 - A vila fica à esquerda (`VX=170`); os inimigos entram pela direita.
-- Cada lane tem nome próprio por mapa (o corredor nasce do cenário, não de um
-  grid) e duas **estruturas** que a maré tenta derrubar.
-- As lanes **0–2** têm arte e nome próprios por mapa (PÍER, RUA, CANAL…). As
-  lanes **3–5** compartilham **um piso único por mapa**, e o nome das três
-  repete o do piso (ADR 011).
+- Cada lane tem duas **estruturas** que a maré tenta derrubar.
+- **O campo é um terreno só por mapa** (ADR 014): onde tem rio, tem rio nas
+  seis lanes; onde tem penhasco, penhasco nas seis. O nome das seis lanes é o
+  do terreno (`RIO DO PÍER`, `PENHASCO`, `TRILHO`, `CALÇADA`,
+  `PISO DA FÁBRICA`, `ÁGUA RASA`). Variedade vem dos props e da variação de
+  arranjo por lane (ADR 013), não de microcenários diferentes.
 
 ## Estruturas
 
@@ -173,9 +174,8 @@ Chefes são **fases**, não sacos de vida:
 | Fábrica Podre | energia (×1.25) | cinzas | O Gerente | a origem tem expediente até domingo |
 | Cemitério de Barcos | tudo (×1.4) | vendaval | A MARÉ | o fim da costa e o começo do mar |
 
-Cada mapa tem: paleta própria, clima, 3 nomes de lane para as lanes de cima + 1
-nome repetido nas lanes de baixo, 2 estruturas por lane, pool de criaturas,
-chefe, intro, fala do chefe e bio.
+Cada mapa tem: paleta própria, clima, **um terreno** (nome das 6 lanes),
+2 estruturas por lane, pool de criaturas, chefe, intro, fala do chefe e bio.
 
 ### Ondas e pool de criaturas
 

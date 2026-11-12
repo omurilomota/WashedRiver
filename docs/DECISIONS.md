@@ -22,6 +22,7 @@ Os mesmos registros ficam espelhados na memória do projeto (ai-memory), em
 | [011](adr/011-lanes-de-baixo-piso-unico.md) | aceito | Lanes de baixo (3–5) com um piso único por mapa |
 | [012](adr/012-barra-de-cartas-linha-unica.md) | aceito | Barra de cartas do HUD em linha única (substitui a quebra da 010) |
 | [013](adr/013-variacao-de-arranjo-no-piso-unificado.md) | aceito | Variação de arranjo (offset e tom) dentro do piso único |
+| [014](adr/014-campo-unificado-terreno-por-mapa.md) | aceito | Campo unificado: um terreno por mapa, nas 6 lanes (substitui o recorte da 011) |
 
 ## Como registrar uma decisão nova
 

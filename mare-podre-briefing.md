@@ -57,7 +57,7 @@
 - Áudio WebAudio: trilha por mapa, rádio, efeitos; morte única por criatura,
   cena de morte de cada chefe
 - Save v3 em localStorage com migração, autosave e export/import
-- 109 testes verdes (`npm run check`: typecheck + lint + test + build + smoke)
+- 108 testes verdes (render: campo unificado) (`npm run check`: typecheck + lint + test + build + smoke)
 
 ## O que está quebrado ou pendente
 ### Parte 1 — padronizar lanes (concluída: ADR 011 + ADR 013)

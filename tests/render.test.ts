@@ -92,11 +92,11 @@ function tracos(fn: () => void): string {
   return ops.map((o) => o.replace(/\(.*$/, '')).join('|');
 }
 
-/** Arte do piso das lanes de baixo, com Y fixo (0) para isolar o desenho. */
-function arteBaixa(mapId: string, v = 0): string {
+/** Arte do terreno com Y e lane fixos (0): isola o desenho da posição. */
+function arteDoTerreno(mapId: string, lane: number): string {
   const map = MAPS.find((m) => m.id === mapId);
   expect(map, `mapa ${mapId} existe`).toBeDefined();
-  return assina(() => lanes.drawLaneFloorNovaEm(map!, map!.pal, 3.25, 0, v));
+  return assina(() => lanes.drawLaneFloorNovaEm(map!, map!.pal, 3.25, 0, lane));
 }
 
 describe('o campo tem 6 lanes e cada uma desenha', () => {
@@ -117,45 +117,40 @@ describe('o campo tem 6 lanes e cada uma desenha', () => {
   });
 });
 
-describe('as lanes de baixo (3, 4 e 5) têm um piso único por mapa', () => {
-  // ADR 011: as lanes de baixo compartilham um piso por mapa. O teste
-  // antigo comparava assinaturas com Y e passava mesmo com arte igual.
-  const BAIXAS = [3, 4, 5];
+describe('o campo tem um terreno só por mapa, nas 6 lanes', () => {
+  // ADR 014: um lugar por mapa — rio nas seis, penhasco nas seis, trilho
+  // nas seis. O teste antigo comparava assinaturas com Y e passava mesmo
+  // com arte repetida; aqui comparamos o terreno-base (o começo do desenho)
+  // e a variação de arranjo (a assinatura inteira).
+  const TODAS = [0, 1, 2, 3, 4, 5];
 
-  it('dentro de um mapa, as três lanes de baixo desenham a mesma arte', () => {
+  /** Primeiras operações do desenho: o terreno-base, antes dos props. */
+  function baseDoTerreno(fn: () => void): string {
+    return tracos(fn).split('|').slice(0, 40).join('|');
+  }
+
+  it('dentro de um mapa, as 6 lanes começam pelo mesmo terreno', () => {
     for (const map of MAPS) {
-      const seq = BAIXAS.map((l) => tracos(() => desenho.drawLaneFloor(map, map.pal, l, 3.25)));
-      expect(new Set(seq).size, `${map.id}: lanes de baixo desenham arte diferente`).toBe(1);
+      const bases = TODAS.map((l) => baseDoTerreno(() => desenho.drawLaneFloor(map, map.pal, l, 3.25)));
+      expect(new Set(bases).size, `${map.id}: lane 0 e lane 5 desenham terrenos diferentes`).toBe(1);
+      expect(bases[0].length, `${map.id}: terreno-base vazio`).toBeGreaterThan(60);
     }
   });
 
-  it('...mas o arranjo muda de lane em lane: piso único não vira tecido (ADR 013)', () => {
-    // Mesma sequência de operações (identidade), cores e posições diferentes.
+  it('...mas o arranjo muda de lane em lane: terreno único não vira textura (ADR 013)', () => {
     for (const map of MAPS) {
-      const artes = [0, 1, 2].map((v) => arteBaixa(map.id, v));
-      expect(new Set(artes).size, `${map.id}: variação de arranjo não mudou nada`).toBe(3);
-      const tracosDas = [0, 1, 2].map((v) =>
-        tracos(() => lanes.drawLaneFloorNovaEm(map, map.pal, 3.25, 0, v)),
-      );
-      expect(new Set(tracosDas).size, `${map.id}: variação trocou a estrutura do piso`).toBe(1);
+      const artes = TODAS.map((l) => arteDoTerreno(map.id, l));
+      expect(new Set(artes).size, `${map.id}: variação de arranjo não mudou nada`).toBe(TODAS.length);
     }
   });
 
-  it('a arte de baixo muda de mapa para mapa', () => {
-    const artes = MAPS.map((m) => arteBaixa(m.id));
-    expect(new Set(artes).size, 'arte de baixo igual em todos os mapas').toBe(MAPS.length);
-  });
-
-  it('a arte de baixo não é piso herdado da lane 2', () => {
-    for (const map of MAPS) {
-      const baixa = tracos(() => lanes.drawLaneFloorNovaEm(map, map.pal, 3.25, 0, 0));
-      const deCima = tracos(() => desenho.drawLaneFloor(map, map.pal, 2, 3.25));
-      expect(baixa, `${map.id}: lane de baixo copia a lane 2`).not.toBe(deCima);
-    }
+  it('o terreno muda de mapa para mapa', () => {
+    const artes = MAPS.map((m) => arteDoTerreno(m.id, 0));
+    expect(new Set(artes).size, 'terreno igual em todos os mapas').toBe(MAPS.length);
   });
 });
 
-describe('as estruturas das lanes de baixo têm silhueta própria', () => {
+describe('as estruturas têm silhueta própria em todos os mapas', () => {
   /** Ids de estrutura usados nas lanes de baixo. */
   function idsLanesDeBaixo(): { id: string; map: (typeof MAPS)[number] }[] {
     const vistos = new Set<string>();

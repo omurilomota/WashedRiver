@@ -34,6 +34,13 @@ campo repetido.
 - O teste de render compara a **sequência de operações de desenho**
   (`tracos()`), ignorando os números: pega arte repetida sem depender de Y.
 
+**Atualização (2026-11-12):** o recorte "só as lanes de baixo" foi substituído
+pela [ADR 014](014-campo-unificado-terreno-por-mapa.md) — o campo passou a ter
+**um terreno por mapa nas 6 lanes** (rio nas seis, penhasco nas seis…), porque
+padronizar metade deixava o campo confuso de ler. O que segue nesta ADR
+continha válido para o trecho que ela cobria (piso único, nome alinhado,
+teste sem Y).
+
 ## Consequências
 
 **Ficou mais fácil:** um lugar só para mexer no piso de baixo; mapa novo

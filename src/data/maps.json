@@ -10,12 +10,12 @@
       "weather": "rain",
       "track": "barra",
       "lanes": [
-        "PÍER",
-        "RUA",
-        "CANAL",
-        "JARDIM RIBEIRINHO",
-        "JARDIM RIBEIRINHO",
-        "JARDIM RIBEIRINHO"
+        "RIO DO PÍER",
+        "RIO DO PÍER",
+        "RIO DO PÍER",
+        "RIO DO PÍER",
+        "RIO DO PÍER",
+        "RIO DO PÍER"
       ],
       "pal": {
         "sky1": "#5a3a22",
@@ -133,12 +133,12 @@
       "weather": "fog",
       "track": "farol",
       "lanes": [
-        "CAMINHO DE PEDRA",
-        "ESCADARIA",
-        "RESTINGA",
-        "FAROL VELHO",
-        "FAROL VELHO",
-        "FAROL VELHO"
+        "PENHASCO",
+        "PENHASCO",
+        "PENHASCO",
+        "PENHASCO",
+        "PENHASCO",
+        "PENHASCO"
       ],
       "pal": {
         "sky1": "#14262e",
@@ -253,12 +253,12 @@
       "weather": "storm",
       "track": "estacao",
       "lanes": [
-        "TRILHO NORTE",
-        "PLATAFORMA",
-        "TRILHO CEGO",
-        "ARMAZÉM DE BAGAGEM",
-        "ARMAZÉM DE BAGAGEM",
-        "ARMAZÉM DE BAGAGEM"
+        "TRILHO",
+        "TRILHO",
+        "TRILHO",
+        "TRILHO",
+        "TRILHO",
+        "TRILHO"
       ],
       "pal": {
         "sky1": "#2e3640",
@@ -373,12 +373,12 @@
       "weather": "heat",
       "track": "feira",
       "lanes": [
-        "CORREDOR DE BARRACAS",
-        "CALÇADA DO PEIXE",
-        "DESCARGA",
-        "CAMELÔ DO PEIXE",
-        "CAMELÔ DO PEIXE",
-        "CAMELÔ DO PEIXE"
+        "CALÇADA",
+        "CALÇADA",
+        "CALÇADA",
+        "CALÇADA",
+        "CALÇADA",
+        "CALÇADA"
       ],
       "pal": {
         "sky1": "#7a4a22",
@@ -494,12 +494,12 @@
       "weather": "ash",
       "track": "fabrica",
       "lanes": [
-        "ESTEIRA",
-        "CORREDOR DE CANOS",
-        "VALA QUÍMICA",
-        "PÁTIO DE CARGA",
-        "PÁTIO DE CARGA",
-        "PÁTIO DE CARGA"
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA"
       ],
       "pal": {
         "sky1": "#3a1e18",
@@ -614,12 +614,12 @@
       "weather": "gale",
       "track": "cemiterio",
       "lanes": [
-        "CONVÉS APODRECIDO",
-        "CAIS QUEBRADO",
         "ÁGUA RASA",
-        "CASCO ENCALHADO",
-        "CASCO ENCALHADO",
-        "CASCO ENCALHADO"
+        "ÁGUA RASA",
+        "ÁGUA RASA",
+        "ÁGUA RASA",
+        "ÁGUA RASA",
+        "ÁGUA RASA"
       ],
       "pal": {
         "sky1": "#1c242c",
