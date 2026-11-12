@@ -339,7 +339,7 @@ export function drawBoss(e){
     ctx.strokeStyle='#5a5a52';ctx.lineWidth=6;for(const s of[-1,1]){ctx.beginPath();ctx.moveTo(s*30,-58);ctx.lineTo(s*44,-34+Math.sin(t*3+s)*5);ctx.stroke();
       ctx.fillStyle='#3a3a36';ctx.fillRect(s*44-6,-34+Math.sin(t*3+s)*5,12,10);}
     if(e.phase>=4){ctx.fillStyle='rgba(255,80,40,.35)';ctx.beginPath();ctx.arc(0,-52,26,0,7);ctx.fill();}
-    ctx.fillStyle='#ffe;';if(e.phase>=5){ctx.fillStyle='#e8d070';ctx.font='bold 9px monospace';ctx.fillText('META!!',-20,-106);}
+    if(e.phase>=5){ctx.fillStyle='#e8d070';ctx.font='bold 9px monospace';ctx.fillText('META!!',-20,-106);}
   }else if(e.b==='mare'){
     ctx.restore();drawMare(t,e);return;
   }
