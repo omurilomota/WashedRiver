@@ -678,6 +678,8 @@ export function drawMachine(m){
   ctx.save();ctx.translate(x,y);
   if(!icon){ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,2,26,6,0,0,7);ctx.fill();}
   ctx.rotate(P.tilt);ctx.scale(P.sx,P.sy);
+  // volume: sombra de ventre dá "corpo" às máquinas
+  if(!m._icon){ctx.fillStyle='rgba(0,0,0,.14)';ctx.beginPath();ctx.ellipse(0,-14,16,6,0,0,7);ctx.fill();}
   const k=m.type;
   const __drawer = MACHINE_DRAWERS[k];
   if(__drawer){__drawer({m,k,t,act,hurt,f,dmg});}
