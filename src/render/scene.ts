@@ -71,7 +71,7 @@ export function drawField(){
   for(const p of G.pickups)drawPickup(p,G);
   drawParticles(G);
   drawWeather(G,G.t);
-  if(G.baleiaWarn){const bw=G.baleiaWarn; if(Math.sin(G.t*12)>0){ctx.fillStyle='#e8d9a8';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText('🐋 BALEIA',colX(2),LANE_Y0+bw.lane*LANE_H+40);ctx.textAlign='left';}}
+  if(G.baleiaWarn){const bw=G.baleiaWarn; if(Math.sin(G.t*12)>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=4;ctx.fillStyle='#e8d9a8';ctx.font='bold 16px "Consolas","Menlo","Monaco",monospace';ctx.textAlign='center';ctx.fillText('🐋 BALEIA',colX(2),LANE_Y0+bw.lane*LANE_H+40);ctx.restore();ctx.textAlign='left';}}
   if(G.dark&&G.darkT>0){ctx.fillStyle='rgba(2,4,8,.55)';ctx.fillRect(0,0,W,H);}
   ctx.restore();
   const grd=ctx.createRadialGradient(W/2,H/2,H*.42,W/2,H/2,H*.98);
@@ -83,7 +83,7 @@ export function drawHazard(h){
   if(h.t<h.warn){
     ctx.fillStyle=`rgba(255,${60+Math.sin(h.t*20)*40},30,${.25+Math.sin(h.t*14)*.15})`;
     ctx.fillRect(VX,y,SPAWN_X-VX,LANE_H);
-    ctx.fillStyle='#f0e0a0';ctx.font='bold 13px monospace';ctx.fillText(h.kind==='train'?'APITO. SAIA DO TRILHO.':'ESTEIRA EM MOVIMENTO',VX+320,y+60);
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=4;ctx.fillStyle='#f0e0a0';ctx.font='bold 13px "Consolas","Menlo","Monaco",monospace';ctx.fillText(h.kind==='train'?'APITO. SAIA DO TRILHO.':'ESTEIRA EM MOVIMENTO',VX+320,y+60);ctx.restore();
   }else{
     const p=(h.t-h.warn)/h.dur;
     if(h.kind==='train'){

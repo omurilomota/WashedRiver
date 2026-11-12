@@ -436,8 +436,8 @@
       "scrap": 12,
       "r": 20,
       "air": true,
-      "desc": "Atravessa a primeira peça e vive no breu. Contra luz, evapora e deixa o formato dela no chão.",
-      "hint": "SÓ luz ou explosão. O Holofote é a arma."
+      "desc": "É intangível: bala atravessa, peça não segura. Vive no breu; contra luz, evapora e deixa o formato no chão.",
+      "hint": "SÓ luz ou explosão. Bala não pega. O Holofote é a arma."
     },
     "mariposa": {
       "nome": "Mariposa de Espelho",
@@ -487,9 +487,8 @@
       "dps": 0,
       "scrap": 0,
       "r": 50,
-      "neutral": true,
-      "desc": "Atravessa o mapa. Não machuca ninguém. Pisa nas suas peças e quebra. Não devia estar aqui.",
-      "hint": "Não é alvo. Ventilador espanta e ela volta pro mar; geladeira fora do caminho evita o esmagamento."
+      "desc": "Atravessa o mapa. Não machuca ninguém a não ser pisando nas suas peças. Não devia estar aqui — e agora dá para derrubar.",
+      "hint": "É alvo: tiro, explosão e lâmina funcionam. Ventilador ainda espanta e ela volta pro mar; geladeira fora do caminho evita o esmagamento."
     },
     "pescador": {
       "nome": "O Pescador",
@@ -498,8 +497,7 @@
       "dps": 0,
       "scrap": 0,
       "r": 24,
-      "human": true,
-      "desc": "Um homem pela metade. Ainda fala. Ainda reconhece o barco. Não dá para matar o que já era gente — e ele não quebra a vila: leva sucata e volta pro mar.",
+      "desc": "Um homem pela metade. Ainda fala. Ainda reconhece o barco. Agora dá para matar — mas ele não quebra a vila: se chegar, leva sucata e volta pro mar.",
       "hint": "Rádio hipnotiza, redireciona e ainda rende sucata. Cachorro late e confunde. Sem resposta, ele cobra o pedágio."
     },
     "passageiro": {

@@ -7,6 +7,7 @@
 import { FIELD_R, H, W, clamp, plantY, rnd } from '../core/constants';
 import { ctx } from '../core/canvas';
 import { blinkEye, eye, lowHp, pose, rr, teeth } from './sprites';
+import { shadowEllipse } from './brush';
 
 
 export function drawEnemy(e){
@@ -16,6 +17,8 @@ export function drawEnemy(e){
   const flying=e.air&&e.lit<=0;
   const hidden=e.type==='fantasma'&&!e.revealed&&!e.lit;
   ctx.save();ctx.translate(x,y);
+  // sombra projetada uniforme (brush): lê-se a altura e o apoio no chão
+  shadowEllipse(0, 2, (e.r || 12) * (e.air && e.lit <= 0 ? 0.7 : 1), (e.air && e.lit <= 0 ? 3 : 5), 0.32);
   // sombra separada quando voa: lê-se a altura
   ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(flying?8:0,2,e.r*(flying?.7:1),flying?3:5,0,0,7);ctx.fill();
   if(hidden){ // invisível: só a pegada e a ondulação
@@ -224,8 +227,26 @@ export function drawEnemy(e){
   if(low&&e.type!=='baleia'&&e.type!=='pescador'){
     ctx.fillStyle='#8a1020';const dy=(t*40)%30;ctx.beginPath();ctx.ellipse(-e.r*.4,-6+dy,2,4,0,0,7);ctx.fill();
     ctx.strokeStyle='rgba(150,20,30,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-e.r*.9,e.r*.9,2.1,4.3);ctx.stroke();
+    // feedback triplo: borda pulsante de baixa vida
+    ctx.strokeStyle=`rgba(220,40,40,${0.35+Math.sin(t*8)*0.25})`;
+    ctx.lineWidth=2.5;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.arc(0,-e.r*.9,e.r+4,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // feedback triplo: intangível (fantasma não revelado) — contorno tracejado
+  if(e.type==='fantasma'&&!e.revealed&&!e.lit){
+    ctx.strokeStyle='rgba(180,200,190,.5)';ctx.lineWidth=1.5;ctx.setLineDash([3,4]);
+    ctx.beginPath();ctx.ellipse(0,-18,26,14,0,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // feedback triplo: "só luz" (água-viva) — silhueta luminosa quando acesa
+  if(e.type==='agua'&&e.lit>0){
+    ctx.strokeStyle=`rgba(255,240,180,${0.5+Math.sin(t*10)*0.2})`;
+    ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-28,20,0,Math.PI*2);ctx.stroke();
   }
   if(e.flash>0){ctx.globalAlpha=Math.min(1,e.flash*4);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,-e.r*.9,e.r,0,7);ctx.fill();ctx.globalAlpha=1;}
+  // rim light sutil (luz global topo-esquerda)
+  ctx.strokeStyle='rgba(230,220,180,.18)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,-e.r*.9,e.r+0.5,Math.PI*1.1,Math.PI*1.7);ctx.stroke();
   ctx.restore();
   if(e.boss||e.type==='mare')return;
   // barras só de chefe e de baleia (a baleia importa)
@@ -354,6 +375,10 @@ export function deathDur(type){
 export function drawDeath(d){
   const t=d.t,p=t/d.dur;
   ctx.save();ctx.translate(d.x,d.y);
+  // squash & stretch: impacto inicial, achatamento final
+  const sq=1+Math.sin(p*Math.PI)*0.28*(1-p);
+  const sy=1-Math.sin(p*Math.PI)*0.18*(1-p);
+  ctx.scale(sq,sy);
   ctx.globalAlpha=clamp(1-Math.max(0,p-.7)/.3,0,1);
   const B=d.type;
   if(B==='baiacu'){ // murcha em bolha vazia que sobe e estoura
@@ -450,6 +475,9 @@ export function drawDeath(d){
 export function drawBossDeath(d){
   const t=d.t,p=t/d.dur;
   ctx.save();ctx.translate(d.x,d.y);
+  const sq=1+Math.sin(p*Math.PI)*0.22*(1-p);
+  const sy=1-Math.sin(p*Math.PI)*0.14*(1-p);
+  ctx.scale(sq,sy);
   const B=d.b;
   if(B==='bento'){ // as botas andam, o chapéu desce, a tatuagem borbulha
     const bx=-t*55;

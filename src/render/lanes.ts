@@ -855,4 +855,15 @@ export function drawLaneFloorNova(map: MapDef, p: Palette, l: number, t: number)
   else if (map.id === 'feira') feiraNova(p, l, y, t);
   else if (map.id === 'fabrica') fabricaNova(p, l, y, t);
   else cemiterioNova(p, l, y, t);
+  // Profundidade: sombra suave no topo e na base da lane dá volume ao corredor.
+  const top = ctx.createLinearGradient(0, y, 0, y + 14);
+  top.addColorStop(0, 'rgba(0,0,0,.22)');
+  top.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = top;
+  ctx.fillRect(VX, y, W - VX, 14);
+  const bot = ctx.createLinearGradient(0, y + LANE_H - 16, 0, y + LANE_H);
+  bot.addColorStop(0, 'rgba(0,0,0,0)');
+  bot.addColorStop(1, 'rgba(0,0,0,.28)');
+  ctx.fillStyle = bot;
+  ctx.fillRect(VX, y + LANE_H - 16, W - VX, 16);
 }

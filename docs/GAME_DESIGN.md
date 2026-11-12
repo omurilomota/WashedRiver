@@ -133,16 +133,17 @@ contra, não o lore.
 | Sapo de Óleo | 100 | pula 2 colunas | cobertura atrás |
 | Piranha-Coral | 25 | cardume forte | área / Bujão |
 | Caranguejo-Mártir | 120 | fúria dos amigos | matar por último |
-| Baleia-Filhote | 400 | **neutral** — imune a tudo | Ventilador espanta; ou desvie |
-| O Pescador | 60 | **human** — não morre, não quebra | Rádio redireciona; sem resposta, cobra pedágio em sucata |
+| Baleia-Filhote | 400 | alvo (matável) — ainda pisa nas peças | Tiro, explosão e lâmina; Ventilador espanta; ou desvie |
+| O Pescador | 60 | alvo (matável) — não quebra (cobra pedágio) | Tiro; Rádio redireciona; se chegar, cobra pedágio em sucata |
 | Passageiro do Trilho | 90 | troca de trilho | corredor protegido |
 
-**Regra de imortalidade:** `human` e `neutral` significam "não mate". HP é só
-número de combate. A Baleia é imune inclusive a explosão — mas o **Ventilador
-a espanta** (ela sai pelo lado direito). A MARÉ (chefe final) é
-`unbeatable: true`, sem número mágico. **Nada com trait `human` destrói
-estrutura:** o Pescador chega na vila, cobra `economia.pescadorTaxa` de sucata
-e volta pro mar. Nenhum inimigo comum passa de 500 HP
+**Regra de imortalidade:** só `unbeatable` (MARÉ) significa "não mate". HP é só
+número de combate. Pescador e Baleia-Filhote agora são alvos normais (tiro
+funciona). O Pescador ainda não quebra estrutura: se chegar na vila, cobra
+`economia.pescadorTaxa` de sucata e volta pro mar. A Baleia ainda pisa nas
+estruturas e o **Ventilador a espanta** (ela sai pelo lado direito). A MARÉ
+(chefe final) é `unbeatable: true`, sem número mágico. Nenhum inimigo comum
+passa de 500 HP
 (teste automático). **Todo bicho tem contramedida** (mandato 13 do `AGENTS.md`).
 
 ## Chefes (6)

@@ -226,18 +226,17 @@
       ],
       "pool": [
         "mariposa",
-        "agua",
         "gaivota",
         "enguia",
         "polvo",
         "sapo",
         "fantasma",
         "tatu",
-        "baiacu"
+        "baiacu",
+        "agua"
       ],
       "extra": [
-        "mariposa",
-        "agua"
+        "mariposa"
       ],
       "boss": "faroleiro",
       "intro": "Dizem que o faroleiro não desce da torre desde o apagão. Dizem. Ele desceu.",
@@ -590,16 +589,15 @@
         "lata",
         "polvo",
         "fantasma",
-        "agua",
         "piranha",
         "sapo",
         "bomba",
         "caranguejo",
-        "mariposa"
+        "mariposa",
+        "agua"
       ],
       "extra": [
-        "polvo",
-        "agua"
+        "polvo"
       ],
       "boss": "gerente",
       "intro": "A fábrica fechou há vinte anos e ainda tem gente trabalhando. Alguma coisa tem gente trabalhando.",
@@ -711,13 +709,13 @@
         "baiacu",
         "enguia",
         "polvo",
-        "agua",
         "gaivota_r",
         "piranha",
         "fantasma",
         "pescador",
         "caranguejo_m",
-        "baleia"
+        "baleia",
+        "agua"
       ],
       "extra": [
         "pescador",

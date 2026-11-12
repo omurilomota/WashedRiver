@@ -79,5 +79,6 @@ rodando dentro do jsdom, com contexto 2D falso) cobrem cada regra acima.
   pé. A documentação, o tom do jogo e a fórmula de estrelas (3 estrelas =
   nenhuma estrutura perdida) dizem o contrário.
 - **HP mágico de novo (`hp:9999`) para a baleia** — rejeitado em ADR 004: a
-  baleia não é alvo por *trait*, e esmagar peça é efeito de visita, não
-  invencibilidade.
+  baleia agora é alvo por HP (400), não por número mágico; esmagar peça é
+  efeito de visita, não invencibilidade. A imortalidade da baleia foi revogada
+  em 2026-11-11 (ver ADR 004, atualização).

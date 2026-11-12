@@ -187,7 +187,7 @@ function makeWaves(st: GameState, daily: boolean): WaveEntry[][] {
     for(let i=0;i<counts[w];i++){
       const type=poolW[Math.floor(rng()*poolW.length)];
       const lane=Math.floor(rng()*LANES);
-      const spacing=w===0?4.2:(w===1?3.0:2.6);
+      const spacing=w===0?5.0:(w===1?3.0:2.6);
       const time=i*spacing+rng()*1.6;
       arr.push([time,type,lane,1+w*.12]);
     }
@@ -227,7 +227,7 @@ function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
   else if(n===1)count=13;
   else count=Math.min(22,9+Math.min(24,n*3));
   const poolW=wavePool(base,n);
-  const spc=n===0?4.2:2.6; for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),1+Math.min(1,n*.09)]);
+  const spc=n===0?5.0:2.6; for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),1+Math.min(1,n*.09)]);
   // integração das novas criaturas na Noite Infinita
   if(n>=1){
     arr.push([30,'polvo',randLane(),1.1]);
@@ -329,6 +329,9 @@ function announceWave(w: number): void {
   const rm=RADIO.find(r=>r.map===G.mapIndex&&r.wave===w+1);
   if(rm)setTimeout(()=>{if(G&&Game.screen==='play')announce('RÁDIO: '+rm.txt,'radio');},2200);
   if(G.ze.alive&&w>=1){G.ze.say=pick(['Agora vai.','Segura aí.','Não olha pro mar.']);G.ze.sayT=3.4;}
+  // Maré bônus: a onda traz sucata espalhada — incentivo a interagir e
+  // um pouco de respiro financeiro no começo de cada onda.
+  for(let i=0;i<4;i++)dropScrap(rnd(VX+40,W-40),plantY(randLane())-rnd(10,40),12+rnd(0,18),false);
 }
 function nextPhase(): void {
   G.phaseIdx++;G.phaseT=0;G.spawnIdx=0;
@@ -541,28 +544,27 @@ export function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean,
   if(e.air&&e.lit<=0&&e.grounded<=0&&!airPierce)return false;
   if(e.type==='enguia'&&e.dived&&e.lit<=0)return false;
   if(e.type==='fantasma'&&!e.revealed&&e.lit<=0&&!allowHidden)return false;
-  if(e.flee)return false;
+  // Criatura fugindo ainda é alvo: o jogador pode punir o que passou.
   return true;
 }
 export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
   if(!e||e.burrow>0)return;
   if(e.neutral)return;
   if(e.boss){damageBoss(e,dmg,src);return;}
-  if(e.human||ENEMY[e.type].human||e.type==='pescador'){
+  if(e.human){
     e.revealed=1;e.spoke=pick(['Zé?','Meu barco...','Eu não quero machucar.']);e.act=.5;
     addText(e.x,plantY(e.lane)-e.r-16,'ELE É GENTE','#f0d0a0');SFX.human();return;
   }
-  if(e.type==='agua'&&e.lit<=0&&src!=='boom'&&src!=='fire'){e.revealed=1;addText(e.x,plantY(e.lane)-e.r-10,'não é física','#a8c8c8');return;}
+  if(e.type==='agua'&&e.lit<=0&&src!=='boom'&&src!=='fire'){e.revealed=1;addText(e.x,plantY(e.lane)-e.r-10,'ATRAVESSA A BALA. SÓ LUZ.','#a8c8c8');return;}
   if(e.buff)dmg*=.4;
   if(e.type==='lata'&&src==='toast'){ /* torradeira nem chega a chamar */ }
   e.hp-=dmg;e.flash=.18;e.act=.25;e.revealed=1.2;e.lit=Math.max(e.lit,.4);
   if(e.hp<=0)killEnemy(e);
 }
 function killEnemy(e: Enemy, noChain?: boolean): void {
-  if(e&&e.type==='baleia')return;
   const i=G.enemies.indexOf(e);if(i<0)return;G.enemies.splice(i,1);
   if(e.type==='mare')return;
-  G.kills++;if(e.type!=='baleia'&&e.type!=='pescador')G.collected+=0;
+  G.kills++;if(e.type!=='baleia')G.collected+=0;
   const y=plantY(e.lane);
   const ichor=e.type==='enguia'?'#1b1b22':e.type==='ova'?'#e07a9a':e.type==='lata'?'#6a8a9a':e.type==='polvo'?'#5a3a52':'#5a1a2a';
   stain(e.x+rnd(-8,8),y+rnd(0,10),ichor,e.boss?50:undefined);
@@ -676,7 +678,7 @@ export function update(dt: number){
   if(G.ze.sayT>0)G.ze.sayT-=dt;
   if(G.toqSayT>0)G.toqSayT-=dt;
   G.toqBoost=Math.sin(G.t*.8)*10;
-  G.shake*=Math.exp(-6*dt);G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
+  G.shake*=Math.exp(-6*dt);if(typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)G.shake=0;G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
   if(G.savedT>0)G.savedT-=dt;if(G.dogSay>0)G.dogSay-=dt;
 
   if(Game.screen!=='play'||Game.paused)return;
@@ -802,7 +804,7 @@ function updateMachines(dt: number): void {
       if(m.timer>3.2-.3*up){const tgt=G.enemies.find(e=>e.lane===m.lane&&e.x>m.x+20&&isTargetable(e,false,!!MACH.estilingue.air)&&Math.abs(e.x-m.x)<W);
         if(tgt){m.timer=0;m.act=.5;SFX.can();G.projs.push({x:m.x+10,y:plantY(m.lane)-52,lane:m.lane,vx:520,dmg:(45+12*up)*(1+G.dmgBonus),rot:0,kind:'can',silent:true,enemy:false,airPierce:!!MACH.estilingue.air});}}
     }else if(kind==='aspirador'){
-      if(m.timer>2.6){const cand=G.enemies.filter(e=>!e.boss&&e.type!=='pescador'&&e.burrow<=0&&e.x>m.x&&e.x<m.x+2*COLW&&ENEMY[e.type]&&ENEMY[e.type].hp<150&&!e.neutral);
+      if(m.timer>2.6){const cand=G.enemies.filter(e=>!e.boss&&e.type!=='pescador'&&e.type!=='baleia'&&e.burrow<=0&&e.x>m.x&&e.x<m.x+2*COLW&&ENEMY[e.type]&&ENEMY[e.type].hp<150&&!e.neutral);
         if(cand.length){m.timer=0;m.act=.7;SFX.gust();
           for(const e of cand){e.kb-=140+40*up;e.slow=.8;if(nearMach(m,'bujao'))e.kb-=90;}
           burst(m.x+20,plantY(m.lane)-20,8,'rgba(180,200,190,.5)',100,-40,3,.4);}
@@ -827,7 +829,7 @@ function updateMachines(dt: number): void {
           for(let l=0;l<LANES;l++)G.projs.push({x:m.x+10,y:plantY(l)-40,lane:l,vx:420,dmg:(13+4*(G.up.aranha||0))*(1+G.dmgBonus),rot:0,kind:'can',silent:true,enemy:false});}
       }
     }else if(kind==='cachorro'){
-      if(m.timer>3.2){const small=G.enemies.filter(e=>e.lane===m.lane&&e.x>m.x&&e.x<m.x+2.2*COLW&&!e.boss&&!e.neutral&&ENEMY[e.type]&&ENEMY[e.type].hp<120);
+      if(m.timer>3.2){const small=G.enemies.filter(e=>e.lane===m.lane&&e.x>m.x&&e.x<m.x+2.2*COLW&&!e.boss&&e.type!=='baleia'&&!e.neutral&&ENEMY[e.type]&&ENEMY[e.type].hp<120);
         if(small.length){m.timer=0;m.act=.6;SFX.lata();for(const e of small)e.kb+=120;G.dogSay=.6;}
         if(G.enemies.some(e=>e.type==='pescador'&&Math.abs(e.x-m.x)<COLW*2.5)&&(nearMach(m,'radio')||chance(.35)))redirectPescador();
       }
@@ -1016,7 +1018,7 @@ function updateHazards(dt: number): void {
     if(h.t>=h.warn&&h.t<h.warn+h.dur){
       if(!h.hit){h.hit=true;SFX.crash();G.shake=16;
         for(const m of G.machines)if(m.lane===h.lane)damageMachine(m,h.dmg);
-        for(const e of G.enemies)if(e.lane===h.lane&&!e.boss&&e.type!=='baleia'&&e.type!=='pescador')damageEnemy(e,h.kind==='train'?90:25,'boom');}
+        for(const e of G.enemies)if(e.lane===h.lane&&!e.boss&&e.type!=='pescador')damageEnemy(e,h.kind==='train'?90:25,'boom');}
     }
     if(h.t>h.warn+h.dur+.3)G.hazards.splice(i,1);
   }
@@ -1101,7 +1103,6 @@ function bossDefeated(e: Enemy): void {
   G.kills++;dropScrap(e.x,plantY(e.lane)-40,120,true);G.zeHat=(e.b==='bento');
   if(e.b==='mare'){SaveDB.achievement('maré');}
   if(e.b==='faroleiro'&&!G.machines.some(m=>m.type==='holofote'))SaveDB.achievement('sem_farol');
-  announce('ACABOU. UM DELES, PELO MENOS.','story');
 }
 function metaReward(stars: number): number {
   const lanesIntactas=G.structures.filter((lane)=>lane.every((s)=>s.alive)).length;

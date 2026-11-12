@@ -149,14 +149,14 @@ describe('Baleia-Filhote', () => {
     expect(state.G.machines.length === 0 || state.G.machines[0].hp < antes).toBe(true);
   });
 
-  it('não é alvo: não toma dano de tiro nem de explosão', () => {
+  it('é alvo: toma dano de tiro e de explosão', () => {
     state.Game.startCampaign(0);
     const baleia = game.spawnEnemy('baleia', 0, 900);
     expect(baleia).not.toBeNull();
     const hp = baleia!.hp;
-    game.damageEnemy(baleia!, 500, 'boom');
-    expect(baleia!.hp).toBe(hp);
-    expect(game.isTargetable(baleia!, false)).toBe(false);
+    game.damageEnemy(baleia!, 50, 'boom');
+    expect(baleia!.hp).toBeLessThan(hp);
+    expect(game.isTargetable(baleia!, false)).toBe(true);
   });
 });
 
@@ -329,6 +329,22 @@ describe('contramedidas justas', () => {
     expect(baleia!.spooked).toBe(true);
   });
 
+  it('Pescador e Baleia-Filhote agora são alvos (matáveis)', () => {
+    state.Game.startCampaign(0);
+    const baleia = game.spawnEnemy('baleia', 0, 900);
+    const pescador = game.spawnEnemy('pescador', 0, 900);
+    expect(baleia).not.toBeNull();
+    expect(pescador).not.toBeNull();
+    const hpB = baleia!.hp;
+    const hpP = pescador!.hp;
+    game.damageEnemy(baleia!, 10, 'shot');
+    game.damageEnemy(pescador!, 10, 'shot');
+    expect(baleia!.hp).toBeLessThan(hpB);
+    expect(pescador!.hp).toBeLessThan(hpP);
+    expect(game.isTargetable(baleia!, false)).toBe(true);
+    expect(game.isTargetable(pescador!, false)).toBe(true);
+  });
+
   it('a lata devolve no máximo três torradas — a quarta entra', () => {
     state.Game.startCampaign(0);
     const lata = game.spawnEnemy('lata', 0, 900);
@@ -371,7 +387,8 @@ describe('o Pescador não quebra a vila', () => {
     expect(state.G.scrap).toBeCloseTo(100 - ECONOMIA.pescadorTaxa, 0);
     expect(pescador!.saved).toBe(true);
     expect(pescador!.taxed).toBe(true);
-    expect(game.isTargetable(pescador!, false)).toBe(false);
+    // Mesmo fugindo, o Pescador é alvo: o jogador pode punir o que passou.
+    expect(game.isTargetable(pescador!, false)).toBe(true);
   });
 });
 
