@@ -8,7 +8,7 @@ import { FIELD_R, H, LANES, LANE_H, LANE_Y0, VX, W, clamp, plantY, rnd, vizinhoX
 import { DPR, ctx, rr, waterLines } from '../core/canvas';
 import { G } from '../core/state';
 import { CARTAZES, VIZINHOS_NOMES } from '../data';
-import { drawLaneFloorNova } from './lanes';
+import { drawLaneFloorNova, drawLaneFloorNovaEm } from './lanes';
 import { drawEstruturaNova } from './structures';
 import { haloText, shadowEllipse } from './brush';
 
@@ -115,8 +115,8 @@ export function drawBackground(map,G,t){
   else if(map.id==='fabrica'){drawFabrica(p,t);}
   else{drawCemiterio(p,t);}
 
-  // os três corredores: cada um com piso próprio
-  for(let l=0;l<LANES;l++)drawLaneFloor(map,p,l,t);
+  // o piso do campo: 6 lanes de uma vez, do cache (ver pisoCanvas)
+  ctx.drawImage(pisoCanvas(map,t),0,0,W,H);
   // mar/margem à direita
   const g=ctx.createLinearGradient(FIELD_R-30,0,W,0);g.addColorStop(0,'rgba(5,18,20,0)');g.addColorStop(.35,p.water);g.addColorStop(1,'#061417');
   ctx.fillStyle=g;ctx.fillRect(FIELD_R-30,LANE_Y0,W-FIELD_R+30,H-LANE_Y0);
@@ -235,8 +235,46 @@ function drawCemiterio(p,t,cx=ctx){
 // A arte mora em lanes.ts — aqui já viveu a variante por mapa/lane, que
 // deixava metade do campo (lanas de cima) com um cenário e a outra metade
 // (lanas de baixo) com outro, e o campo não se lia como um lugar só.
+// Piso do campo: um terreno por mapa, nas 6 lanes (ADR 014).
+// A arte mora em lanes.ts — aqui já viveu a variante por mapa/lane, que
+// deixava metade do campo (lanes de cima) com um cenário e a outra metade
+// (lanes de baixo) com outro, e o campo não se lia como um lugar só.
 export function drawLaneFloor(map,p,l,t){
   drawLaneFloorNova(map,p,l,t);
+}
+
+/**
+ * Cache do piso do campo (performance).
+ *
+ * O piso era redesenhado por inteiro a cada frame: 6 lanes de arte pesada
+ * (pranchões, água, estacas) davam mais de mil operações de canvas por
+ * quadro — em máquina modesta o jogo engasgava, e a unificação das 6 lanes
+ * (ADR 014) deixou essa conta ainda mais salgada. Agora o piso inteiro é
+ * assado uma vez e refrescado a cada `PISO_T` segundos: o brilho da água e
+ * a poeira continuam vivos, mas a 5 quadros por segundo em vez de 60.
+ * Custo real por quadro: 1 drawImage.
+ */
+let _pisoCache: { id: string; canvas: HTMLCanvasElement; t: number } | null = null;
+const PISO_T = 0.2;
+
+function pisoCanvas(map, t: number): HTMLCanvasElement {
+  if (_pisoCache && _pisoCache.id === map.id && Math.abs(t - _pisoCache.t) < PISO_T) {
+    return _pisoCache.canvas;
+  }
+  if (!_pisoCache || _pisoCache.id !== map.id) {
+    const c = document.createElement('canvas');
+    c.width = W * DPR;
+    c.height = H * DPR;
+    _pisoCache = { id: map.id, canvas: c, t: -999 };
+  }
+  const c2 = _pisoCache.canvas.getContext('2d')!;
+  c2.save();
+  c2.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c2.clearRect(0, 0, W, H);
+  for (let l = 0; l < LANES; l++) drawLaneFloorNovaEm(map, map.pal, t, LANE_Y0 + l * LANE_H, l);
+  c2.restore();
+  _pisoCache.t = t;
+  return _pisoCache.canvas;
 }
 
 // =====================================================================

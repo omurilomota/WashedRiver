@@ -645,6 +645,8 @@ export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
 function killEnemy(e: Enemy, noChain?: boolean): void {
   const i=G.enemies.indexOf(e);if(i<0)return;G.enemies.splice(i,1);
   if(e.type==='mare')return;
+  // BLOCO M.5: o bestiário abre quando o bicho MORRE, não quando aparece.
+  SaveDB.mateu(e.type);
   G.kills++;if(e.type!=='baleia')G.collected+=0;
   const y=plantY(e.lane);
   const ichor=e.type==='enguia'?'#1b1b22':e.type==='ova'?'#e07a9a':e.type==='lata'?'#6a8a9a':e.type==='polvo'?'#5a3a52':'#5a1a2a';
@@ -1195,6 +1197,8 @@ function bossDefeated(e: Enemy): void {
   if(G.boss===e)G.boss=null;
   G.enemies=G.enemies.filter(o=>o.boss?false:true);
   const bId=e.b||e.type;
+  // BLOCO M.5: a galeria de chefes abre com o chefe derrotado.
+  SaveDB.venci(bId);
   G.bossDeath={b:bId,x:Math.min(e.x,W-120),y:plantY(e.lane),lane:e.lane,t:0,dur:deathDur(bId)};
   G.deaths.push({type:bId,x:Math.min(e.x,W-120),y:plantY(e.lane),lane:e.lane,t:0,dur:deathDur(bId)});
   SFX.death(e.b);tremer(20);piscar(.6);Snd.setIntensity(1);

@@ -257,38 +257,45 @@ export const UI=(function(){
   function codex(tab?: string){
     if(tab)codexTab=tab;
     const s=SaveDB.slot;
-    const seenB=Object.keys(s.seenB||{}).length,seenM=Object.keys(s.seenM||{}).length;
-    const tabs=['bestiary','machines','radio','ach'];
+    // BLOCO M.5: o bestiário abre por MORTE (mateiB), a galeria por construção
+    // (seenM) e os chefes por vitória (venciB). Save novo: tudo vazio.
+    const mates=Object.keys(s.mateiB||{}).length,plantadas=Object.keys(s.seenM||{}).length;
+    const tabs=['bestiary','machines','chefes','radio','ach'];
+    const nomeTab: Record<string,string>={bestiary:'BICHOS',machines:'ENGENHOCAS',chefes:'CHEFES',radio:'RÁDIO',ach:'SELOS'};
     let body='';
     if(codexTab==='bestiary'){
       body='<div class="codexGrid">'+ENEMY_ORDER.map(id=>{
-        const e=ENEMY[id],seen=!!s.seenB[id]||seenB>0&&false;
-        return '<div class="beast '+(seen?'seen':'locked')+'"><h4>'+(seen?e.nome:'???')+'</h4>'+
-          '<p>'+(seen?e.desc:'Você ainda não viu esse. Ou viu e não voltou pra contar.')+'</p>'+
-          '<div class="kill">'+(seen?'COMO RESOLVER: '+e.hint:'DICA: sobreviva.')+'</div></div>';}).join('')+
-        Object.entries(BOSSES).map(([id,b])=>'<div class="beast '+(s.seenB[id]?'seen':'locked')+'"><h4>'+(s.seenB[id]?b.nome:'???')+'</h4>'+
-          '<p>'+(s.seenB[id]?b.desc:'Chefe não catalogado.')+'</p><div class="kill">'+(s.seenB[id]?b.hint:'')+'</div></div>').join('')+'</div>'+
-        '<p class="muted" style="margin-top:8px">'+seenB+'/'+ENEMY_ORDER.length+' criaturas catalogadas. O que não viu continua borrado.</p>';
+        const e=ENEMY[id],visto=!!s.mateiB[id];
+        return '<div class="beast '+(visto?'seen':'locked')+'"><h4>'+(visto?e.nome:'???')+'</h4>'+
+          '<p>'+(visto?e.desc:'Não matou esse ainda. Ou não voltou pra contar.')+'</p>'+
+          '<div class="kill">'+(visto?'COMO RESOLVER: '+e.hint+'<br><span class="muted">FATO INÚTIL: '+(e.fato||'—')+'</span>':'DICA: aparece, morre, volta aqui.')+'</div></div>';}).join('')+'</div>'+
+        '<p class="muted" style="margin-top:8px">'+mates+'/'+ENEMY_ORDER.length+' bichos no caderno. O resto continua borrado — e é por isso que você volta.</p>';
     }else if(codexTab==='machines'){
-      body='<div class="codexGrid">'+MACH_ORDER.map(id=>{const m=MACH[id],seen=!!s.seenM[id];
-        return '<div class="beast '+(seen?'seen':'locked')+'"><h4>'+(seen?m.nome:'???')+'</h4><p>'+(seen?m.desc:'Ainda não construiu.')+'</p>'+
-          '<div class="kill">'+(seen?'SINERGIA: '+m.sin:'')+'</div></div>';}).join('')+'</div>'+
-        '<p class="muted" style="margin-top:8px">'+seenM+'/'+MACH_ORDER.length+' engenhocas na galeria.</p>';
+      body='<div class="codexGrid">'+MACH_ORDER.filter(k=>k!=='remover').map(id=>{const m=MACH[id],visto=!!s.seenM[id];
+        return '<div class="beast '+(visto?'seen':'locked')+'"><h4>'+(visto?m.nome:'???')+'</h4><p>'+(visto?m.desc:'Ainda não construiu essa.')+'</p>'+
+          '<div class="kill">'+(visto?'CUSTO '+machCost(id)+' · VIDA '+m.hp+' · RECARGA '+m.cd+'s · NÍVEL MAX '+(UPG[id]?UPG[id].length:0)+'<br><span class="muted">SINERGIA: '+m.sin+' · FATO INÚTIL: '+(m.fato||'—')+'</span>':'')+'</div></div>';}).join('')+'</div>'+
+        '<p class="muted" style="margin-top:8px">'+plantadas+'/18 engenhocas na galeria. Planta uma vez, fica no caderno pra sempre.</p>';
+    }else if(codexTab==='chefes'){
+      body='<div class="codexGrid">'+Object.entries(BOSSES).map(([id,b])=>{
+        const vencido=!!s.venciB[id];
+        return '<div class="beast '+(vencido?'seen':'locked')+'"><h4>'+(vencido?b.nome:'???')+'</h4>'+
+          '<p>'+(vencido?b.desc:'Ninguém derrotou esse ainda. O Zé não comenta.')+'</p>'+
+          '<div class="kill">'+(vencido?'FASES: 3+ · HP '+b.hp+'<br><span class="muted">FATO INÚTIL: '+(b.fato||'—')+'</span> · ZÉ: "Sobreviveu. Não pergunte como."':'')+'</div></div>';}).join('')+'</div>'+
+        '<p class="muted" style="margin-top:8px">'+Object.keys(s.venciB||{}).length+'/6 chefes no caderno. Cada um é um mapa, e cada mapa é uma história.</p>';
     }else if(codexTab==='radio'){
-      const unlocked=!!s.tree['historias']||true;
       body='<div class="scroll"><div class="panel">'+
-        RADIO.map(r=>'<p style="margin-bottom:7px">'+(r.map<=s.campaign||unlocked?'<span class="acid">['+MAPS[r.map].nome+']</span> '+r.txt:'<span class="muted">[frequência morta]</span>')+'</p>').join('')+
+        RADIO.map(r=>'<p style="margin-bottom:7px">'+(r.map<=s.campaign?'<span class="acid">['+MAPS[r.map].nome+']</span> '+r.txt:'<span class="muted">[frequência morta]</span>')+'</p>').join('')+
         '</div></div><p class="muted">A Voz do Rádio fala em todas as frequências. Nenhuma é oficial.</p>';
     }else{
      body='<div class="codexGrid">'+ACHIEVEMENTS.map(a=>{const got=!!s.ach[a.id];
-        return '<div class="beast '+(got?'seen':'locked')+'"><h4>'+(got?a.nome:'SELO OCULTO')+'</h4><p>'+(got?a.desc:'O Zé sabe. Não fala.')+'</p></div>';}).join('')+'</div>'+
-        '<p class="muted">Conquistas não dão vantagem. Dão assunto.</p>';
+        return '<div class="beast '+(got?'seen':'locked')+'"><h4>'+(got?a.nome:'SELO OCULTO')+'</h4><p>'+(got?a.desc:'O Zé sabe. Não fala.')+'</p></div>';}).join('')+
+        '</div><p class="muted">Conquistas não dão vantagem. Dão assunto.</p>';
     }
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:30px;color:var(--bone)">CADERNO DO ZÉ</h2>'+
-      '<div class="tabs">'+tabs.map(t=>'<div class="tab '+(codexTab===t?'on':'')+'" data-act="codextab" data-arg="'+t+'">'+
-        ({bestiary:'BICHOS',machines:'ENGENHOCAS',radio:'RÁDIO',ach:'SELOS'})[t]+'</div>').join('')+'</div>'+body+
+      '<div class="tabs">'+tabs.map(t=>'<div class="tab '+(codexTab===t?'on':'')+'" data-act="codextab" data-arg="'+t+'">'+nomeTab[t]+'</div>').join('')+'</div>'+body+
       '<div class="space"></div>'+btn('VOLTAR','back','','small'));
   }
+
 
   // ---------- ÁRVORE ----------
   function tree(){
@@ -380,7 +387,7 @@ export const UI=(function(){
       '<div class="panel" style="max-width:560px;margin:12px auto"><div class="kv">'+
       'BICHOS MORTOS: <b>'+summary.kills+'</b> · TEMPO: <b>'+Math.round(summary.time)+'s</b> · ONDAS: <b>'+summary.survived+'</b><br>'+
       'SUCATA VELHA GANHA: <b class="gold">+'+summary.meta+'</b> · TOTAL: '+SaveDB.slot.oldScrap+'<br>'+
-      'BESTIÁRIO: '+Object.keys(SaveDB.slot.seenB||{}).length+'/'+ENEMY_ORDER.length+' · ESTRUTURAS: '+structuresAlive()+'/'+STRUCTURES+
+      'CADERNO: '+Object.keys(SaveDB.slot.mateiB||{}).length+'/'+ENEMY_ORDER.length+' bichos · '+Object.keys(SaveDB.slot.seenM||{}).length+'/18 peças · ESTRUTURAS: '+structuresAlive()+'/'+STRUCTURES+
       '</div></div>'+
       '<div class="menu">'+
       (next?btn('PRÓXIMO MAPA','nextmap','','primary'):'')+

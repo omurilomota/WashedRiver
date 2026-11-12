@@ -34,6 +34,10 @@ export interface Slot {
   tree: Record<string, number>;
   seenB: Record<string, number>;
   seenM: Record<string, number>;
+  /** Bichos mortos: o bestiário abre por morte, não por visão (M.5). */
+  mateiB: Record<string, number>;
+  /** Chefes derrotados: galeria de chefes (M.5). */
+  venciB: Record<string, number>;
   ach: Record<string, number>;
   endings: Record<string, string>;
   flags: Record<string, unknown>;
@@ -98,6 +102,8 @@ function blankSlot(n: number): Slot {
     tree: {},
     seenB: {},
     seenM: {},
+    mateiB: {},
+    venciB: {},
     decks: {},
     ach: {},
     endings: {},
@@ -152,6 +158,8 @@ function ensure(s: Partial<Slot> | undefined, i: number): Slot {
   out.tree = out.tree || {};
   out.seenB = out.seenB || {};
   out.seenM = out.seenM || {};
+  out.mateiB = out.mateiB || {};
+  out.venciB = out.venciB || {};
   // deck por mapa (BLOCO M.4): save antigo nasce sem deck — e sem deck não
   // tem partida, então o jogador escolhe na primeira tela.
   out.decks = out.decks || {};
@@ -263,6 +271,20 @@ export const SaveDB = {
     delete s.stars[mapa];
     delete s.best[mapa];
     if (s.campaign > mapa) s.campaign = mapa;
+    persist();
+  },
+  /** Registra a primeira morte do bicho (bestiário). */
+  mateu(id: string): void {
+    const s = SaveDB.slot;
+    if (s.mateiB[id]) return;
+    s.mateiB[id] = 1;
+    persist();
+  },
+  /** Registra o chefe derrotado. */
+  venci(id: string): void {
+    const s = SaveDB.slot;
+    if (s.venciB[id]) return;
+    s.venciB[id] = 1;
     persist();
   },
   /** Deck do mapa: nada mais que a lista escolhida na tela de seleção. */

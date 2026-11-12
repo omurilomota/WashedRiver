@@ -19,6 +19,8 @@ export interface MachineDef {
   special?: boolean;
   /** Projétil pesado o bastante para acertar voador sem holofote. */
   air?: boolean;
+  /** Fato inútil: a enciclopédia vive disso (BLOCO M.5). */
+  fato?: string;
 }
 
 /**
@@ -97,6 +99,8 @@ export interface EnemyDef {
    * Sem isso, uma peça que reflete vira parede eterna contra a torradeira.
    */
   reflect?: number;
+  /** Fato inútil (BLOCO M.5): entra no bestiário, não na ficha. */
+  fato?: string;
 }
 
 export interface BossDef {
@@ -110,6 +114,8 @@ export interface BossDef {
   hint: string;
   /** Não se mata. A MARÉ é o mar com vontade. */
   unbeatable?: boolean;
+  /** Fato inútil (BLOCO M.5). */
+  fato?: string;
 }
 
 /**
