@@ -57,6 +57,8 @@ export interface Enemy {
   lit: number;
   revealed: number;
   hypno: number;
+  /** Ventilador espantou (só a Baleia-Filhote): ela foge pelo lado direito. */
+  spooked?: boolean;
   reflectT: number;
   /** Quantas torradas o Peixe-Lata ainda aguenta devolver. */
   reflectMax: number;

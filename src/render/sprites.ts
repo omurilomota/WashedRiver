@@ -5,7 +5,7 @@
  * geométricos (`rr`, `eye`, `pose`) são compartilhados com `creatures.ts`.
  */
 import { COLS, COLW, FIELD_R, H, LANES, LANE_H, LANE_Y0, VX, W, clamp, plantY, rnd } from '../core/constants';
-import { ctx, rr, waterLines } from '../core/canvas';
+import { DPR, ctx, rr, waterLines } from '../core/canvas';
 import { G } from '../core/state';
 import { CARTAZES } from '../data';
 import { drawLaneFloorNova } from './lanes';
@@ -74,8 +74,13 @@ let _bgStatic: { id: string; canvas: HTMLCanvasElement } | null = null;
 function bgStaticCanvas(map): HTMLCanvasElement {
   if (_bgStatic && _bgStatic.id === map.id) return _bgStatic.canvas;
   const c = document.createElement('canvas');
-  c.width = W; c.height = H;
+  // O canvas do jogo é DPR 2 (ver core/canvas). O offscreen nasce na mesma
+  // resolução: em 1× ele era esticado no drawImage e o fundo cacheado
+  // aparecia borrado justamente onde não havia animação.
+  c.width = W * DPR;
+  c.height = H * DPR;
   const c2 = c.getContext('2d')!;
+  c2.scale(DPR, DPR);
   // desenha a camada estática no offscreen
   const p = map.pal;
   // gradient vertical: céu
@@ -407,9 +412,11 @@ export function drawStructure(s,lane,i,map,t){
 let _villageBase: HTMLCanvasElement | null = null;
 function villageBase(): HTMLCanvasElement {
   if(_villageBase) return _villageBase;
+  // Mesma regra do fundo: offscreen em DPR 2 (ver core/canvas).
   const c = document.createElement('canvas');
-  c.width = VX; c.height = H;
+  c.width = VX * DPR; c.height = H * DPR;
   const c2 = c.getContext('2d')!;
+  c2.scale(DPR, DPR);
   const sidewalk=['#1e2622','#25251f','#1a201a','#222a24','#1c2228','#20262a'];
   c2.fillStyle='#151a18';c2.fillRect(0,LANE_Y0,VX-4,H-LANE_Y0);
   for(let l=0;l<LANES;l++){
