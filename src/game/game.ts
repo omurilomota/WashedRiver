@@ -1164,7 +1164,7 @@ function openShop(): void {
   const chosen: Offer[]=[];for(const o of shuffle(offers)){if(!chosen.some(c=>c.kind===o.kind))chosen.push(o);if(chosen.length>=(eff().extraOffer?4:3))break;}
   Game.offers=chosen;
   Game.shopItems=[
-    {id:'reforco',nome:'REFORÇAR ESTRUTURA',desc:'Conserta uma parede caída e a deixa mais teimosa.',cost:ECONOMIA.banca.reforco},
+    {id:'reforco',nome:'REFORÇAR ESTRUTURA',desc:'Reboca uma parede caída. Se nada caiu, o Zé devolve a sucata.',cost:ECONOMIA.banca.reforco},
     {id:'reparoDuplo',nome:'REPARO DE DUAS PAREDES',desc:'Conserta duas estruturas caídas. Ficam tortas.',cost:ECONOMIA.banca.reparoDuplo},
     {id:'tabua',nome:'TÁBUA DE RESERVA ×3',desc:'Barra as três próximas invasões.',cost:ECONOMIA.banca.tabua},
     {id:'recarga',nome:'RECARGA RÁPIDA',desc:'Zera o cooldown de todas as peças.',cost:ECONOMIA.banca.recarga},
@@ -1199,7 +1199,7 @@ Game.buyShopItem=function(id){
   const it=Game.shopItems.find(s=>s.id===id);if(!it)return;
   if(G.scrap<it.cost){announce('SUCATA DE MENOS.','story');return;}
   G.scrap-=it.cost;
-  if(id==='reforco'){const d=G.structures.flat().find(s=>!s.alive);if(d){d.alive=true;announce('REBOCOU '+d.nome+'. FICOU MAIS TEIMOSA.','story');}else{G.scrap+=it.cost;announce('NADA CAÍDO. O ZÉ DEVOLVEU A SUCATA.','story');}}
+  if(id==='reforco'){const d=G.structures.flat().find(s=>!s.alive);if(d){d.alive=true;announce('REBOCOU '+d.nome+'. TORTA, MAS DE PÉ.','story');}else{G.scrap+=it.cost;announce('NADA CAÍDO. O ZÉ DEVOLVEU A SUCATA.','story');}}
   else if(id==='reparoDuplo'){let n=0;for(const lane of G.structures)for(const s of lane)if(!s.alive&&n<2){s.alive=true;n++;}if(n===0)G.scrap+=it.cost;else announce('REBOCOU '+n+' ESTRUTURA'+(n>1?'S':'')+'. TORTAS, MAS VOLTARAM.','story');}
   else if(id==='tabua'){G.shields+=3;announce('TRÊS TÁBUAS NA MÃO. TRÊS INVASÕES MENOS.','story');}
   else if(id==='recarga'){for(const k in G.cds)G.cds[k]=0;announce('TODAS AS PEÇAS RECARREGADAS. VAI COM TUDO.','story');}
