@@ -187,7 +187,7 @@ function makeWaves(st: GameState, daily: boolean): WaveEntry[][] {
     for(let i=0;i<counts[w];i++){
       const type=poolW[Math.floor(rng()*poolW.length)];
       const lane=Math.floor(rng()*LANES);
-      const spacing=w===0?4.2:(w===1?3.0:2.6);
+      const spacing=w===0?5.0:(w===1?3.0:2.6);
       const time=i*spacing+rng()*1.6;
       arr.push([time,type,lane,1+w*.12]);
     }
@@ -227,7 +227,7 @@ function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
   else if(n===1)count=13;
   else count=Math.min(22,9+Math.min(24,n*3));
   const poolW=wavePool(base,n);
-  const spc=n===0?4.2:2.6; for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),1+Math.min(1,n*.09)]);
+  const spc=n===0?5.0:2.6; for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),1+Math.min(1,n*.09)]);
   // integração das novas criaturas na Noite Infinita
   if(n>=1){
     arr.push([30,'polvo',randLane(),1.1]);
@@ -329,6 +329,9 @@ function announceWave(w: number): void {
   const rm=RADIO.find(r=>r.map===G.mapIndex&&r.wave===w+1);
   if(rm)setTimeout(()=>{if(G&&Game.screen==='play')announce('RÁDIO: '+rm.txt,'radio');},2200);
   if(G.ze.alive&&w>=1){G.ze.say=pick(['Agora vai.','Segura aí.','Não olha pro mar.']);G.ze.sayT=3.4;}
+  // Maré bônus: a onda traz sucata espalhada — incentivo a interagir e
+  // um pouco de respiro financeiro no começo de cada onda.
+  for(let i=0;i<4;i++)dropScrap(rnd(VX+40,W-40),plantY(randLane())-rnd(10,40),12+rnd(0,18),false);
 }
 function nextPhase(): void {
   G.phaseIdx++;G.phaseT=0;G.spawnIdx=0;
@@ -541,7 +544,7 @@ export function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean,
   if(e.air&&e.lit<=0&&e.grounded<=0&&!airPierce)return false;
   if(e.type==='enguia'&&e.dived&&e.lit<=0)return false;
   if(e.type==='fantasma'&&!e.revealed&&e.lit<=0&&!allowHidden)return false;
-  if(e.flee)return false;
+  // Criatura fugindo ainda é alvo: o jogador pode punir o que passou.
   return true;
 }
 export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
@@ -552,7 +555,7 @@ export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
     e.revealed=1;e.spoke=pick(['Zé?','Meu barco...','Eu não quero machucar.']);e.act=.5;
     addText(e.x,plantY(e.lane)-e.r-16,'ELE É GENTE','#f0d0a0');SFX.human();return;
   }
-  if(e.type==='agua'&&e.lit<=0&&src!=='boom'&&src!=='fire'){e.revealed=1;addText(e.x,plantY(e.lane)-e.r-10,'não é física','#a8c8c8');return;}
+  if(e.type==='agua'&&e.lit<=0&&src!=='boom'&&src!=='fire'){e.revealed=1;addText(e.x,plantY(e.lane)-e.r-10,'ATRAVESSA A BALA. SÓ LUZ.','#a8c8c8');return;}
   if(e.buff)dmg*=.4;
   if(e.type==='lata'&&src==='toast'){ /* torradeira nem chega a chamar */ }
   e.hp-=dmg;e.flash=.18;e.act=.25;e.revealed=1.2;e.lit=Math.max(e.lit,.4);
@@ -675,7 +678,7 @@ export function update(dt: number){
   if(G.ze.sayT>0)G.ze.sayT-=dt;
   if(G.toqSayT>0)G.toqSayT-=dt;
   G.toqBoost=Math.sin(G.t*.8)*10;
-  G.shake*=Math.exp(-6*dt);G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
+  G.shake*=Math.exp(-6*dt);if(typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)G.shake=0;G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
   if(G.savedT>0)G.savedT-=dt;if(G.dogSay>0)G.dogSay-=dt;
 
   if(Game.screen!=='play'||Game.paused)return;
@@ -1100,7 +1103,6 @@ function bossDefeated(e: Enemy): void {
   G.kills++;dropScrap(e.x,plantY(e.lane)-40,120,true);G.zeHat=(e.b==='bento');
   if(e.b==='mare'){SaveDB.achievement('maré');}
   if(e.b==='faroleiro'&&!G.machines.some(m=>m.type==='holofote'))SaveDB.achievement('sem_farol');
-  announce('ACABOU. UM DELES, PELO MENOS.','story');
 }
 function metaReward(stars: number): number {
   const lanesIntactas=G.structures.filter((lane)=>lane.every((s)=>s.alive)).length;

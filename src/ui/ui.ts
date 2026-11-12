@@ -26,7 +26,7 @@ import {
   TREE_BRANCHES,
   UPG,
 } from '../data';
-import { SaveDB } from '../save/storage';
+import { KEY, SaveDB } from '../save/storage';
 import { SFX, Snd, TRACKS } from '../audio/audio';
 import { drawMachine, rr } from '../render/sprites';
 import { drawBoss } from '../render/creatures';
@@ -183,6 +183,7 @@ export const UI=(function(){
         '<select data-act="muteopt">'+(Snd.muted?'<option value="0">LIGADO</option><option value="1" selected>MUDO</option>':'<option value="0" selected>LIGADO</option><option value="1">MUDO</option>')+'</select></div>'+
       '</div>'+
       '<div class="row" style="margin-top:14px">'+btn('VOLTAR','back','','small')+btn('SALVAR TUDO','save','','small')+'</div>'+
+      '<div class="row" style="margin-top:10px">'+btn('EXPORTAR SAVE','export','','small')+btn('IMPORTAR SAVE','import','','small')+'</div>'+
       '<p class="muted" style="margin-top:12px">Toda escolha do Zé pausa o jogo: não existe evento com tempo obrigatório.</p>');
   }
   function slider(id,label,v){
@@ -281,7 +282,7 @@ export const UI=(function(){
       '<p class="muted">Onda '+(G.survived||0)+' aguentada. Escolhe uma e volta pro corredor. Não tem tempo pra duas — tirando o tempo que você quiser.</p>'+
       '<div class="offers">'+offers.map((o,i)=>'<div class="offer"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':o.kind==='sucataVelha'?'CONVERTER':'RECURSO')+'</div>'+
         '<h4>'+desc[o.kind](o)+'</h4><p>'+sub[o.kind](o)+'</p>'+
-        (o.kind==='up'?'<p class="gold">nível '+(G.up[o.k||'']+1)+'/3</p>':'')+
+        (o.kind==='up'?'<p class="gold">nível '+(((G.up[o.k||'']||0))+1)+'/3</p>':'')+
         '<div class="price">'+btn('ESCOLHER','offer',i,'small primary')+'</div></div>').join('')+'</div>'+
       '<div class="hr"></div>'+
       '<p class="muted">BANCA DO ZÉ — compra com a sucata do corredor. Pode levar quantas quiser.</p>'+
@@ -356,11 +357,29 @@ export const UI=(function(){
   // ---------- HUD ----------
   function cardLayout(){
     const list=availableMachines();
-    const x0=136,w=Math.min(48,Math.floor((W-146)/Math.max(1,list.length))-2),gap=2;
-    return list.map((k,i)=>({k,x:x0+i*(w+gap),y:6,w,h:58}));
+    const x0=136, gap=2, h=58, rowH=h+4;
+    const rightMargin=24;
+    const avail=W-x0-rightMargin;
+    const minW=30;
+    const cols=Math.max(1,Math.floor(avail/(minW+gap)));
+    if(list.length<=cols){
+      const w=Math.min(48,Math.floor(avail/list.length)-gap);
+      return list.map((k,i)=>({k,x:x0+i*(w+gap),y:6,w,h}));
+    }
+    // Muitas cartas: quebra em duas linhas em vez de colidir com o menu de base.
+    const rows=2;
+    const perRow=Math.ceil(list.length/rows);
+    const w=Math.min(48,Math.floor(avail/perRow)-gap);
+    const out: {k:string,x:number,y:number,w:number,h:number}[]=[];
+    for(let i=0;i<list.length;i++){
+      const row=Math.floor(i/perRow);
+      const col=i%perRow;
+      out.push({k:list[i],x:x0+col*(w+gap),y:6+row*rowH,w,h});
+    }
+    return out;
   }
   function cardAt(x,y){
-    if(y>70)return null;
+    if(y>6+58*2+8)return null;
     const hit=cardLayout().find(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h);
     return hit?hit.k:null;
   }
@@ -369,12 +388,12 @@ export const UI=(function(){
     // recurso
     ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,64,4);ctx.fill();
     ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
-    ctx.fillStyle='#f0e4bd';ctx.font='bold 26px "Courier New",monospace';ctx.fillText(fmt(g.scrap),46,32);
+    ctx.fillStyle='#f0e4bd';ctx.font='bold 26px "Consolas","Menlo","Monaco",monospace';ctx.fillText(fmt(g.scrap),46,32);
     ctx.fillStyle='#9aa08a';ctx.font='13px monospace';ctx.fillText(p.resShort,46,44);
     ctx.fillStyle='#7a806a';ctx.font='12px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
     ctx.fillStyle='#c8b070';ctx.font='12px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
     // cartas
-    for(const r of cardLayout()){
+    cardLayout().forEach((r,i)=>{
       const m=MACH[r.k],cost=machCost(r.k),cool=g.cds&&g.cds[r.k]||0,up=(g.up&&g.up[r.k])||0;
       const can=g.scrap>=cost&&cool<=0&&g.selected!==r.k;
       ctx.fillStyle=g.selected===r.k?'rgba(90,70,30,.92)':'rgba(14,18,16,.78)';rr(r.x,r.y,r.w,r.h,3);ctx.fill();
@@ -386,7 +405,11 @@ export const UI=(function(){
       ctx.fillStyle='#a8aa94';ctx.font='9px monospace';ctx.fillText(short,r.x+3,r.y+9);
       if(up){for(let j=0;j<3;j++){ctx.fillStyle=j<up?'#e8c84a':'#39402f';ctx.fillRect(r.x+r.w-8+j*2.4,r.y+3,2,4);}}
       if(cool>0){ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(r.x,r.y,r.w,r.h*(cool/m.cd));}
-    }
+      // número do teclado que seleciona esta carta (em cima)
+      ctx.fillStyle='#c8b070';ctx.font='bold 9px monospace';ctx.textAlign='right';
+      ctx.fillText(String(i+1),r.x+r.w-3,r.y+9);
+      ctx.textAlign='left';
+    });
     // descrição da peça sob o mouse (item sem descrição é item que ninguém entende)
     if(Game.mouse){const hov=cardLayout().find(r=>Game.mouse!.x>=r.x&&Game.mouse!.x<=r.x+r.w&&Game.mouse!.y>=r.y&&Game.mouse!.y<=r.y+r.h);
       if(hov)drawCardTip(hov);}
@@ -441,6 +464,7 @@ export const UI=(function(){
       ctx.textAlign='center';ctx.fillStyle='#e8d9a8';ctx.font='bold 30px Impact,sans-serif';
       ctx.fillText(BOSSES[intro.b].nome,W/2,90);
       ctx.fillStyle='#b06a4a';ctx.font='11px monospace';ctx.fillText(BOSSES[intro.b].desc,W/2,112);
+      ctx.fillStyle='#8a8a70';ctx.font='9px monospace';ctx.fillText(BOSSES[intro.b].hint||'',W/2,130);
       ctx.textAlign='left';
     }
     // aviso de escuro e chefe
@@ -496,6 +520,8 @@ export const UI=(function(){
         case 'help':Game.paused=true;help();break;
         case 'retry':retry();break;
         case 'save':SaveDB.save();toast('ach','SALVO. NÃO QUE VIRE COSTUME.');break;
+        case 'export':{const raw=localStorage.getItem(KEY)||''; if(navigator.clipboard) navigator.clipboard.writeText(raw).then(()=>toast('ach','SAVE COPIADO. COLE ONDE QUISER.')).catch(()=>{prompt('COPIE O SAVE:',raw);}); else prompt('COPIE O SAVE:',raw); break;}
+        case 'import':{const txt=prompt('COLE O SAVE (JSON) AQUI:'); if(txt){try{JSON.parse(txt); localStorage.setItem(KEY,txt); toast('ach','SAVE IMPORTADO. RECARREGANDO...'); setTimeout(()=>location.reload(),600);}catch{toast('story','SAVE INVÁLIDO. NADA MUDOU.');}} break;}
         case 'offer':Game.chooseOffer(Number(arg));break;
         case 'buyitem':Game.buyShopItem(arg);break;
         case 'ending':Game.finishEnding(arg);break;

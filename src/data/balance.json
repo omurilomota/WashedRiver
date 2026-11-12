@@ -436,8 +436,8 @@
       "scrap": 12,
       "r": 20,
       "air": true,
-      "desc": "Atravessa a primeira peça e vive no breu. Contra luz, evapora e deixa o formato dela no chão.",
-      "hint": "SÓ luz ou explosão. O Holofote é a arma."
+      "desc": "É intangível: bala atravessa, peça não segura. Vive no breu; contra luz, evapora e deixa o formato no chão.",
+      "hint": "SÓ luz ou explosão. Bala não pega. O Holofote é a arma."
     },
     "mariposa": {
       "nome": "Mariposa de Espelho",
