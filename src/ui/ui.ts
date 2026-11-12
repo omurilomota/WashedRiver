@@ -355,72 +355,80 @@ export const UI=(function(){
   }
 
   // ---------- HUD ----------
+  /**
+   * Barra de cartas: uma linha, largura calculada.
+   *
+   * A ADR 010 mandava quebrar em duas linhas quando não coubesse. Na prática
+   * o ramo era inalcançável: com no máximo 19 cartas e `avail ≈ 1120`, a
+   * conta dava `cols ≈ 35` — maior que qualquer baralho possível, então a
+   * quebra nunca executava (código morto descrito como regra). A ADR 012
+   * registra a volta à linha única.
+   */
   function cardLayout(){
     const list=availableMachines();
-    const x0=136, gap=2, h=58, rowH=h+4;
-    const rightMargin=24;
-    const avail=W-x0-rightMargin;
-    const minW=30;
-    const cols=Math.max(1,Math.floor(avail/(minW+gap)));
-    if(list.length<=cols){
-      const w=Math.min(48,Math.floor(avail/list.length)-gap);
-      return list.map((k,i)=>({k,x:x0+i*(w+gap),y:6,w,h}));
-    }
-    // Muitas cartas: quebra em duas linhas em vez de colidir com o menu de base.
-    const rows=2;
-    const perRow=Math.ceil(list.length/rows);
-    const w=Math.min(48,Math.floor(avail/perRow)-gap);
-    const out: {k:string,x:number,y:number,w:number,h:number}[]=[];
-    for(let i=0;i<list.length;i++){
-      const row=Math.floor(i/perRow);
-      const col=i%perRow;
-      out.push({k:list[i],x:x0+col*(w+gap),y:6+row*rowH,w,h});
-    }
-    return out;
+    const x0=136, gap=2, h=58;
+    const avail=W-x0-24;
+    const w=Math.min(48,Math.floor(avail/list.length)-gap);
+    return list.map((k,i)=>({k,x:x0+i*(w+gap),y:6,w,h}));
   }
   function cardAt(x,y){
-    if(y>6+58*2+8)return null;
+    if(y>6+58+8)return null;
     const hit=cardLayout().find(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h);
     return hit?hit.k:null;
   }
+  /**
+   * Escala de fonte das opções.
+   *
+   * O CSS cuida do DOM (`--fs`), mas o HUD é desenhado em canvas e tinha
+   * tamanhos fixos: quem aumentava a fonte nas opções via o HUD do mesmo
+   * tamanho. Aqui o canvas acompanha a mesma escala.
+   */
+  function fmono(px: number, negrito = false): string {
+    return (negrito ? 'bold ' : '') + Math.round(px * (SaveDB.options.font || 1.15)) + 'px monospace';
+  }
   function drawHUD(g){
     const p=g.map;
+    const painelH=Math.round(64*(SaveDB.options.font||1.15));
     // recurso
-    ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,64,4);ctx.fill();
+    ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,painelH,4);ctx.fill();
     ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
-    ctx.fillStyle='#f0e4bd';ctx.font='bold 26px "Consolas","Menlo","Monaco",monospace';ctx.fillText(fmt(g.scrap),46,32);
-    ctx.fillStyle='#9aa08a';ctx.font='13px monospace';ctx.fillText(p.resShort,46,44);
-    ctx.fillStyle='#7a806a';ctx.font='12px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
-    ctx.fillStyle='#c8b070';ctx.font='12px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
+    ctx.fillStyle='#f0e4bd';ctx.font=fmono(26,true);ctx.fillText(fmt(g.scrap),46,Math.round(32*(SaveDB.options.font||1.15)));
+    ctx.fillStyle='#9aa08a';ctx.font=fmono(13);ctx.fillText(p.resShort,46,Math.round(44*(SaveDB.options.font||1.15)));
+    ctx.fillStyle='#7a806a';ctx.font=fmono(12);ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,Math.round(56*(SaveDB.options.font||1.15)));
+    ctx.fillStyle='#c8b070';ctx.font=fmono(12);ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,Math.round(65*(SaveDB.options.font||1.15)));
     // cartas
     cardLayout().forEach((r,i)=>{
       const m=MACH[r.k],cost=machCost(r.k),cool=g.cds&&g.cds[r.k]||0,up=(g.up&&g.up[r.k])||0;
       const can=g.scrap>=cost&&cool<=0&&g.selected!==r.k;
+      const cb=!!SaveDB.options.cb;
       ctx.fillStyle=g.selected===r.k?'rgba(90,70,30,.92)':'rgba(14,18,16,.78)';rr(r.x,r.y,r.w,r.h,3);ctx.fill();
-      ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();
+      // carta disponível vs indisponível: em modo daltonismo a indisponível
+      // ganha tracejado, para a informação não depender só de matiz.
+      if(cb&&!can){ctx.setLineDash([3,2]);}
+      ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([]);
       ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h-19);ctx.scale(.36,.36);ctx.globalAlpha=can||g.selected===r.k?1:.45;
       drawMachine({type:r.k,x:0,lane:0,t:g.t,hp:1,maxhp:1,anim:0,act:0,flash:0,_icon:true});ctx.restore();
-      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 13px monospace';ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
+      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font=fmono(13,true);ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
       const short=m.nome.split(' ')[0].toUpperCase().slice(0,7);
-      ctx.fillStyle='#a8aa94';ctx.font='9px monospace';ctx.fillText(short,r.x+3,r.y+9);
+      ctx.fillStyle='#a8aa94';ctx.font=fmono(9);ctx.fillText(short,r.x+3,r.y+9);
       if(up){for(let j=0;j<3;j++){ctx.fillStyle=j<up?'#e8c84a':'#39402f';ctx.fillRect(r.x+r.w-8+j*2.4,r.y+3,2,4);}}
       if(cool>0){ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(r.x,r.y,r.w,r.h*(cool/m.cd));}
       // número do teclado que seleciona esta carta (em cima)
-      ctx.fillStyle='#c8b070';ctx.font='bold 9px monospace';ctx.textAlign='right';
+      ctx.fillStyle='#c8b070';ctx.font=fmono(9,true);ctx.textAlign='right';
       ctx.fillText(String(i+1),r.x+r.w-3,r.y+9);
       ctx.textAlign='left';
     });
     // descrição da peça sob o mouse (item sem descrição é item que ninguém entende)
     if(Game.mouse){const hov=cardLayout().find(r=>Game.mouse!.x>=r.x&&Game.mouse!.x<=r.x+r.w&&Game.mouse!.y>=r.y&&Game.mouse!.y<=r.y+r.h);
       if(hov)drawCardTip(hov);}
-    if(g.savedT>0){ctx.fillStyle='#7fb3a6';ctx.font='bold 10px monospace';ctx.fillText('SALVO',W-52,70);}
+    if(g.savedT>0){ctx.fillStyle='#7fb3a6';ctx.font=fmono(10,true);ctx.fillText('SALVO',W-52,70);}
     // status do modo
-    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font='9px monospace';ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
-    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font='10px monospace';ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
+    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font=fmono(9);ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
+    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font=fmono(10);ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
     if(g.boss&&!g.bossDeath){
       const b=g.boss;
       ctx.fillStyle='rgba(8,10,8,.72)';rr(W/2-180,3,360,22,3);ctx.fill();
-      ctx.fillStyle='#e8d9a8';ctx.font='11px monospace';ctx.textAlign='center';
+      ctx.fillStyle='#e8d9a8';ctx.font=fmono(11);ctx.textAlign='center';
       ctx.fillText((BOSSES[b.b].nome)+' — FASE '+b.phase,W/2,13);
       ctx.fillStyle='#3a1a16';ctx.fillRect(W/2-170,18,340,4);ctx.fillStyle='#c84a30';ctx.fillRect(W/2-170,18,340*clamp(b.hp/b.maxhp,0,1),4);
       ctx.textAlign='left';
@@ -438,17 +446,17 @@ export const UI=(function(){
   }
   /** Ficha da peça: nome, número e o que ela faz (e com quem combina). */
   function drawCardTip(r: {k: string;x: number;y: number;w: number;h: number}){
-    const m=MACH[r.k],w=300,h=108;
-    const x=clamp(r.x-40,8,W-w-8),y=72;
+    const m=MACH[r.k],w=300,h=Math.round(108*(SaveDB.options.font||1.15));
+    const x=clamp(r.x-40,8,W-w-8),y=72,f=(SaveDB.options.font||1.15);
     ctx.fillStyle='rgba(8,12,10,.95)';rr(x,y,w,h,4);ctx.fill();
     ctx.strokeStyle='#5a6248';ctx.lineWidth=1;ctx.stroke();
-    ctx.fillStyle='#e8d9a8';ctx.font='bold 13px monospace';ctx.fillText(m.nome,x+9,y+17);
-    ctx.fillStyle='#9aa08a';ctx.font='10px monospace';
-    ctx.fillText('custo '+machCost(r.k)+' · vida '+m.hp+' · recarga '+m.cd+'s',x+9,y+31);
-    ctx.fillStyle='#d8d0b0';ctx.font='10px monospace';
-    wrap(m.desc,46).slice(0,3).forEach((l,i)=>ctx.fillText(l,x+9,y+47+i*12));
-    ctx.fillStyle='#b8a060';ctx.font='9px monospace';
-    wrap(m.sin,54).slice(0,2).forEach((l,i)=>ctx.fillText(l,x+9,y+88+i*11));
+    ctx.fillStyle='#e8d9a8';ctx.font=fmono(13,true);ctx.fillText(m.nome,x+9,y+Math.round(17*f));
+    ctx.fillStyle='#9aa08a';ctx.font=fmono(10);
+    ctx.fillText('custo '+machCost(r.k)+' · vida '+m.hp+' · recarga '+m.cd+'s',x+9,y+Math.round(31*f));
+    ctx.fillStyle='#d8d0b0';ctx.font=fmono(10);
+    wrap(m.desc,46).slice(0,3).forEach((l,i)=>ctx.fillText(l,x+9,y+Math.round((47+i*12)*f)));
+    ctx.fillStyle='#b8a060';ctx.font=fmono(9);
+    wrap(m.sin,54).slice(0,2).forEach((l,i)=>ctx.fillText(l,x+9,y+Math.round((88+i*11)*f)));
   }
   function drawScene(g){
     // intro de chefe
@@ -461,15 +469,15 @@ export const UI=(function(){
       const fake={boss:true,b:intro.b,type:intro.b,lane:1,x:W/2,anim:g.t,phase:3,hp:1,maxhp:1,rise:0,inflate:false,act:1,flash:0,revealed:1};
       try{drawBoss(fake);}catch{}
       ctx.restore();
-      ctx.textAlign='center';ctx.fillStyle='#e8d9a8';ctx.font='bold 30px Impact,sans-serif';
+      ctx.textAlign='center';ctx.fillStyle='#e8d9a8';ctx.font='bold '+Math.round(30*(SaveDB.options.font||1.15))+'px Impact,sans-serif';
       ctx.fillText(BOSSES[intro.b].nome,W/2,90);
-      ctx.fillStyle='#b06a4a';ctx.font='11px monospace';ctx.fillText(BOSSES[intro.b].desc,W/2,112);
-      ctx.fillStyle='#8a8a70';ctx.font='9px monospace';ctx.fillText(BOSSES[intro.b].hint||'',W/2,130);
+      ctx.fillStyle='#b06a4a';ctx.font=fmono(11);ctx.fillText(BOSSES[intro.b].desc,W/2,112);
+      ctx.fillStyle='#8a8a70';ctx.font=fmono(9);ctx.fillText(BOSSES[intro.b].hint||'',W/2,130);
       ctx.textAlign='left';
     }
     // aviso de escuro e chefe
-    if(g.dark&&g.darkT>0){ctx.fillStyle='rgba(200,230,220,.5)';ctx.font='10px monospace';ctx.fillText('A LUZ NÃO ESTÁ AQUI. HOLOFOTE AINDA ACENDE.',20,H-16);}
-    if(g.mode==='boss'&&g.boss){ctx.fillStyle='#8a8f7a';ctx.font='9px monospace';ctx.fillText('MODO CHEFE · '+g.map.nome,W-190,H-16);}
+    if(g.dark&&g.darkT>0){ctx.fillStyle='rgba(200,230,220,.5)';ctx.font=fmono(10);ctx.fillText('A LUZ NÃO ESTÁ AQUI. HOLOFOTE AINDA ACENDE.',20,H-16);}
+    if(g.mode==='boss'&&g.boss){ctx.fillStyle='#8a8f7a';ctx.font=fmono(9);ctx.fillText('MODO CHEFE · '+g.map.nome,W-190,H-16);}
   }
 
   // ---------- topo ----------
