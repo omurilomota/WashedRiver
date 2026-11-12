@@ -21,6 +21,7 @@ Os mesmos registros ficam espelhados na memória do projeto (ai-memory), em
 | [010](adr/010-hud-cards-quebra-de-linha.md) | aceito | Barra de cartas do HUD quebra em duas linhas (regra depois inalcançável) |
 | [011](adr/011-lanes-de-baixo-piso-unico.md) | aceito | Lanes de baixo (3–5) com um piso único por mapa |
 | [012](adr/012-barra-de-cartas-linha-unica.md) | aceito | Barra de cartas do HUD em linha única (substitui a quebra da 010) |
+| [013](adr/013-variacao-de-arranjo-no-piso-unificado.md) | aceito | Variação de arranjo (offset e tom) dentro do piso único |
 
 ## Como registrar uma decisão nova
 

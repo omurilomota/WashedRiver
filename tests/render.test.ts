@@ -93,10 +93,10 @@ function tracos(fn: () => void): string {
 }
 
 /** Arte do piso das lanes de baixo, com Y fixo (0) para isolar o desenho. */
-function arteBaixa(mapId: string): string {
+function arteBaixa(mapId: string, v = 0): string {
   const map = MAPS.find((m) => m.id === mapId);
   expect(map, `mapa ${mapId} existe`).toBeDefined();
-  return assina(() => lanes.drawLaneFloorNovaEm(map!, map!.pal, 3.25, 0));
+  return assina(() => lanes.drawLaneFloorNovaEm(map!, map!.pal, 3.25, 0, v));
 }
 
 describe('o campo tem 6 lanes e cada uma desenha', () => {
@@ -129,6 +129,18 @@ describe('as lanes de baixo (3, 4 e 5) têm um piso único por mapa', () => {
     }
   });
 
+  it('...mas o arranjo muda de lane em lane: piso único não vira tecido (ADR 013)', () => {
+    // Mesma sequência de operações (identidade), cores e posições diferentes.
+    for (const map of MAPS) {
+      const artes = [0, 1, 2].map((v) => arteBaixa(map.id, v));
+      expect(new Set(artes).size, `${map.id}: variação de arranjo não mudou nada`).toBe(3);
+      const tracosDas = [0, 1, 2].map((v) =>
+        tracos(() => lanes.drawLaneFloorNovaEm(map, map.pal, 3.25, 0, v)),
+      );
+      expect(new Set(tracosDas).size, `${map.id}: variação trocou a estrutura do piso`).toBe(1);
+    }
+  });
+
   it('a arte de baixo muda de mapa para mapa', () => {
     const artes = MAPS.map((m) => arteBaixa(m.id));
     expect(new Set(artes).size, 'arte de baixo igual em todos os mapas').toBe(MAPS.length);
@@ -136,7 +148,7 @@ describe('as lanes de baixo (3, 4 e 5) têm um piso único por mapa', () => {
 
   it('a arte de baixo não é piso herdado da lane 2', () => {
     for (const map of MAPS) {
-      const baixa = tracos(() => lanes.drawLaneFloorNovaEm(map, map.pal, 3.25, 0));
+      const baixa = tracos(() => lanes.drawLaneFloorNovaEm(map, map.pal, 3.25, 0, 0));
       const deCima = tracos(() => desenho.drawLaneFloor(map, map.pal, 2, 3.25));
       expect(baixa, `${map.id}: lane de baixo copia a lane 2`).not.toBe(deCima);
     }

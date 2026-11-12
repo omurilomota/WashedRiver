@@ -8,6 +8,11 @@
  * existia. Aqui cada mapa desenha o seu piso único, e o nome das três
  * lanes de baixo repete o do piso.
  *
+ * Variação de arranjo (ADR 013): o mesmo piso três vezes seguidas, alinhado
+ * na mesma coluna, lê-se como tecido/repetição de textura. Por isso cada
+ * lane de baixo desloca os elementos e muda o tom da faixa — identidade
+ * única, arranjo diferente. `v` (0, 1, 2) vem do índice da lane.
+ *
  * É desenho puro: recebe estado, não muda regra. Nenhum número de lane,
  * coluna ou tamanho vive solto — sai de `core/constants`.
  */
@@ -65,21 +70,26 @@ function faixa(y: number, col: string, h: number): void {
   ctx.fillRect(VX, y, W - VX, h);
 }
 
+/** Tom da lane pela variação (ADR 013): mesma família, luz diferente. */
+function tom(lista: readonly string[], v: number): string {
+  return lista[v % lista.length];
+}
+
 // =====================================================================
 //  BARRA SUJA — vila à chuva
 // =====================================================================
-function barraNova(p: Palette, y: number, t: number): void {
+function barraNova(p: Palette, y: number, t: number, v: number): void {
   // JARDIM RIBEIRINHO — terra, canteiro, água de chuva
-  faixa(y, '#2f3a2c', LANE_H);
+  faixa(y, tom(['#2f3a2c', '#333b2e', '#2b3429'], v), LANE_H);
   waterLines(VX, y + 4, W - VX, 16, t, 'rgba(140,190,150,.14)', 12);
   for (let i = 0; i < 5; i++) {
-    const cx = VX + 40 + i * 200;
-    rr(cx, y + 54, 168, 46, 8);
+    const cx = VX + 40 + i * 200 + v * 62;
+    rr(cx, y + 52 + (v % 2) * 4, 168 - v * 4, 46 - v * 3, 8 + v * 2);
     ctx.fillStyle = '#4a3a24';
     ctx.fill();
     ctx.fillStyle = '#5a6a34';
-    for (let k = 0; k < 5; k++) arbusto(cx + 22 + k * 32, y + 62 + Math.sin(t + k) * 2, 9 + (k % 3) * 3, '#5a7a34');
-    arbusto(cx + 84, y + 48, 14, '#6a8a3a');
+    for (let k = 0; k < 5; k++) arbusto(cx + 22 + k * 32, y + 60 + (v % 2) * 4 + Math.sin(t + k) * 2, 9 + (k % 3) * 3 - v, '#5a7a34');
+    arbusto(cx + 84 - v * 8, y + 46 - (v % 2) * 4, 14 - v, '#6a8a3a');
   }
   // cisterna grande, com torneira pingando
   ctx.fillStyle = '#5a6a56';
@@ -92,7 +102,7 @@ function barraNova(p: Palette, y: number, t: number): void {
   ctx.fillStyle = 'rgba(180,210,200,.55)';
   ctx.fillRect(VX + 199, y + 40 + ((t * 30) % 8), 2, 6);
   // cerca de varas e flores de beira
-  for (let i = 0; i < 18; i++) poste(VX + 24 + i * 62, y + LANE_H, 26);
+  for (let i = 0; i < 18; i++) poste(VX + 24 + i * 62 + v * 30, y + LANE_H, 26 - v * 2);
   ctx.strokeStyle = '#6a5a3a';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -102,7 +112,7 @@ function barraNova(p: Palette, y: number, t: number): void {
   for (let i = 0; i < 14; i++) {
     ctx.fillStyle = ['#d06080', '#e0a040', '#c8d070'][i % 3];
     ctx.beginPath();
-    ctx.arc(VX + 16 + i * 74, y + LANE_H - 4, 3, 0, 7);
+    ctx.arc(VX + 16 + i * 74 + v * 32, y + LANE_H - 4, 3, 0, 7);
     ctx.fill();
   }
 }
@@ -110,11 +120,11 @@ function barraNova(p: Palette, y: number, t: number): void {
 // =====================================================================
 //  FAROL DO FIM — penhascos, neblina
 // =====================================================================
-function farolNova(p: Palette, y: number, t: number): void {
+function farolNova(p: Palette, y: number, t: number, v: number): void {
   // FAROL VELHO — a base de um farol que ninguém acende mais
-  faixa(y, '#3c4038', LANE_H);
+  faixa(y, tom(['#3c4038', '#3f433b', '#393d36'], v), LANE_H);
   ctx.fillStyle = '#33372f';
-  for (let i = 0; i < 12; i++) ctx.fillRect(VX + i * 92, y + 20 + (i % 2) * 6, 88, 16);
+  for (let i = 0; i < 12; i++) ctx.fillRect(VX + i * 92 + v * 18, y + 20 + (i % 2) * 6, 88, 16);
   // torre rachada (prop grande)
   ctx.fillStyle = '#2e3230';
   ctx.beginPath();
@@ -138,27 +148,27 @@ function farolNova(p: Palette, y: number, t: number): void {
   ctx.fillStyle = '#2a2e2a';
   for (let i = 0; i < 7; i++) {
     ctx.beginPath();
-    ctx.ellipse(VX + 60 + i * 150, y + LANE_H - 12, 18 + (i % 3) * 6, 7, 0, 0, 7);
+    ctx.ellipse(VX + 60 + i * 150 + v * 26, y + LANE_H - 12, 18 + (i % 3) * 6, 7, 0, 0, 7);
     ctx.fill();
   }
-  for (let i = 0; i < 16; i++) arbusto(VX + 20 + i * 70, y + 40 + Math.sin(t + i) * 3, 6, '#4a5a32');
+  for (let i = 0; i < 16; i++) arbusto(VX + 20 + i * 70 + v * 20, y + 40 + Math.sin(t + i) * 3, 6, '#4a5a32');
   waterLines(VX, y + LANE_H - 14, W - VX, 14, t, 'rgba(160,190,170,.12)');
 }
 
 // =====================================================================
 //  ESTAÇÃO AFOGADA — tempestade
 // =====================================================================
-function estacaoNova(p: Palette, y: number, t: number): void {
+function estacaoNova(p: Palette, y: number, t: number, v: number): void {
   // ARMAZÉM DE BAGAGEM — trilho de carga, engradado, malas
   faixa(y, p.ground, LANE_H);
   ctx.fillStyle = '#c8b45a';
   ctx.fillRect(VX, y + 58, W - VX, 3);
   // trilho de rolos
   ctx.fillStyle = '#2a2e2a';
-  for (let i = 0; i < 22; i++) ctx.fillRect(VX + 20 + i * 50, y + 62, 26, 6);
+  for (let i = 0; i < 22; i++) ctx.fillRect(VX + 20 + i * 50 + v * 8, y + 62, 26, 6);
   // engradados alinhados (prop grande)
   for (let i = 0; i < 3; i++) {
-    const cx = VX + 180 + i * 230;
+    const cx = VX + 180 + i * 230 + v * 40;
     ctx.fillStyle = '#6a5232';
     ctx.fillRect(cx, y + 4, 96, 50);
     ctx.fillStyle = '#4a3a20';
@@ -166,7 +176,7 @@ function estacaoNova(p: Palette, y: number, t: number): void {
   }
   // pilha de malas
   ctx.fillStyle = '#7a5a3a';
-  ctx.fillRect(VX + 760, y + 14, 54, 40);
+  ctx.fillRect(VX + 760 + v * 18, y + 14, 54, 40);
   ctx.fillStyle = '#5a3a24';
   ctx.fillRect(VX + 748, y + 52, 78, 26);
   ctx.fillStyle = '#8a6a44';
@@ -188,9 +198,9 @@ function estacaoNova(p: Palette, y: number, t: number): void {
 // =====================================================================
 //  FEIRA DO PEIXE — calor
 // =====================================================================
-function feiraNova(p: Palette, y: number, t: number): void {
+function feiraNova(p: Palette, y: number, t: number, v: number): void {
   // CAMELÔ DO PEIXE — lonas, caixas, gelo derretendo
-  faixa(y, '#6a5a42', LANE_H);
+  faixa(y, tom(['#6a5a42', '#6d5d45', '#67573f'], v), LANE_H);
   // lona esfarrapada esticada (prop)
   ctx.fillStyle = '#b04836';
   ctx.beginPath();
@@ -205,7 +215,7 @@ function feiraNova(p: Palette, y: number, t: number): void {
   fio(VX + 74, y - 54, VX + 372, y - 50, 14);
   // caixas de peixe com gelo
   for (let i = 0; i < 5; i++) {
-    const cx = VX + 460 + i * 120;
+    const cx = VX + 460 + i * 120 + v * 30;
     ctx.fillStyle = '#8a8078';
     ctx.fillRect(cx, y + 22, 92, 40);
     ctx.fillStyle = '#d8d8d0';
@@ -217,7 +227,7 @@ function feiraNova(p: Palette, y: number, t: number): void {
   }
   vapor(VX + 500, y + 20, t, 3, 'rgba(220,230,225,.18)');
   // caixote e sombrinha
-  caixote(VX + 40, y + LANE_H - 8, 48, 34);
+  caixote(VX + 40 + v * 24, y + LANE_H - 8, 48, 34);
   ctx.fillStyle = '#c8a03a';
   ctx.beginPath();
   ctx.arc(VX + 300, y + LANE_H - 14, 30, Math.PI, 0);
@@ -227,7 +237,7 @@ function feiraNova(p: Palette, y: number, t: number): void {
   // poeira e tampa de gargalo no chão
   ctx.fillStyle = 'rgba(60,40,20,.25)';
   for (let i = 0; i < 12; i++) {
-    const fx = VX + ((t * 40 + i * 97) % (W - VX));
+    const fx = VX + ((t * 40 + i * 97 + v * 40) % (W - VX));
     ctx.fillRect(fx, y + 96 + (i % 3) * 6, 8, 2);
   }
 }
@@ -235,13 +245,13 @@ function feiraNova(p: Palette, y: number, t: number): void {
 // =====================================================================
 //  FÁBRICA PODRE — cinzas
 // =====================================================================
-function fabricaNova(_p: Palette, y: number, _t: number): void {
+function fabricaNova(_p: Palette, y: number, _t: number, v: number): void {
   // PÁTIO DE CARGA — contêineres, empilhadeira, marcação
-  faixa(y, '#3a3a32', LANE_H);
+  faixa(y, tom(['#3a3a32', '#3d3d35', '#383832'], v), LANE_H);
   ctx.fillStyle = 'rgba(0,0,0,.28)';
   for (let i = 0; i < 5; i++) {
     ctx.beginPath();
-    ctx.ellipse(VX + 120 + i * 210, y + 100, 52, 8, 0, 0, 7);
+    ctx.ellipse(VX + 120 + i * 210 + v * 24, y + 100, 52, 8, 0, 0, 7);
     ctx.fill();
   }
   ctx.strokeStyle = '#c8a03a';
@@ -255,7 +265,7 @@ function fabricaNova(_p: Palette, y: number, _t: number): void {
   // contêineres empilhados (prop grande)
   const cores = ['#7a3a24', '#3a5a6a', '#6a5a24'];
   for (let i = 0; i < 3; i++) {
-    const cx = VX + 160 + i * 250;
+    const cx = VX + 160 + i * 250 + v * 34;
     ctx.fillStyle = cores[i % 3];
     ctx.fillRect(cx, y + 10, 190, 40);
     ctx.fillStyle = cores[i % 3];
@@ -274,7 +284,7 @@ function fabricaNova(_p: Palette, y: number, _t: number): void {
   }
   // empilhadeira parada
   ctx.fillStyle = '#8a6a20';
-  ctx.fillRect(VX + 720, y + 50, 90, 30);
+  ctx.fillRect(VX + 720 + v * 16, y + 50, 90, 30);
   ctx.fillStyle = '#5a4a16';
   ctx.fillRect(VX + 716, y + 44, 20, 40);
   ctx.fillStyle = '#2a2e22';
@@ -294,14 +304,14 @@ function fabricaNova(_p: Palette, y: number, _t: number): void {
 // =====================================================================
 //  CEMITÉRIO DE BARCOS — vendaval
 // =====================================================================
-function cemiterioNova(p: Palette, y: number, t: number): void {
+function cemiterioNova(p: Palette, y: number, t: number, v: number): void {
   // CASCO ENCALHADO — navio encalhado, corrente e guindaste
-  faixa(y, '#2c3234', LANE_H);
+  faixa(y, tom(['#2c3234', '#2f3537', '#292f31'], v), LANE_H);
   waterLines(VX, y + 84, W - VX, 34, t * 1.1, 'rgba(150,180,180,.16)', 14);
   // casco (prop grande)
   ctx.fillStyle = '#22292c';
   ctx.beginPath();
-  ctx.moveTo(VX + 300, y + 88);
+  ctx.moveTo(VX + 300 + v * 30, y + 88);
   ctx.lineTo(VX + 340, y + 6);
   ctx.lineTo(VX + 640, y + 2);
   ctx.lineTo(VX + 640, y + 62);
@@ -333,12 +343,13 @@ function cemiterioNova(p: Palette, y: number, t: number): void {
   }
   ctx.stroke();
   // pedras e erva morta na beira
-  for (let i = 0; i < 8; i++) arbusto(VX + 30 + i * 130, y + 96, 9, '#2e3428');
+  for (let i = 0; i < 8; i++) arbusto(VX + 30 + i * 130 + v * 22, y + 96, 9, '#2e3428');
 }
 
 /** Piso das lanes 4, 5 e 6: cada mapa desenha o seu (único). */
 export function drawLaneFloorNova(map: MapDef, p: Palette, l: number, t: number): void {
-  drawLaneFloorNovaEm(map, p, t, LANE_Y0 + l * LANE_H);
+  // lanes de baixo = 3, 4, 5 → variação 0, 1, 2 (ADR 013)
+  drawLaneFloorNovaEm(map, p, t, LANE_Y0 + l * LANE_H, l - 3);
 }
 
 /**
@@ -348,13 +359,19 @@ export function drawLaneFloorNova(map: MapDef, p: Palette, l: number, t: number)
  * `drawLaneFloorNova` as assinatas diferem só pelo Y, e um teste de
  * "lanes iguais" passaria por vacuidade.
  */
-export function drawLaneFloorNovaEm(map: MapDef, p: Palette, t: number, y: number): void {
-  if (map.id === 'barra') barraNova(p, y, t);
-  else if (map.id === 'farol') farolNova(p, y, t);
-  else if (map.id === 'estacao') estacaoNova(p, y, t);
-  else if (map.id === 'feira') feiraNova(p, y, t);
-  else if (map.id === 'fabrica') fabricaNova(p, y, t);
-  else cemiterioNova(p, y, t);
+export function drawLaneFloorNovaEm(
+  map: MapDef,
+  p: Palette,
+  t: number,
+  y: number,
+  v: number,
+): void {
+  if (map.id === 'barra') barraNova(p, y, t, v);
+  else if (map.id === 'farol') farolNova(p, y, t, v);
+  else if (map.id === 'estacao') estacaoNova(p, y, t, v);
+  else if (map.id === 'feira') feiraNova(p, y, t, v);
+  else if (map.id === 'fabrica') fabricaNova(p, y, t, v);
+  else cemiterioNova(p, y, t, v);
   // Profundidade: sombra suave no topo e na base da lane dá volume ao corredor.
   const top = ctx.createLinearGradient(0, y, 0, y + 14);
   top.addColorStop(0, 'rgba(0,0,0,.22)');
