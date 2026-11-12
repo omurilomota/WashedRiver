@@ -166,7 +166,7 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     ze:{alive:true,say:'',sayT:0,nextSay:12,anim:0,repeat:0},zeSilent:0,zeHat:false,
     luAtWindow:true,toqAlive:true,toqSay:'',toqSayT:0,toqClicks:0,zeClicks:0,toqBoost:0,
     dogSay:0,luTalking:'',vizinhoSay:['','',''],vizinhoT:[0,0,0],vizinhoClicks:[0,0,0],vizinhoSegredo:false,
-    intros:[],marcaPendente:null,
+    intros:[],marcaPendente:null,deck:null,
     up:{},unlockedMach:{},dmgBonus:0,shields:e.shield||0,repairBank:e.repair||0,
     boss:null,bossDeath:null,
     // "NOITE PERMANENTE": o mapa já começa no escuro.
@@ -177,6 +177,8 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     weather:map.weather,lastSave:Date.now(),
     endingChoice:null,impostoDevido:0,savedT:0
   };
+  // BLOCO M.4: o deck escolhido antes da partida. Sandbox não escolhe.
+  if(mode!=='sandbox') st.deck=SaveDB.getDeck(mapIndex);
   st.waves=makeWaves(st,daily);
   st.phases=buildPhases(st);
   if(mode==='boss')st.scrap+=50;

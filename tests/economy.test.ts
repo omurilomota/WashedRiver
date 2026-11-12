@@ -53,6 +53,26 @@ describe('economia: custo', () => {
     }
   });
 
+  it('a banca mostra só o deck quando a partida tem deck (BLOCO M.4)', () => {
+    // sem deck: tudo que está liberado
+    setG({ mods: {} } as unknown as GameState);
+    const tudo = availableMachines();
+    expect(tudo.length).toBeGreaterThan(3);
+
+    // com deck: só o deck (e na ordem escolhida)
+    setG({ mods: {}, deck: ['ima', 'boia', 'torradeira'] } as unknown as GameState);
+    const noDeck = availableMachines();
+    expect(noDeck).toEqual(['ima', 'boia', 'torradeira']);
+
+    // deck com peça trancada é ignorada, não trava a banca
+    setG({ mods: {}, deck: ['nao_existe', 'boia'] } as unknown as GameState);
+    expect(availableMachines()).toEqual(['boia']);
+
+    // deck vazio = sem escolha (sandbox): volta pro desbloqueio
+    setG({ mods: {}, deck: [] } as unknown as GameState);
+    expect(availableMachines()).toEqual(tudo);
+  });
+
   it('o desconto da árvore derruba o preço (e nunca zera)', () => {
     const alvo = MACH_ORDER.find((id) => MACH[id].cost > 0);
     expect(alvo).toBeDefined();

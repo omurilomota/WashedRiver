@@ -107,12 +107,69 @@ export const UI=(function(){
 
   // ---------- MAPAS ----------
   function mapArt(m){const p=m.pal;return 'background:linear-gradient(180deg,'+p.sky1+' 0%,'+p.sky2+' 55%,'+p.water+' 56%,'+p.water+' 100%)';}
+  /**
+   * Tela de seleção de plantas (BLOCO M.4).
+   *
+   * Antes da partida o jogador monta um deck de 7 e joga com ele: menos
+   * opções, mais compromisso. Cartas grandes, contador, trava bloqueada
+   * mostrando o que ainda não existe, e o Zé comentando a escolha.
+   */
+  let deckSel: string[] = [];
+  function deckScreen(map: number){
+    deckSel = (SaveDB.getDeck(map) || []).slice(0, 7);
+    api.deckMapa = map;
+    drawDeck(map);
+  }
+  function drawDeck(map: number){
+    // Pé de Cabra é ferramenta, não peça: não entra no deck
+    const liberadas = availableMachines().filter(k => k !== 'remover');
+    const trava = MACH_ORDER.filter(k => MACH[k] && k !== 'remover' && !liberadas.includes(k));
+    const cartas = liberadas.map(k => {
+      const on = deckSel.includes(k);
+      const custo = machCost(k);
+      return '<div class="node '+(on ? 'max' : '')+'" data-act="deckpick" data-arg="'+k+'" tabindex="0" style="cursor:pointer">'+
+        '<h4>'+MACH[k].nome+(on ? ' ✔' : '')+'</h4>'+
+        '<small>'+MACH[k].desc+'</small>'+
+        '<div class="cost"><span>'+(k === 'coisa_ze' ? 'DO ZÉ' : custo + ' sucata')+'</span><span>vida '+(MACH[k].hp||'?')+' · '+(MACH[k].cd||'?')+'s</span></div>'+
+        '</div>';
+    }).join('');
+    const tranca = trava.map(k => {
+      const dica = SaveDB.slot.seenM[k] ? MACH[k].sin : 'O Zé ainda não trouxe isso.';
+      return '<div class="node locked"><h4>???</h4><small>'+dica+'</small></div>';
+    }).join('');
+    const n = deckSel.length;
+    const pode = n === 7;
+    const zeDeck = zeComentaDeck(deckSel, liberadas);
+    const top = '<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:32px;margin:0">O QUE LEVAR</h2>'+
+      '<p class="muted">Sete peças. Escolhe com cuidado — na volta pro corredor não tem troca.</p>'+
+      '<div class="kv" style="margin:8px 0">ESCOLHIDAS: <b class="'+(pode ? 'gold' : 'bad')+'">'+n+'/7</b>'+
+      (pode ? '' : ' <span class="muted">— faltam ' + (7 - n) + '</span>')+'</div>'+
+      (zeDeck ? '<p class="ze" style="border-left:2px solid #6c5b21;padding-left:8px;color:#e3cf95;font-style:italic;margin:0 0 10px">ZÉ: '+zeDeck+'</p>' : '')+
+      '<div class="row">'+btn(pode ? 'COMEÇAR' : 'FALTAM ' + (7 - n), pode ? 'deckgo' : 'nada', '' + map, pode ? 'primary' : '')+'</div>'+
+      '<div class="space"></div>';
+    const grade = '<div class="branches" style="grid-template-columns:repeat(2,1fr)">'+cartas+tranca+'</div>';
+    setScreen(top + grade +
+      '<div class="row" style="margin-top:14px">'+btn('GUARDAR PRA DEPOIS','decksave','' + map, 'small')+btn('VOLTAR','maps','','small')+'</div>');
+  }
+  /** O Zé comenta a escolha: peça cara demais, barata demais, ou balde. */
+  function zeComentaDeck(deck: string[], liberadas: string[]): string {
+    if (deck.length === 0) return 'Nada? Vai de mão abanando, então.';
+    const custo = (k: string) => MACH[k] ? (MACH[k].cost || 0) : 0;
+    const soma = deck.reduce((a, k) => a + custo(k), 0);
+    const mediano = liberadas.map(custo).sort((a, b) => a - b)[Math.floor(liberadas.length / 2)] || 100;
+    const baldes = deck.filter(k => k === 'geladeira' || k === 'geladeira_bomba').length;
+    if (baldes >= 4) return 'Quatro geladeira. Isso é mudança, não defesa.';
+    if (soma > mediano * deck.length * 1.6) return 'Tudo caro. Quando a maré vier, tu vai tá catando moeda.';
+    if (soma < mediano * deck.length * 0.5) return 'Tudo barato. Corajoso. Ou com pressa.';
+    if (deck.includes('coisa_ze')) return 'Levando a minha obra. Ela funciona. Mais ou menos.';
+    return 'Escolheu. Agora aguenta.';
+  }
   function maps(){
     const cards=MAPS.map((m,i)=>{
       const unl=mapUnlocked(i);const st=SaveDB.slot.stars[i]||0;
       // resetar save deste mapa: só faz sentido em mapa já aberto/jogado
       const podeLimpar=unl&&(st>0||(SaveDB.slot.best[i]||0)>0);
-      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'map':'nada')+'" data-arg="'+i+'">'+
+      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'deck':'nada')+'" data-arg="'+i+'">'+
         '<div class="art" style="'+mapArt(m)+'"><div class="no">'+(i+1)+'</div>'+(unl?'<div class="stars">'+stars(st)+'</div>':'<div class="stars" style="color:#777">TRANCADO</div>')+'</div>'+
         '<h3>'+m.nome+'</h3><p>'+m.sub+'</p>'+
         '<div class="tags">'+tag(m.weather.toUpperCase())+tag(m.resShort,'hot')+tag(m.boss==='mare'?'FINAL':'CHEFE')+'</div>'+
@@ -132,13 +189,13 @@ export const UI=(function(){
       '<p class="muted">Sem chefe marcado, sem amanhã. A cada três ondas vem um Seu Bento de encomenda. Melhor marca: '+JSON.stringify(SaveDB.slot.endlessBest)+'.</p>'+
       '<div class="mapgrid" style="grid-template-columns:repeat(3,1fr)">'+
       [['DEVAGAR','costa calma, maré mansa',0],['COMO SEMPRE','do jeito que o mar gosta',1],['SEM DÓ','eles comeram o almoço',2]].map(d=>
-        '<div class="mapcard" data-act="endless" data-arg="'+d[2]+'"><div class="art" style="background:linear-gradient(180deg,#1a2a2e,#0a1418)"><div class="no">∞</div></div>'+
+        '<div class="mapcard" data-act="deckendless" data-arg="'+d[2]+'"><div class="art" style="background:linear-gradient(180deg,#1a2a2e,#0a1418)"><div class="no">∞</div></div>'+
         '<h3>'+d[0]+'</h3><p>'+d[1]+'</p><div class="tags">'+tag('MAPA: '+MAPS[map].nome)+'</div></div>').join('')+
       '</div><div class="space"></div>'+btn('VOLTAR','title','','small'));
   }
   function bossMenu(){
     const cards=MAPS.map((m,i)=>{const b=BOSSES[m.boss];const unl=mapUnlocked(i);const best=SaveDB.slot.bossBest[i];
-      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'boss':'nada')+'" data-arg="'+i+'">'+
+      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'deckboss':'nada')+'" data-arg="'+i+'">'+
         '<div class="art" style="'+mapArt(m)+'"><div class="no">'+(i+1)+'</div></div>'+
         '<h3>'+b.nome+'</h3><p>'+b.desc+'</p><div class="tags">'+tag('FASES: '+(m.boss==='mare'?'SOBREVIVER':m.boss==='gerente'?'7':'3'))+'</div>'+
         (best?'<p class="gold">melhor: '+Math.round(best)+'s</p>':'')+'</div>';}).join('');
@@ -514,6 +571,38 @@ export const UI=(function(){
         case 'slot':SaveDB.setSlot(Number(arg));title();break;
         case 'slots':slots();break;
         case 'newslot':if(arg===null)break;SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();break;
+        case 'deckpick':{
+          const k=String(arg);
+          if(deckSel.includes(k))deckSel=deckSel.filter(x=>x!==k);
+          else if(deckSel.length<7)deckSel.push(k);
+          else {toast('story','SETE. JÁ SETE. TIRA UMA.');break;}
+          drawDeck(api.deckMapa);
+          break;
+        }
+        case 'deckendless':case 'deckboss':{
+          // a escolha de deck vale pra Noite Infinita e pro Modo Chefe também
+          api.deckModo=String(arg)==='deckendless'?'endless':'boss';
+          UI.deckScreen(clamp(SaveDB.slot.campaign,0,5));
+          break;
+        }
+        case 'deckgo':{
+          const i=Number(arg);
+          if(deckSel.length!==7){toast('story','SETE PEÇAS. NEM MAIS, NEM MENOS.');break;}
+          SaveDB.setDeck(i,deckSel);
+          if(api.deckModo==='endless')Game.startFromOpts({kind:'endless',level:0,map:i});
+          else if(api.deckModo==='boss')Game.startFromOpts({kind:'boss',map:i});
+          else Game.startFromOpts({kind:'campaign',map:i});
+          break;
+        }
+        case 'decksave':{
+          const i=Number(arg);
+          if(deckSel.length!==7){toast('story','SETE PEÇAS. AÍ SIM EU GUARDO.');break;}
+          SaveDB.setDeck(i,deckSel);
+          toast('ach','DECK GUARDADO. O ZÉ ANOTOU NUM PAPEL.');
+          drawDeck(i);
+          break;
+        }
+        case 'deck':api.deckModo='campaign';UI.deckScreen(Number(arg));break;
         case 'map':Game.startFromOpts({kind:'campaign',map:Number(arg)});break;
         case 'resetmapa':{
           const i=Number(arg);
@@ -578,7 +667,7 @@ export const UI=(function(){
   }
   bind();
 
-  const api={title,maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
+  const api={title,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
     hideOverlays:hide,updateTopbar,toast,cardAt,drawHUD,drawScene};
   return api;
 })();

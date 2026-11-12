@@ -44,6 +44,7 @@ function fakeContext(): CanvasRenderingContext2D {
 let game: typeof import('../src/game/game');
 let state: typeof import('../src/core/state');
 let save: typeof import('../src/save/storage');
+let economia: typeof import('../src/game/economy');
 
 beforeAll(async () => {
   document.body.innerHTML = `
@@ -60,6 +61,7 @@ beforeAll(async () => {
   game = await import('../src/game/game');
   state = await import('../src/core/state');
   save = await import('../src/save/storage');
+  economia = await import('../src/game/economy');
 });
 
 /** Modo silencioso: os testes não precisam de som nem de timer. */
@@ -305,6 +307,36 @@ describe('onboarding diegético (BLOCO M.3)', () => {
       expect(['silhueta', 'ze', 'radio', 'cartaz', 'marca', 'nada']).toContain(it.metodo);
       if (it.metodo !== 'nada') expect(it.fala.length, `${tipo} sem fala`).toBeGreaterThan(3);
     }
+  });
+});
+
+describe('deck da partida (BLOCO M.4)', () => {
+  it('a partida nasce com o deck do save e a banca só mostra ele', () => {
+    const deck = ['boia', 'torradeira', 'geladeira', 'bujao', 'holofote', 'ima', 'radio'];
+    save.SaveDB.setSlot(0);
+    save.SaveDB.setDeck(0, deck);
+    state.Game.startCampaign(0);
+    expect(state.G.deck).toEqual(deck);
+    expect(economia.availableMachines()).toEqual(deck);
+  });
+
+  it('sem deck salvo a partida é sem-escolha (sandbox)', () => {
+    save.SaveDB.setSlot(0);
+    save.SaveDB.setDeck(0, ['boia']);
+    state.Game.startSandbox();
+    expect(state.G.deck).toBeNull();
+    // e a banca mostra mais que o deck
+    expect(economia.availableMachines().length).toBeGreaterThan(1);
+  });
+
+  it('planta peça fora do deck não entra na banca', () => {
+    const deck = ['boia', 'torradeira', 'geladeira', 'bujao', 'holofote', 'ima', 'radio'];
+    save.SaveDB.setSlot(0);
+    save.SaveDB.setDeck(0, deck);
+    state.Game.startCampaign(0);
+    // ventilaor não está no deck: ainda planta (a sucata paga), mas não
+    // aparece como carta — a escolha foi feita antes.
+    expect(economia.availableMachines().includes('ventilador')).toBe(false);
   });
 });
 

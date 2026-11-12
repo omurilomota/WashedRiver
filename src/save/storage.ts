@@ -29,6 +29,8 @@ export interface Slot {
   best: Record<string, number>;
   /** Moeda meta. Nunca reseta. */
   oldScrap: number;
+  /** Deck escolhido por mapa (BLOCO M.4): máquinas liberadas na partida. */
+  decks: Record<string, string[]>;
   tree: Record<string, number>;
   seenB: Record<string, number>;
   seenM: Record<string, number>;
@@ -96,6 +98,7 @@ function blankSlot(n: number): Slot {
     tree: {},
     seenB: {},
     seenM: {},
+    decks: {},
     ach: {},
     endings: {},
     flags: {},
@@ -149,6 +152,9 @@ function ensure(s: Partial<Slot> | undefined, i: number): Slot {
   out.tree = out.tree || {};
   out.seenB = out.seenB || {};
   out.seenM = out.seenM || {};
+  // deck por mapa (BLOCO M.4): save antigo nasce sem deck — e sem deck não
+  // tem partida, então o jogador escolhe na primeira tela.
+  out.decks = out.decks || {};
   out.ach = out.ach || {};
   out.endings = out.endings || {};
   out.flags = out.flags || {};
@@ -258,6 +264,18 @@ export const SaveDB = {
     delete s.best[mapa];
     if (s.campaign > mapa) s.campaign = mapa;
     persist();
+  },
+  /** Deck do mapa: nada mais que a lista escolhida na tela de seleção. */
+  setDeck(map: number, deck: string[]): void {
+    const s = SaveDB.slot;
+    const mapa = clamp(Math.round(map), 0, MAPS.length - 1);
+    s.decks[mapa] = deck.slice(0, 8);
+    persist();
+  },
+  getDeck(map: number): string[] | null {
+    const s = SaveDB.slot;
+    const d = s.decks[clamp(Math.round(map), 0, MAPS.length - 1)];
+    return Array.isArray(d) ? d.slice() : null;
   },
   setEnding(id: string, text: string): void {
     const s = SaveDB.slot;

@@ -116,6 +116,29 @@ describe('save', () => {
     expect(SaveDB.slot.campaign).toBe(2);
   });
 
+  it('guarda o deck por mapa (BLOCO M.4)', async () => {
+    const { SaveDB } = await freshSave();
+    SaveDB.setSlot(0);
+    SaveDB.unlockMap(2); // campanha no mapa 2
+    SaveDB.setDeck(2, ['boia', 'torradeira', 'geladeira', 'bujao', 'holofote', 'ima', 'radio']);
+    expect(SaveDB.getDeck(2)!.length).toBe(7);
+
+    // deck de outro mapa é independente
+    expect(SaveDB.getDeck(0)).toBeNull();
+    SaveDB.setDeck(0, ['boia']);
+    expect(SaveDB.getDeck(0)).toEqual(['boia']);
+    expect(SaveDB.getDeck(2)!.length).toBe(7);
+
+    // teto de 8: jogador não enfia a banca inteira
+    SaveDB.setDeck(2, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']);
+    expect(SaveDB.getDeck(2)!.length).toBe(8);
+
+    // reset de mapa não apaga o deck (deck é escolha, não progresso)
+    SaveDB.setDeck(1, ['boia', 'torradeira']);
+    SaveDB.resetMapa(1);
+    expect(SaveDB.getDeck(1)).toEqual(['boia', 'torradeira']);
+  });
+
   it('sobe a versão de um save antigo sem quebrar', async () => {
     const { KEY, SAVE_VERSION } = await freshSave();
     // Save v1: formato antigo, com buracos.

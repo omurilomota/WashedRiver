@@ -315,6 +315,13 @@ export interface GameState {
   toqBoost: number;
   dogSay: number;
   luTalking: string;
+  /**
+   * Deck escolhido antes da partida (BLOCO M.4).
+   *
+   * Vazio/`null` = sem escolha (sandbox, primeira partida): a banca mostra
+   * tudo que está liberado.
+   */
+  deck: string[] | null;
   /** Apresentações diegéticas rolando (BLOCO M.3). */
   intros: { type: string; lane: number; kind: string; t: number; dur: number }[];
   /** Bicho cujo primeiro cadáver deixa uma marca estranha. */
@@ -466,6 +473,7 @@ function emptyState(): GameState {
     luTalking: '',
     intros: [],
     marcaPendente: null,
+    deck: null,
     vizinhoSay: ['', '', ''],
     vizinhoT: [0, 0, 0],
     vizinhoClicks: [0, 0, 0],

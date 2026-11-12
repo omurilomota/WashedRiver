@@ -174,6 +174,20 @@ Chefes são **fases**, não sacos de vida:
 | Fábrica Podre | energia (×1.25) | cinzas | O Gerente | a origem tem expediente até domingo |
 | Cemitério de Barcos | tudo (×1.4) | vendaval | A MARÉ | o fim da costa e o começo do mar |
 
+### Deck escolhido antes da partida (BLOCO M.4)
+
+Campanha, Noite Infinita e Modo Chefe abrem a tela **O QUE LEVAR**: o jogador
+monta um deck de **7 peças** entre as desbloqueadas e joga com ele. A banca
+durante a partida mostra só o deck. Regras:
+
+- contador 3/7 e botão COMEÇAR só com 7 (nem mais, nem menos);
+- peça trancada aparece como `???`;
+- o Zé comenta a escolha (tudo caro, tudo barato, quatro geladeiras…);
+- deck fica salvo por mapa no save (`SaveDB.setDeck/getDeck`), então não
+  precisa reescolher toda vez;
+- **sandbox ignora**: todas as peças, sem tela de escolha;
+- o menu do Zé pode oferecer uma peça **fora** do deck como recompensa rara.
+
 ### Descoberta (BLOCO M.3)
 
 Bicho novo não avisa com banner de sistema. Cada um se apresenta de um jeito

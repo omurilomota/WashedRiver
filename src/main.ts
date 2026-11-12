@@ -12,6 +12,8 @@ import './styles/main.css';
 import './game/game';
 import { G, Game } from './core/state';
 import { UI } from './ui/ui';
+// debug/screenshot: a UI não é global no jogo; este atalho é só pra ferramenta
+(window as unknown as {__ui: typeof UI}).__ui = UI;
 import { SaveDB } from './save/storage';
 
 // O build é um arquivo só e roda direto no navegador: expor o estado no

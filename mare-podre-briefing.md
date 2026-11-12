@@ -139,7 +139,13 @@
   (chiado se houver rádio no campo), cartaz na vila, marca no primeiro
   cadáver ou nada. `drawIntros` em `scene.ts` desenha silhueta e cartaz;
   5 testes em `gameplay.test.ts` cobrem.
-- **M.4:** seleção de plantas (deck de 7 antes da partida, salvo por mapa).
+- **M.4 (feito):** deck de 7 antes da partida. Tela `O QUE LEVAR` em `ui.ts`
+  (`deckScreen`/`drawDeck`): contador, cartas grandes, `???` pra trancada, Zé
+  comenta, deck salvo por mapa no save (`SaveDB.setDeck/getDeck`, campo
+  `decks`). `availableMachines()` respeita `G.deck`; sandbox ignora. Campanha,
+  Noite Infinita e Modo Chefão passam pela escolha. Testes: save (deck por
+  mapa, teto 8, reset não apaga), economia (banca = deck) e gameplay (deck
+  carregado do save).
 - **M.5:** enciclopédia (bestiário, galeria de peças, chefes; descoberta persistente).
 - **M.6:** molho (eventos aleatórios entre ondas, micro-surpresas na onda, ondas temáticas).
 
