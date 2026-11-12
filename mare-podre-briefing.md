@@ -124,8 +124,16 @@
   reescritos no registro do deboche: cenas de morte (`creatures.ts`), avisos
   (`game.ts`), telas de fim (`ui.ts`), `zeRaro`/`vozLines`/finais (`maps.json`) e
   descrições com pena (`balance.json`). Build verificado: zero textos antigos.
-- **M.2:** curva de dificuldade (onda 1 tutorial passável, onda 3 exige atenção,
-  chefe como pico, mapa N+1 um degrau acima, Noite Infinita começa igual).
+- **M.2 (feito):** curva de dificuldade. Números em `balance.json`
+  (`dificuldade`): onda 1 = 7 bichos/1 tipo/6,5s/2 corredores; onda 2 =
+  13/4 tipos/5,4s/4 corredores + respiro de 30s; onda 3 = 22/pool
+  inteiro/4s/6 corredores; degrau por mapa; Noite Infinita com degrau a cada
+  3 ondas e chefe a cada 5. `tests/curva.test.ts` joga os 6 mapas e imprime a
+  tabela medida. **Bugs de regra achados no caminho (e corrigidos):**
+  `chooseOffer` com sucata insuficiente dava `return` antes de sair da loja
+  (partida travada); bicho comendo peça curada a cada break nunca matava a
+  peça (onda nunca acabava — agora a fome cresce enquanto ele come); polvo
+  grudado na peça não soltava nunca (jam virou temporária de 5s).
 - **M.3:** onboarding diegético (silhueta no horizonte, fala do Zé, rádio, cartaz
   ou nada — nada de banner de sistema).
 - **M.4:** seleção de plantas (deck de 7 antes da partida, salvo por mapa).

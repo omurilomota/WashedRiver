@@ -174,6 +174,28 @@ Chefes são **fases**, não sacos de vida:
 | Fábrica Podre | energia (×1.25) | cinzas | O Gerente | a origem tem expediente até domingo |
 | Cemitério de Barcos | tudo (×1.4) | vendaval | A MARÉ | o fim da costa e o começo do mar |
 
+### Curva de dificuldade (BLOCO M.2)
+
+Os números de onda moram em `src/data/balance.json` (`dificuldade`), não
+soltos no código. A régua:
+
+- **Onda 1** — tutorial disfarçado: 7 bichos, **um** tipo (o mais fraco do
+  pool), 6,5 s entre eles, em **2 corredores** só. Dá pra passar sem suar e
+  sem perder peça (testado em `tests/curva.test.ts`, nos 6 mapas).
+- **Onda 2** — introdução: 13 bichos, 4 tipos, 5,4 s, 4 corredores, com
+  respiro de 30 s antes (o jogador cobre as lanes que faltam). As cenas
+  pesadas saíram daqui: eram elas que faziam da onda 2 o paredão.
+- **Onda 3** — teste: 22 bichos, pool inteiro, 4 s, 6 corredores, com polvo,
+  cardume, baleia e o exclusivo do mapa.
+- **Respiro** de 15 s antes do chefe, com reparo na loja.
+- **Mapa seguinte** começa um degrau acima (`degrauPorMapa`).
+- **Noite Infinita**: onda 1 igual à da campanha; degrau a cada 3 ondas;
+  chefe a cada 5.
+
+`tests/curva.test.ts` joga os 6 mapas com um jogador de referência e imprime
+a tabela de peças/estruturas perdidas por fase — a régra é medida, não
+achismo.
+
 Cada mapa tem: paleta própria, clima, **um terreno** (nome das 6 lanes),
 2 estruturas por lane, pool de criaturas, chefe, intro, fala do chefe e bio.
 

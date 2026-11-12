@@ -189,6 +189,41 @@ describe('Água-Viva-Fantasma', () => {
   });
 });
 
+describe('onda não pode travar (regra de fim de onda)', () => {
+  it('bicho comendo peça curada toda hora ainda assim atravessa', () => {
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('geladeira', 0, 3, true)).toBe(true);
+    const m = state.G.machines[0];
+    const baiacu = game.spawnEnemy('baiacu', 0, m.x + 30); // chega pela direita
+    expect(baiacu).not.toBeNull();
+    // 60s de jogo, curando a peça a cada meio segundo (o pior caso possível)
+    for (let i = 0; i < 600; i++) {
+      game.update(0.1);
+      if (i % 5 === 0) m.hp = m.maxhp;
+    }
+    // a peça caiu e o bicho passou (ou morreu no caminho)
+    expect(state.G.machines.length === 0 || state.G.machines[0].hp <= 0).toBe(true);
+    // e o bicho não ficou mordendo pra sempre
+    expect(baiacu!.eating ?? null).toBeFalsy();
+  });
+
+  it('polvo grudado desgruda e a onda Acaba', () => {
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('geladeira', 0, 3, true)).toBe(true);
+    const polvo = game.spawnEnemy('polvo', 0, state.G.machines[0].x + 30);
+    expect(polvo).not.toBeNull();
+    let soltou = false, preso = 0, maxPreso = 0;
+    for (let i = 0; i < 200; i++) {
+      game.update(0.1);
+      if (polvo!.attached) { preso += 0.1; maxPreso = Math.max(maxPreso, preso); }
+      else { soltou = true; preso = 0; }
+    }
+    // desgrudou (jam é temporária) e nunca ficou preso mais que a jam dura
+    expect(soltou).toBe(true);
+    expect(maxPreso).toBeLessThanOrEqual(7);
+  });
+});
+
 describe('regra de derrota', () => {
   it('perder uma lane inteira abre brecha, mas não acaba a partida', () => {
     state.Game.startCampaign(0);

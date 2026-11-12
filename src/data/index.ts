@@ -9,6 +9,7 @@ import balanceJson from './balance.json';
 import mapsJson from './maps.json';
 import type {
   Achievement,
+  DificuldadeDef,
   BossDef,
   Cartazes,
   DailyMod,
@@ -31,6 +32,7 @@ export const SHOP_BASE = balanceJson.shopBase as string[];
 export const MACH_ORDER = balanceJson.machOrder as string[];
 export const UPG = balanceJson.upgrades as Record<string, string[]>;
 export const ECONOMIA = balanceJson.economia as EconomiaDef;
+export const DIFICULDADE = balanceJson.dificuldade as DificuldadeDef;
 
 export const ENEMY = balanceJson.enemy as Record<string, EnemyDef>;
 export const ENEMY_ORDER = balanceJson.enemyOrder as string[];

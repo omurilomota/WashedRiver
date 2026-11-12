@@ -59,6 +59,10 @@ export interface Enemy {
   hypno: number;
   /** Ventilador espantou (só a Baleia-Filhote): ela foge pelo lado direito. */
   spooked?: boolean;
+  /** Segundos comendo a mesma peça: a fome aumenta o dano (não trava onda). */
+  comendoT?: number;
+  /** Segundos até o polvo desgrudar da peça (jam é temporária). */
+  soltaT?: number;
   reflectT: number;
   /** Quantas torradas o Peixe-Lata ainda aguenta devolver. */
   reflectMax: number;

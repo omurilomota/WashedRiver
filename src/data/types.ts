@@ -31,6 +31,8 @@ export interface MachineDef {
 export interface EconomiaDef {
   /** Sucata por segundo, sozinha. */
   passiva: number;
+  /** Sucata com que o jogador começa a partida (mão de abertura). */
+  startScrap: number;
   /** Multiplicador geral no custo das engenhocas. */
   fatorCustoMaquina: number;
   /** Custo do nível 1, 2 e 3 de melhoria de peça. */
@@ -162,6 +164,38 @@ export interface Achievement {
   id: string;
   nome: string;
   desc: string;
+}
+
+/**
+ * Curva de dificuldade (ADR do BLOCO M.2).
+ *
+ * Os números de onda moram aqui, não soltos em `game.ts`: a onda 1 é
+ * tutorial disfarçado (poucos bichos, um tipo só, espaçado), a onda 3 é
+ * teste, e o mapa seguinte começa um degrau acima do anterior.
+ */
+export interface OndaDificuldade {
+  bichos: number;
+  /** Segundos entre bichos. */
+  espacamento: number;
+  /** Quantos tipos diferentes do pool entram na onda. */
+  tipos: number;
+  /** Quantas lanes recebem bichos (ondas iniciais não enchem o campo). */
+  corredores: number;
+}
+
+export interface DificuldadeDef {
+  ondas: OndaDificuldade[];
+  /** Quanto cada mapa soma em cima da curva base. */
+  degrauPorMapa: { bichos: number; espacamento: number; tipos: number; corredores: number };
+  noiteInfinita: {
+    chefeACada: number;
+    degrauACada: number;
+    bichosPorDegrau: number;
+    tetoBichos: number;
+    espacamentoMin: number;
+    hpPorDegrau: number;
+    tetoHp: number;
+  };
 }
 
 // ---------- mapas ----------

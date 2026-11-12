@@ -40,6 +40,7 @@ import { dayKey, hashStr, mulberry } from '../core/rng';
 import {
   BOSSES,
   DAILY_MODS,
+  DIFICULDADE,
   ECONOMIA,
   ENDINGS,
   ENEMY,
@@ -154,7 +155,7 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
   const dailyMods=(opts&&opts.mods)||[];
   const mods: Record<string, any>={};
   if(daily)for(const m of dailyMods){for(const k in m)if(k!=='id'&&k!=='nome'&&k!=='desc')mods[k]=m[k];}
-  const startRes=daily&&mods.scrap?mods.scrap:(mode==='sandbox'?999999:200+e.startScrap);
+  const startRes=daily&&mods.scrap?mods.scrap:(mode==='sandbox'?999999:ECONOMIA.startScrap+e.startScrap);
   const st: GameState={
     mode,map,mapIndex,t:0,scrap:startRes,resMult:(map.resMult||1)*(daily&&mods.res?mods.res:1),
     machines:[],enemies:[],projs:[],pickups:[],parts:[],decals:[],texts:[],winds:[],props:[],deaths:[],hazards:[],
@@ -183,15 +184,15 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
 /**
  * A lista de bichos que entra na onda.
  *
- * O pool é do mapa (`src/data/maps.json`): a onda 0 pega os dois
- * primeiros, a onda 1 os seis primeiros e a onda 2 o pool inteiro. É o
- * que dá identidade ao mapa — e o que faz tatu, sapo, gaivota, lata e
- * fantasma aparecerem em algum momento.
+ * A curva vem de `DIFICULDADE` (`src/data/balance.json`), não daqui: a
+ * onda 0 é tutorial disfarçado — **um** tipo só (o mais fraco do pool),
+ * poucos bichos, bem espaçados, para o jogador novo passar sem suar. A
+ * onda 2 abre o pool do mapa inteiro, e cada bicho aparece pelo menos uma
+ * vez. O mapa seguinte começa um degrau acima (`degrauPorMapa`).
  */
 function wavePool(base: string[], w: number): string[] {
-  if (w === 0) return base.slice(0, 2);
-  if (w === 1) return base.slice(0, 6);
-  return base.slice();
+  const o = DIFICULDADE.ondas[Math.min(w, DIFICULDADE.ondas.length - 1)];
+  return base.slice(0, Math.max(1, o.tipos));
 }
 
 /** Pool padrão, só se algum mapa vier sem pool (o dado sempre tem). */
@@ -199,61 +200,75 @@ const POOL_CLASSICO = ['baiacu', 'enguia', 'caranguejo', 'ova', 'polvo', 'piranh
 
 function makeWaves(st: GameState, daily: boolean): WaveEntry[][] {
   const map=st.map,speed=st.mods.speed||1;
+  const degrau=Math.max(0,st.mapIndex|0);   // mapa N+1 começa um degrau acima
   const rng=daily?mulberry(hashStr(dayKey()+map.id)):Math.random;
   // O desafio diário pode trocar o pool inteiro ("SÓ BAIACU"). Nesse
   // caso nada escapa: nem os bichos de cena, nem os extras do mapa.
   const soUm: string[]|null=Array.isArray(st.mods.pool)&&st.mods.pool.length?(st.mods.pool as string[]):null;
   const base=soUm||((map.pool&&map.pool.length)?map.pool:POOL_CLASSICO);
   const waves: WaveEntry[][]=[];
-  const counts=daily?[7,13]:[7,13,20];
   const waveCount=daily?2:3;
   for(let w=0;w<waveCount;w++){
     const arr: WaveEntry[]=[];
+    const o=DIFICULDADE.ondas[Math.min(w,DIFICULDADE.ondas.length-1)];
+    const d=DIFICULDADE.degrauPorMapa;
+    const count=Math.max(5,o.bichos+d.bichos*degrau);
+    const spacing=Math.max(1.8,o.espacamento-d.espacamento*degrau);
     const poolW=wavePool(base,w);
-    for(let i=0;i<counts[w];i++){
+    // corredores: as primeiras ondas não enchem as 6 lanes de uma vez —
+    // o jogador não tem peça pra tanta lane e perdia tudo na onda 2.
+    const corredores=Math.max(1,Math.min(LANES,o.corredores+d.corredores*degrau));
+    for(let i=0;i<count;i++){
       const type=poolW[Math.floor(rng()*poolW.length)];
-      const lane=Math.floor(rng()*LANES);
-      const spacing=w===0?5.0:(w===1?3.0:2.6);
+      const lane=Math.min(LANES-1,Math.floor(rng()*corredores));
       const time=i*spacing+rng()*1.6;
       arr.push([time,type,lane,1+w*.12]);
     }
     // A última onda traz o pool inteiro: cada bicho do mapa aparece
     // pelo menos uma vez, e não por acaso.
     if(w===waveCount-1){
-      for(let i=0;i<poolW.length;i++)arr.push([2+i*2.4,poolW[i],Math.floor(rng()*LANES),1+w*.12]);
+      for(let i=0;i<poolW.length;i++)arr.push([2+i*2.4,poolW[i],Math.min(LANES-1,Math.floor(rng()*corredores)),1+w*.12]);
     }
     // cenas: o polvo, o cardume e a baleia-filhote. A baleia é visita,
     // não moradora: aparece em todo mapa ("não devia estar aqui").
     const cPolvo=soUm?soUm[0]:'polvo';
     const cPiranha=soUm?soUm[0]:'piranha';
+    // Cenas (BLOCO M.2): a onda 2 era o paredão — o jogador não tinha peça
+    // nem sucata ainda e perdia 6+ estruturas nela. As cenas pesadas foram
+    // para a onda 3 (o teste); a onda 2 só introduz o polvo e um cardume
+    // curtinho.
     if(w===1){
-      arr.push([30,cPolvo,Math.floor(rng()*LANES),1.1]);
-      for(let k=0;k<4;k++)arr.push([30+rng()*2,cPiranha,Math.floor(rng()*LANES),1.1]);
-      arr.push([30,soUm?soUm[0]:'baleia',Math.floor(rng()*LANES),1]);
+      arr.push([30,cPolvo,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+      for(let k=0;k<2;k++)arr.push([30+rng()*2,cPiranha,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
     }
     if(w===2){
-      arr.push([12,cPolvo,Math.floor(rng()*LANES),1.1]);
-      arr.push([14,cPolvo,Math.floor(rng()*LANES),1.1]);
-      for(let k=0;k<5;k++)arr.push([18+rng()*4,cPiranha,Math.floor(rng()*LANES),1.1]);
-      arr.push([45,soUm?soUm[0]:'baleia',Math.floor(rng()*LANES),1]);
+      arr.push([12,cPolvo,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+      arr.push([14,cPolvo,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+      for(let k=0;k<5;k++)arr.push([18+rng()*4,cPiranha,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+      arr.push([45,soUm?soUm[0]:'baleia',Math.min(LANES-1,Math.floor(rng()*corredores)),1]);
     }
-    // exclusivo do mapa aparece na segunda onda
-    if(w>=1)for(const t of map.extra)arr.push([4+Math.floor(rng()*(counts[w]*2)),soUm?soUm[0]:t,Math.floor(rng()*LANES),1.1]);
-    if(daily&&st.mods.bossEarly&&w===1)arr.push([counts[w]*2,map.boss,1,1]);
+    // exclusivo do mapa aparece na última onda (quando dá pra segurar)
+    if(w===waveCount-1)for(const t of map.extra)arr.push([4+Math.floor(rng()*(count*2)),soUm?soUm[0]:t,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+    if(daily&&st.mods.bossEarly&&w===1)arr.push([count*2,map.boss,1,1]);
     waves.push(arr.sort((a,b)=>a[0]-b[0]));
   }
   st.enemyHpMult=st.mods.enemyHp||1;st.speedMult=speed;
   return waves;
 }
-function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
+export function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
   const base=(pool&&pool.length)?pool:POOL_CLASSICO;
   const arr: WaveEntry[]=[];const dur=36+Math.min(14,n*2);
-  let count;
-  if(n===0)count=7;
-  else if(n===1)count=13;
-  else count=Math.min(22,9+Math.min(24,n*3));
+  // Curva da Noite Infinita (DIFICULDADE.noiteInfinita): a onda 1 é igual
+  // à onda 1 do normal (tutorial), a dificuldade sobe um degrau a cada
+  // `degrauACada` ondas — não a cada onda — e o chefe aparece a cada
+  // `chefeACada`. Nada de dobrar em 30 s.
+  const inf=DIFICULDADE.noiteInfinita;
+  const degrau=Math.floor(n/inf.degrauACada);
+  const count=n===0?DIFICULDADE.ondas[0].bichos:Math.min(inf.tetoBichos,DIFICULDADE.ondas[0].bichos+degrau*inf.bichosPorDegrau);
+  const spc=Math.max(inf.espacamentoMin,DIFICULDADE.ondas[0].espacamento-degrau*0.6);
+  const hp=1+Math.min(inf.tetoHp,degrau*inf.hpPorDegrau);
   const poolW=wavePool(base,n);
-  const spc=n===0?5.0:2.6; for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),1+Math.min(1,n*.09)]);
+  for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),hp]);
   // integração das novas criaturas na Noite Infinita
   if(n>=1){
     arr.push([30,'polvo',randLane(),1.1]);
@@ -265,7 +280,7 @@ function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
     for(let k=0;k<5;k++)arr.push([18+rnd(0,4),'piranha',randLane(),1.1]);
     arr.push([45,'baleia',randLane(),1]);
   }
-  if(n>=2 && n%3===2)arr.push([dur*.6,'bento',1,1+n*.07]);
+  if(n>=DIFICULDADE.noiteInfinita.chefeACada-1 && (n+1)%DIFICULDADE.noiteInfinita.chefeACada===0)arr.push([dur*.6,'bento',1,1+Math.min(1,n*.07)]);
   return arr.sort((a,b)=>a[0]-b[0]);
 }
 function buildPhases(st: GameState): Phase[] {
@@ -276,7 +291,8 @@ function buildPhases(st: GameState): Phase[] {
   if(st.daily)return[{type:'prep',dur:10,msg:'DESAFIO DO DIA'},{type:'wave',n:0},{type:'break'},{type:'wave',n:1},
     {type:'bossIntro',dur:2.6},{type:'boss'}];
   return[{type:'prep',dur:12,msg:'A MARÉ ESTÁ SUBINDO'},{type:'wave',n:0},
-    {type:'break'},{type:'wave',n:1},{type:'break'},{type:'wave',n:2},
+    // respiro de 22s antes da onda 2: o jogador cobre as lanes que faltam
+    {type:'break',dur:30},{type:'wave',n:1},{type:'break'},{type:'wave',n:2},
     {type:'break'},{type:'prep',dur:15,msg:'RESPIRO'},{type:'bossIntro',dur:2.6},{type:'boss'}];
 }
 
@@ -899,7 +915,13 @@ function updateEnemies(dt: number): void {
     if(e.type==='caranguejo')e.buff=G.enemies.some(o=>o!==e&&o.type==='caranguejo'&&o.lane===e.lane&&Math.abs(o.x-e.x)<240);
     if(e.rage>0){e.rage-=dt;}
     if(e.type==='piranha')e.school=G.enemies.filter(o=>o.type==='piranha'&&Math.abs(o.x-e.x)<200&&o.lane===e.lane).length;
-    if(e.type==='polvo'&&e.attached)continue;
+    if(e.type==='polvo'&&e.attached){
+      // O polvo desliga a peça e vai embora: antes ficava grudado pra
+      // sempre e, se a peça sobrevivesse, a onda não acabava nunca.
+      e.soltaT=(e.soltaT||5)-dt;
+      if(e.soltaT<=0){e.attached=null;e.act=.6;e.kb=-60;e.comendoT=0;}
+      continue;
+    }
     if(e.type==='tatu'){
       if(e.burrow>0){e.burrow-=dt;
         if(!e.dug&&e.burrow<.6){e.dug=true;const from=e.x;e.x-=rnd(2,3)*COLW;
@@ -934,13 +956,18 @@ function updateEnemies(dt: number): void {
         if(e.x-e.r*.8<=m.x+22&&e.x>=m.x-8){blocked=m;break;}}
     }
     if(blocked){
-      if(e.type==='polvo'){e.attached=blocked;blocked.jam=4.5;e.act=1;SFX.metal();G.ze.say='Ele desligou a geladeira.';G.ze.sayT=3;continue;}
+      if(e.type==='polvo'){e.attached=blocked;blocked.jam=4.5;e.act=1;e.soltaT=5;SFX.metal();G.ze.say='Ele desligou a geladeira.';G.ze.sayT=3;continue;}
       if(e.type==='gaivota_r'){e.grabbed=blocked;blocked.grabbed=1.6;e.act=1;SFX.steal();G.ze.say='Tá levando a peça.';G.ze.sayT=3;continue;}
       if(blocked.type==='bujao'){destroyMachine(blocked,true);continue;}
       if(e.type==='bomba'){explode(e.x,e.lane,40,110);killEnemy(e,true);G.enemies.splice(G.enemies.indexOf(e),1);continue;}
       if(e.type==='baleia'){damageMachine(blocked,30*dt);e.eating=blocked;continue;}
       e.eating=blocked;e.biteT+=dt;e.act=.2;
-      damageMachine(blocked,e.dps*(e.buff?.7:1)*dt);
+      // Fome: quanto mais tempo comendo, mais dano. Sem isso, curar a peça
+      // a cada break (oferta do Zé) deixava o bicho mordendo pra sempre e a
+      // onda nunca acabava — medição da curva (BLOCO M.2) pegou o soft-lock.
+      const fome=1+(e.comendoT||0); // linear: cura repetida nunca vence
+      e.comendoT=(e.comendoT||0)+dt;
+      damageMachine(blocked,e.dps*fome*(e.buff?.7:1)*dt);
       if(e.biteT>.55){e.biteT=0;SFX.bite();burst(blocked.x,plantY(e.lane)-30,3,'#8a8a7a',80,400,2,.4);}
     }else{
       e.eating=null;
@@ -1219,11 +1246,16 @@ Game.chooseOffer=function(i){
     announce('DESBLOQUEADO: '+MACH[o.k].nome+'. Já vai aparecer na sua banca.','ach');}
   else if(o.kind==='up'&&o.k)upgradeMachine(o.k);
   else if(o.kind==='sucataVelha'){
-    if(G.scrap<ECONOMIA.sucataVelhaCusto){announce('SUCATA DE MENOS PARA CONVERTER.','story');return;}
-    G.scrap-=ECONOMIA.sucataVelhaCusto;
-    const velha=SaveDB.addScrap(1);
-    addText(60,50,'+1 SUCATA VELHA','#e8c84a');SFX.cash();
-    announce('O ZÉ GUARDOU 1 SUCATA VELHA. TOTAL: '+velha+'.','story');}
+    // Sem grana a oferta é perdida, mas a loja NÃO pode travar a partida:
+    // escolher sempre fecha o break (era return antes do advance).
+    if(G.scrap<ECONOMIA.sucataVelhaCusto){announce('SUCATA DE MENOS PARA CONVERTER. O ZÉ GUARDOU A VONTADE.','story');}
+    else{
+      G.scrap-=ECONOMIA.sucataVelhaCusto;
+      const velha=SaveDB.addScrap(1);
+      addText(60,50,'+1 SUCATA VELHA','#e8c84a');SFX.cash();
+      announce('O ZÉ GUARDOU 1 SUCATA VELHA. TOTAL: '+velha+'.','story');
+    }
+  }
   else if(o.kind==='repair'){const d=G.structures.flat().find(s=>!s.alive);if(d){d.alive=true;announce('REBOCOU '+d.nome+'. NÃO FICOU BONITO.','story');}}
   else if(o.kind==='heal'){for(const m of G.machines)m.hp=m.maxhp;G.dmgBonus+=.1;announce('GRAXA: PEÇAS NOVAS EM FOLHA. +10% DE DANO.','story');}
   SaveDB.save();advanceFromBreak();

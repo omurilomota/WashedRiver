@@ -954,6 +954,44 @@
       "estrela": 40,
       "laneIntacta": 15,
       "kill": 0.4
+    },
+    "startScrap": 350
+  },
+  "dificuldade": {
+    "ondas": [
+      {
+        "bichos": 7,
+        "espacamento": 6.5,
+        "tipos": 1,
+        "corredores": 2
+      },
+      {
+        "bichos": 13,
+        "espacamento": 5.4,
+        "tipos": 4,
+        "corredores": 4
+      },
+      {
+        "bichos": 22,
+        "espacamento": 4.0,
+        "tipos": 99,
+        "corredores": 6
+      }
+    ],
+    "degrauPorMapa": {
+      "bichos": 1,
+      "espacamento": 0.2,
+      "tipos": 2,
+      "corredores": 1
+    },
+    "noiteInfinita": {
+      "chefeACada": 5,
+      "degrauACada": 3,
+      "bichosPorDegrau": 3,
+      "tetoBichos": 24,
+      "espacamentoMin": 2.2,
+      "hpPorDegrau": 0.1,
+      "tetoHp": 0.6
     }
   }
 }
