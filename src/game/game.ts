@@ -29,6 +29,8 @@ import {
   randLane,
   rnd,
   shuffle,
+  vizinhoX,
+  vizinhoY,
 } from '../core/constants';
 import { addText, burst, canvas, stain } from '../core/canvas';
 import { G, Game, setG } from '../core/state';
@@ -50,6 +52,8 @@ import {
   RADIO,
   TOQ_LINES,
   UPG,
+  VIZINHOS_FALAS,
+  VIZINHOS_SEGREDO,
   ZE_FALAS,
   ZE_RARO,
 } from '../data';
@@ -159,7 +163,7 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     structures:map.estruturas.map(lane=>lane.map(s=>({...s,alive:true}))),
     ze:{alive:true,say:'',sayT:0,nextSay:12,anim:0,repeat:0},zeSilent:0,zeHat:false,
     luAtWindow:true,toqAlive:true,toqSay:'',toqSayT:0,toqClicks:0,zeClicks:0,toqBoost:0,
-    dogSay:0,luTalking:'',
+    dogSay:0,luTalking:'',vizinhoSay:['','',''],vizinhoT:[0,0,0],vizinhoClicks:[0,0,0],vizinhoSegredo:false,
     up:{},unlockedMach:{},dmgBonus:0,shields:e.shield||0,repairBank:e.repair||0,
     boss:null,bossDeath:null,
     // "NOITE PERMANENTE": o mapa já começa no escuro.
@@ -705,6 +709,7 @@ export function update(dt: number){
   for(const s of G.structures)for(const st of s)if(!st.alive&&Math.random()<dt*.6)G.parts.push({x:st===s[0]?58:126,y:plantY(G.structures.indexOf(s))-20,vx:rnd(-6,6),vy:rnd(-18,-8),life:rnd(1,2),max:2,color:'rgba(90,85,75,.5)',size:rnd(3,7),g:-8});
   if(G.ze.sayT>0)G.ze.sayT-=dt;
   if(G.toqSayT>0)G.toqSayT-=dt;
+  for(let i=0;i<3;i++)if(G.vizinhoT[i]>0)G.vizinhoT[i]-=dt;
   G.toqBoost=Math.sin(G.t*.8)*10;
   if(!semMovimento())G.shake*=Math.exp(-6*dt);else G.shake=0;G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
   if(G.savedT>0)G.savedT-=dt;if(G.dogSay>0)G.dogSay-=dt;
@@ -1284,6 +1289,26 @@ Game.dogClick=function(){
   if(!G)return;G.dogClicks=(G.dogClicks||0)+1;
   G.dogSay=1.4;addText(94,plantY(2)-30,pick(DOG_LINES),'#e8d9a8');
 };
+/**
+ * Vizinho das lanes de baixo (0 = Seu Antão, 1 = Dona Nice, 2 = Cabeça).
+ *
+ * Eles eram desenhados na vila sem clique nenhum — decoração muda. Agora
+ * respondem como os outros moradores (mandato: morador é gente), e os três
+ * juntos têm uma frase depois de insistirem.
+ */
+Game.vizinhoClick=function(i){
+  if(!G)return;
+  const n=Math.max(0,Math.min(2,i|0));
+  G.vizinhoClicks[n]=(G.vizinhoClicks[n]||0)+1;
+  if(G.vizinhoClicks.every(c=>c>=3)&&!G.vizinhoSegredo){
+    G.vizinhoSegredo=true;
+    for(let k=0;k<3;k++){G.vizinhoSay[k]=k===n?VIZINHOS_SEGREDO:'...';G.vizinhoT[k]=4;}
+    announce('OS TRÊS FALARAM JUNTOS. O ZÉ FINGIU NÃO OUVIR.','story');
+    return;
+  }
+  G.vizinhoSay[n]=pick(VIZINHOS_FALAS[n]||['...']);
+  G.vizinhoT[n]=3.2;
+};
 Game.bootsClick=function(){
   if(!G||!G.props.length)return;
   G.botaClicks=(G.botaClicks||0)+1;
@@ -1321,6 +1346,10 @@ function onCanvasDown(ev: MouseEvent): void {
   if(Math.hypot(p.x-(94+Math.sin(G.t*1.3)*8),p.y-(plantY(2)+4))<26){Game.dogClick();return;}
   // sucata primeiro
   for(const k of G.pickups){if(!k.fly&&!k.auto&&Math.hypot(k.x-p.x,k.y-p.y)<30){collect(k);return;}}
+  // vizinhos das lanes de baixo: falam quando clicados
+  for(let l=3;l<LANES;l++){
+    if(Math.hypot(p.x-vizinhoX(l),p.y-vizinhoY(l))<30){Game.vizinhoClick(l-3);return;}
+  }
   // cartas
   if(p.y<86){const k=UI.cardAt(p.x,p.y);if(k){
     if(!isMachUnlocked(k)){announce('O ZÉ AINDA NÃO TROUXE ISSO.','story');return;}
@@ -1363,6 +1392,8 @@ canvas.addEventListener('mousemove',ev=>{const p=canvasPos(ev);Game.mouse=p;canv
 /** O ponteiro está sobre algo que responde ao clique? */
 function hoverTarget(p:{x:number;y:number}):boolean{
   if(!G||Game.screen!=='play'||Game.paused)return false;
+  // vizinhos das lanes de baixo
+  for(let l=3;l<LANES;l++){if(Math.hypot(p.x-vizinhoX(l),p.y-vizinhoY(l))<30)return true;}
   if(Math.hypot(p.x-46,p.y-(plantY(1)-50))<30)return true;
   if(G.toqAlive&&Math.hypot(p.x-(70+Math.sin(G.t*.6)*22),p.y-(plantY(2)-24))<26)return true;
   if(G.luAtWindow&&Math.hypot(p.x-124,p.y-(plantY(1)-76))<32)return true;

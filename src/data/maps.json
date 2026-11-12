@@ -859,6 +859,29 @@
     "Toda noite eu fecho a janela. Toda noite alguém bate do lado de fora.",
     "Você já reparou que o rádio fala o seu nome antes de você pensar nele?"
   ],
+  "vizinhosNomes": [
+    "SEU ANTÃO",
+    "DONA NICE",
+    "CABEÇA"
+  ],
+  "vizinhosFalas": [
+    [
+      "Antigamente aqui dava peixe.",
+      "Agora dá o que aparecer.",
+      "Não converso com estranho. Continua."
+    ],
+    [
+      "Eu conto as ondas. Cheguei em sete.",
+      "Se subir mais uma, eu me vou.",
+      "Guarda essa sucata pra você."
+    ],
+    [
+      "...",
+      "Não é balde. É chapéu.",
+      "Ele ouve o mar antes de mim."
+    ]
+  ],
+  "vizinhosSegredo": "OS TRÊS: a maré subiu e ninguém combinou de consertar.",
   "toqLines": [
     "Eu vou ser pescador igual você, Zé!",
     "Pega ele! Pega! Pega!",

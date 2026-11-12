@@ -4,10 +4,10 @@
  * Tudo aqui é desenho puro: recebe estado, não muda regra. Os helpers
  * geométricos (`rr`, `eye`, `pose`) são compartilhados com `creatures.ts`.
  */
-import { FIELD_R, H, LANES, LANE_H, LANE_Y0, VX, W, clamp, plantY, rnd } from '../core/constants';
+import { FIELD_R, H, LANES, LANE_H, LANE_Y0, VX, W, clamp, plantY, rnd, vizinhoX, vizinhoY } from '../core/constants';
 import { DPR, ctx, rr, waterLines } from '../core/canvas';
 import { G } from '../core/state';
-import { CARTAZES } from '../data';
+import { CARTAZES, VIZINHOS_NOMES } from '../data';
 import { drawLaneFloorNova } from './lanes';
 import { drawEstruturaNova } from './structures';
 import { haloText, shadowEllipse } from './brush';
@@ -104,7 +104,9 @@ function bgStaticCanvas(map): HTMLCanvasElement {
 export function drawBackground(map,G,t){
   t=t||0;const p=map.pal;
   // camada estática (cache offscreen): céu + sol/lua
-  ctx.drawImage(bgStaticCanvas(map), 0, 0);
+  // destino explícito (W, H): sem ele o offscreen em DPR 2 desenharia no
+  // tamanho intrínseco (2x maior) e a camada vazaria 2x sobre a tela.
+  ctx.drawImage(bgStaticCanvas(map), 0, 0, W, H);
 
   if(map.id==='barra'){drawBarra(p,t);}
   else if(map.id==='farol'){drawFarol(p,t);}
@@ -367,13 +369,30 @@ function villageBase(): HTMLCanvasElement {
 export function drawVillage(G,t){
   const map=G.map;
   // calçada da vila (cache offscreen: estático)
-  ctx.drawImage(villageBase(),0,0);
-  // vizinhos extras nas novas lanes (animados)
+  // idem: destino (VX, H), sem isso a calçada escura invadia o campo.
+  ctx.drawImage(villageBase(), 0, 0, VX, H);
+  // vizinhos das lanes de baixo: gente, não decoração — clicam e falam
   for(let l=3;l<LANES;l++){
-    const x=30+Math.sin(G.t*1.2+l)*6, y=plantY(l)-18;
-    ctx.fillStyle=l%2?'#5a5a6a':'#6a5a4a';ctx.fillRect(x-4,y-14,8,14);
-    ctx.fillStyle='#c8a070';ctx.beginPath();ctx.arc(x,y-18,4.5,0,7);ctx.fill();
-    ctx.fillStyle='#2a2a28';ctx.fillRect(x-3,y-22,6,3);
+    const i=l-3;
+    const x=vizinhoX(l), y=vizinhoY(l)+Math.sin(G.t*1.6+i)*1.5;
+    // corpo: três vizinhos diferentes, pra não ser clone
+    const casacos=['#5a5a6a','#6a5a4a','#4a5a5a'][i];
+    ctx.fillStyle=casacos;ctx.fillRect(x-5,y-16,10,16);
+    ctx.fillStyle='#c8a070';ctx.beginPath();ctx.arc(x,y-21,4.5,0,7);ctx.fill();
+    ctx.fillStyle='#2a2a28';ctx.fillRect(x-4,y-25,8,3);
+    if(i===2){ctx.fillStyle='#8a8a70';ctx.fillRect(x-5,y-29,10,8);} // o chapéu-balde
+    if(i===1){ctx.fillStyle='#7a6a8a';ctx.fillRect(x-6,y-31,12,7);}   // o xale
+    // nome e fala
+    ctx.fillStyle='rgba(200,190,150,.55)';ctx.font='5px monospace';ctx.textAlign='center';
+    ctx.fillText(VIZINHOS_NOMES[i]||'',x,y-34);
+    ctx.textAlign='left';
+    if((G.vizinhoSay[i]||'')&&G.vizinhoT[i]>0){
+      const txt=G.vizinhoSay[i];
+      const w=Math.max(52,txt.length*5.4+10);
+      const bx=Math.min(x-6,W-w-6);
+      ctx.fillStyle='rgba(240,236,220,.94)';rr(bx,y-56,w,20,4);ctx.fill();
+      ctx.fillStyle='#222';ctx.font='7px monospace';ctx.fillText(txt.slice(0,42),bx+5,y-43);
+    }
   }
   for(let l=0;l<LANES;l++){
     const lane=G.structures[l]||[];

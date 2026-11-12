@@ -84,6 +84,38 @@ describe('save', () => {
     expect(reloaded.SaveDB.hasAch('pirata')).toBe(true);
   });
 
+  it('resetMapa apaga só o progresso daquele mapa (mandato 7)', async () => {
+    const { SaveDB } = await freshSave();
+    SaveDB.setSlot(0);
+    SaveDB.addScrap(500);
+    SaveDB.unlockMap(3);              // campanha no mapa 3
+    SaveDB.setStars(1, 120, 3);
+    SaveDB.setStars(2, 90, 2);
+    SaveDB.achievement('baleia_ok');
+    SaveDB.seenEnemy('baiacu');
+
+    SaveDB.resetMapa(1);
+
+    // o mapa pedido volta a zero
+    expect(SaveDB.slot.stars[1]).toBeUndefined();
+    expect(SaveDB.slot.best[1]).toBeUndefined();
+    // campanha rebobina para o mapa apagado (joga de novo)
+    expect(SaveDB.slot.campaign).toBe(1);
+    // os outros mapas e a meta ficam
+    expect(SaveDB.slot.stars[2]).toBe(2);
+    expect(SaveDB.slot.oldScrap).toBe(500);
+    expect(SaveDB.hasAch('baleia_ok')).toBe(true);
+    expect(Object.keys(SaveDB.slot.seenB)).toContain('baiacu');
+
+    // apagar um mapa que já foi passado também rebobina a campanha
+    SaveDB.unlockMap(4);
+    SaveDB.resetMapa(2);
+    expect(SaveDB.slot.campaign).toBe(2);
+    // apagar o mapa onde a campanha está não mexe nela
+    SaveDB.resetMapa(2);
+    expect(SaveDB.slot.campaign).toBe(2);
+  });
+
   it('sobe a versão de um save antigo sem quebrar', async () => {
     const { KEY, SAVE_VERSION } = await freshSave();
     // Save v1: formato antigo, com buracos.

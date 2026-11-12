@@ -311,6 +311,11 @@ export interface GameState {
   toqBoost: number;
   dogSay: number;
   luTalking: string;
+  /** Vizinhos das lanes de baixo (3, 4 e 5): fala, timer e cliques de cada um. */
+  vizinhoSay: string[];
+  vizinhoT: number[];
+  vizinhoClicks: number[];
+  vizinhoSegredo: boolean;
 
   up: Record<string, number>;
   unlockedMach: Record<string, boolean>;
@@ -451,6 +456,10 @@ function emptyState(): GameState {
     toqBoost: 0,
     dogSay: 0,
     luTalking: '',
+    vizinhoSay: ['', '', ''],
+    vizinhoT: [0, 0, 0],
+    vizinhoClicks: [0, 0, 0],
+    vizinhoSegredo: false,
     up: {},
     unlockedMach: {},
     dmgBonus: 0,

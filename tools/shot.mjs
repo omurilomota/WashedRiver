@@ -187,13 +187,62 @@ async function main() {
     const params = { format: 'png' };
     if (clip) {
       // clip em coordenadas de página; `scale` dá o zoom (Chrome novo).
-      params.clip = { x: 0, y: clip, width: 1280, height: Math.min(clipH, 846 - clip), scale: 2 };
+      params.clip = {
+        x: Number(a.clipx ?? 0),
+        y: clip,
+        width: Number(a.clipw ?? 1280),
+        height: Math.min(clipH, 846 - clip),
+        scale: 2,
+      };
     }
     const r = await send('Page.captureScreenshot', params);
     const { writeFileSync } = await import('node:fs');
     writeFileSync(`${saida}-${nome}.png`, Buffer.from(r.data, 'base64'));
     fotos.push(`${saida}-${nome}.png`);
   };
+
+  if (a.probe) {
+    const [px, py, pw, ph] = String(a.probe).split(',').map(Number);
+    const cores = await avaliar(`(() => {
+      const cv=document.getElementById('cv');
+      const off=document.createElement('canvas');
+      off.width=cv.width; off.height=cv.height;
+      const o=off.getContext('2d'); o.drawImage(cv,0,0);
+      const d=o.getImageData(${px},${py},${pw},${ph}).data;
+      const m={};
+      for(let i=0;i<d.length;i+=4){
+        const k=[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+        m[k]=(m[k]||0)+1;
+      }
+      return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,10)
+        .map(([k,n])=>k+':'+Math.round(100*n/(${pw}*${ph}))+'%');
+    })()`);
+    console.log('PROBE(' + a.probe + ') ' + cores.join('  '));
+  }
+
+  if (a.probe) {
+    const [px, py, pw, ph] = String(a.probe).split(',').map(Number);
+    const cores = await avaliar(`(() => {
+      const cv=document.getElementById('cv');
+      const off=document.createElement('canvas');
+      off.width=cv.width; off.height=cv.height;
+      const o=off.getContext('2d'); o.drawImage(cv,0,0);
+      const d=o.getImageData(${px},${py},${pw},${ph}).data;
+      const m={};
+      for(let i=0;i<d.length;i+=4){
+        const k=[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+        m[k]=(m[k]||0)+1;
+      }
+      return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,10)
+        .map(([k,n])=>k+':'+Math.round(100*n/(${pw}*${ph}))+'%');
+    })()`);
+    console.log('PROBE(' + a.probe + ') ' + cores.join('  '));
+  }
+
+  if (a.eval) {
+    await avaliar(String(a.eval));
+    await sleep(400);
+  }
 
   await tira('campo');
   if (a.zoom) await tira('zoom-baixo', 846 - clipH);

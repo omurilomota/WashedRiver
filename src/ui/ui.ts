@@ -110,11 +110,15 @@ export const UI=(function(){
   function maps(){
     const cards=MAPS.map((m,i)=>{
       const unl=mapUnlocked(i);const st=SaveDB.slot.stars[i]||0;
+      // resetar save deste mapa: só faz sentido em mapa já aberto/jogado
+      const podeLimpar=unl&&(st>0||(SaveDB.slot.best[i]||0)>0);
       return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'map':'nada')+'" data-arg="'+i+'">'+
         '<div class="art" style="'+mapArt(m)+'"><div class="no">'+(i+1)+'</div>'+(unl?'<div class="stars">'+stars(st)+'</div>':'<div class="stars" style="color:#777">TRANCADO</div>')+'</div>'+
         '<h3>'+m.nome+'</h3><p>'+m.sub+'</p>'+
         '<div class="tags">'+tag(m.weather.toUpperCase())+tag(m.resShort,'hot')+tag(m.boss==='mare'?'FINAL':'CHEFE')+'</div>'+
-        '<p style="margin-top:6px;color:#8d907c">'+m.bio+'</p></div>';}).join('');
+        '<p style="margin-top:6px;color:#8d907c">'+m.bio+'</p>'+
+        (podeLimpar?'<p style="margin-top:8px">'+btn('APAGAR ESTE MAPA','resetmapa',''+i,'tiny')+'</p>':'')+
+        '</div>';}).join('');
     setScreen('<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:30px;margin:0">A COSTA</h2>'+
       '<p class="muted">Três ondas e um chefe por mapa. Terminar um mapa abre o próximo. Você pode voltar e melhorar a nota.</p>'+
       '<div class="mapgrid">'+cards+'</div>'+
@@ -511,6 +515,16 @@ export const UI=(function(){
         case 'slots':slots();break;
         case 'newslot':if(arg===null)break;SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();break;
         case 'map':Game.startFromOpts({kind:'campaign',map:Number(arg)});break;
+        case 'resetmapa':{
+          const i=Number(arg);
+          const nome=MAPS[i]?MAPS[i].nome:'ESSE MAPA';
+          if(confirm('APAGAR o progresso de '+nome+'? Estrelas e melhor tempo voltam a zero e o mapa precisa ser jogado de novo. Sucata velha, árvore e bestiário ficam.')){
+            SaveDB.resetMapa(i);
+            toast('story','PROGRESSO DE '+nome+' APAGADO. O ZÉ NÃO VIU NADA.');
+            maps();
+          }
+          break;
+        }
         case 'nextmap':Game.startCampaign(clamp(G.mapIndex+1,0,MAPS.length-1));break;
         case 'endlessmenu':endlessMenu();break;
         case 'endless':Game.startFromOpts({kind:'endless',level:Number(arg),map:clamp(SaveDB.slot.campaign,0,5)});break;

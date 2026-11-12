@@ -57,7 +57,7 @@
 - Áudio WebAudio: trilha por mapa, rádio, efeitos; morte única por criatura,
   cena de morte de cada chefe
 - Save v3 em localStorage com migração, autosave e export/import
-- 108 testes verdes (render: campo unificado) (`npm run check`: typecheck + lint + test + build + smoke)
+- 109 testes verdes (vizinhos falantes + reset por mapa) (`npm run check`: typecheck + lint + test + build + smoke)
 
 ## O que está quebrado ou pendente
 ### Parte 1 — padronizar lanes (concluída: ADR 011 + ADR 013)
@@ -94,6 +94,12 @@
 - `brush.shade()` existia e não era usado → removido
 - Docs contradiziam o código (ADR 008 e AGENTS.md diziam Baleia `neutral`/
   imune; ADR 004 já a fez matável) → alinhados; `Enemy.spooked` declarado
+- Vizinhos das lanes de baixo (3–5) eram decoração muda: agora têm nome, falas
+  próprias (`vizinhosNomes`/`vizinhosFalas` em maps.json), clique, balão de fala
+  e uma fala conjunta depois de 3 cliques em cada (`vizinhosSegredo`)
+- **Reset por mapa:** botão `APAGAR ESTE MAPA` na tela de mapas →
+  `SaveDB.resetMapa(i)` zera estrelas/tempo do mapa e rebobina a campanha até
+  ele; sucata velha, árvore, conquistas e bestiário ficam. Teste em save.test.ts
 - **Ainda pendente:** reduced-motion só zera o `shake` (as animações do canvas
   continuam); texto da Água-Viva ("bala atravessa") ainda não casou 100% com
   o código — decidir se a bala passa ou é consumida

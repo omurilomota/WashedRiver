@@ -8,9 +8,10 @@
  * formato precisa de uma entrada em `MIGRATIONS` e de teste — mandato 7
  * do AGENTS.md.
  */
-import { ACHIEVEMENTS, TREE } from '../data';
+import { ACHIEVEMENTS, MAPS, TREE } from '../data';
 import type { TreeNode } from '../data/types';
 import { dayKey } from '../core/rng';
+import { clamp } from '../core/constants';
 
 /** Chave no localStorage. Trocar a chave aqui exige migração explícita. */
 export const KEY = 'marepodre_save_v3';
@@ -240,6 +241,22 @@ export const SaveDB = {
     const s = SaveDB.slot;
     s.stars[map] = Math.max(s.stars[map] || 0, stars || 0);
     s.best[map] = Math.max(s.best[map] || 0, best || 0);
+    persist();
+  },
+  /**
+   * Apaga o progresso de um mapa específico.
+   *
+   * Zera estrelas e melhor tempo daquele mapa e rebobina a campanha para ele
+   * (se o jogador já passou), então o mapa some da lista de "liberados" e é
+   * preciso jogar de novo. Sucata velha, árvore, conquistas e bestiário
+   * ficam — são meta, não progresso de mapa.
+   */
+  resetMapa(i: number): void {
+    const s = SaveDB.slot;
+    const mapa = clamp(Math.round(i), 0, MAPS.length - 1);
+    delete s.stars[mapa];
+    delete s.best[mapa];
+    if (s.campaign > mapa) s.campaign = mapa;
     persist();
   },
   setEnding(id: string, text: string): void {
