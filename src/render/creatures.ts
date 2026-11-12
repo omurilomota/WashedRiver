@@ -39,6 +39,8 @@ export function drawEnemy(e){
   if(e.grounded>0)ctx.rotate(.12);
   if(e.hypno>0){ctx.translate(Math.sin(t*9)*2,0);}
   ctx.rotate(P.tilt);ctx.scale(P.sx,P.sy);
+  // volume: sombra de ventre dá "corpo" a todos os bichos
+  if(!flying){ctx.fillStyle='rgba(0,0,0,.16)';ctx.beginPath();ctx.ellipse(0,-(e.r||12)*.45,(e.r||12)*.8,(e.r||12)*.32,0,0,7);ctx.fill();}
   const bite=e.eating?Math.abs(Math.sin(t*10))*6:0;
   if(e.lit>0){ctx.strokeStyle='rgba(255,240,170,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-e.r*.9,e.r+5,0,7);ctx.stroke();}
   if(e.hypno>0){ctx.fillStyle='#d8c0e0';ctx.font='bold 12px monospace';ctx.fillText('@',-4,-e.r-16+Math.sin(t*8)*3);}
