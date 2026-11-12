@@ -132,6 +132,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fillRect(-10, -18, 20, 5);
       return true;
     case 'monturo': // monturo do beco      ctx.fillStyle = '#3e382c';
+      sombra(26);
       ctx.beginPath();
       ctx.moveTo(-26, 0);
       ctx.lineTo(-10, -30);
@@ -163,6 +164,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fillRect(-6, -54, 12, 8);
       return true;
     case 'engrenagem': { // engrenagem quebrada
+      sombra(22);
       const dentes = 8;
       ctx.fillStyle = '#5a5148';
       for (let i = 0; i < dentes; i++) {
@@ -185,6 +187,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       return true;
     }
     case 'farol_apagado': // farol apagado
+      sombra(16);
       ctx.fillStyle = '#3a4046';
       ctx.beginPath();
       ctx.moveTo(-14, 0);
@@ -219,6 +222,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       waterLinesTrapiche();
       return true;
     case 'cais': // cais do fundo
+      sombra(24);
       ctx.fillStyle = '#4a4438';
       ctx.fillRect(-24, -14, 48, 14);
       ctx.fillStyle = '#5a5248';
@@ -235,6 +239,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.stroke();
       return true;
     case 'farol_afundado': // farol afundado
+      sombra(18);
       ctx.fillStyle = '#34404a';
       ctx.beginPath();
       ctx.moveTo(-16, -6);
@@ -269,6 +274,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fillRect(-22, -26, 44, 10);
       return true;
     case 'prateleira': // prateleira do depósito
+      sombra(28);
       ctx.fillStyle = '#5a5040';
       for (let i = 0; i < 3; i++) ctx.fillRect(-26, -40 + i * 14, 52, 4);
       ripado(-22, -54, 20, 14, '#6a5a3a');
@@ -277,6 +283,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ripado(6, -40, 18, 14, '#5a4a3a');
       return true;
     case 'luminaria': // luminária do depósito
+      sombra(14);
       ctx.strokeStyle = '#3a3e3a';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -299,6 +306,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fillRect(-24, -6, 48, 6);
       return true;
     case 'placa_fim': // placa de fim de linha
+      sombra(16);
       ctx.fillStyle = '#5a5248';
       ctx.fillRect(-3, -44, 6, 44);
       ctx.fillStyle = '#6a5a3a';
@@ -313,6 +321,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
 
     // ---------- Feira do Peixe ----------
     case 'lona': // lona do camelô
+      sombra(28);
       ctx.fillStyle = '#b04836';
       ctx.beginPath();
       ctx.moveTo(-28, -30);
@@ -331,6 +340,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fillRect(-12, -18, 24, 6);
       return true;
     case 'sombrinha': // sombrinha da feira
+      sombra(20);
       ctx.fillStyle = '#5a4a2a';
       ctx.fillRect(-2, -30, 4, 30);
       ctx.fillStyle = '#c8a03a';
@@ -467,6 +477,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       return true;
     }
     case 'valvula_mestre': // válvula mestre
+      sombra(28);
       ctx.fillStyle = '#4a4438';
       ctx.fillRect(-26, -16, 52, 16);
       ctx.fillStyle = '#6a5a3a';
@@ -507,6 +518,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       return true;
     }
     case 'relogio_ponto': // relógio de ponto
+      sombra(14);
       ctx.fillStyle = '#4a4a44';
       ctx.fillRect(-3, -34, 6, 34);
       ctx.fillStyle = '#2a2a24';
@@ -544,6 +556,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       return true;
     }
     case 'guinda_quebrado': // guindaste quebrado
+      sombra(24);
       ctx.strokeStyle = '#3a4438';
       ctx.lineWidth = 5;
       ctx.beginPath();
@@ -571,6 +584,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       for (let i = -24; i <= 24; i += 16) ctx.fillRect(i, -30, 5, 14);
       return true;
     case 'ancora': // âncora cravada
+      sombra(26);
       ctx.strokeStyle = '#5a5148';
       ctx.lineWidth = 5;
       ctx.beginPath();
@@ -590,6 +604,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fill();
       return true;
     case 'lapides': // lápides
+      sombra(24);
       ctx.fillStyle = '#8a8a7a';
       ctx.beginPath();
       ctx.moveTo(-22, 0);
