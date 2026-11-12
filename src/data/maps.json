@@ -14,8 +14,8 @@
         "RUA",
         "CANAL",
         "JARDIM RIBEIRINHO",
-        "HORTA DO ZÉ",
-        "BECO DO ZÉ"
+        "JARDIM RIBEIRINHO",
+        "JARDIM RIBEIRINHO"
       ],
       "pal": {
         "sky1": "#5a3a22",
@@ -137,8 +137,8 @@
         "ESCADARIA",
         "RESTINGA",
         "FAROL VELHO",
-        "TRAPICHE VELHO",
-        "ROTA DO FAROLEIRO"
+        "FAROL VELHO",
+        "FAROL VELHO"
       ],
       "pal": {
         "sky1": "#14262e",
@@ -257,8 +257,8 @@
         "PLATAFORMA",
         "TRILHO CEGO",
         "ARMAZÉM DE BAGAGEM",
-        "DEPÓSITO",
-        "FIM DE LINHA"
+        "ARMAZÉM DE BAGAGEM",
+        "ARMAZÉM DE BAGAGEM"
       ],
       "pal": {
         "sky1": "#2e3640",
@@ -377,8 +377,8 @@
         "CALÇADA DO PEIXE",
         "DESCARGA",
         "CAMELÔ DO PEIXE",
-        "GELO",
-        "CALDEIRÃO"
+        "CAMELÔ DO PEIXE",
+        "CAMELÔ DO PEIXE"
       ],
       "pal": {
         "sky1": "#7a4a22",
@@ -498,8 +498,8 @@
         "CORREDOR DE CANOS",
         "VALA QUÍMICA",
         "PÁTIO DE CARGA",
-        "CALDEIRAS",
-        "ESCRITÓRIO DO GERENTE"
+        "PÁTIO DE CARGA",
+        "PÁTIO DE CARGA"
       ],
       "pal": {
         "sky1": "#3a1e18",
@@ -618,8 +618,8 @@
         "CAIS QUEBRADO",
         "ÁGUA RASA",
         "CASCO ENCALHADO",
-        "OSSOS DO CASCO",
-        "MARGEM"
+        "CASCO ENCALHADO",
+        "CASCO ENCALHADO"
       ],
       "pal": {
         "sky1": "#1c242c",

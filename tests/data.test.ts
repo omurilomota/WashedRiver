@@ -104,10 +104,17 @@ describe('mapas', () => {
     }
   });
 
-  it('cada lane tem nome próprio (as 6, sem repetir)', () => {
+  it('cada lane de cima tem nome próprio, e as de baixo dividem o nome do piso', () => {
+    // ADR 011: as lanes 0–2 têm nome próprio; as lanes 3–5 compartilham o
+    // piso e, por isso, o mesmo nome. O teste antigo exigia 6 nomes
+    // diferentes — regra que o cenário já não cumpre.
     for (const map of MAPS) {
-      const nomes = map.lanes;
-      expect(new Set(nomes).size, `${map.id} repete nome de lane: ${nomes.join(', ')}`).toBe(LANES);
+      const deCima = map.lanes.slice(0, 3);
+      const deBaixo = map.lanes.slice(3);
+      expect(new Set(deCima).size, `${map.id} repete nome nas lanes de cima`).toBe(deCima.length);
+      expect(new Set(deBaixo).size, `${map.id}: lanes de baixo com nomes diferentes`).toBe(1);
+      expect(deBaixo[0]).not.toBe(deCima[0]);
+      expect(map.lanes.length).toBe(LANES);
     }
   });
 
