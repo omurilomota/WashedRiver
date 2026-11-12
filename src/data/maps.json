@@ -1023,5 +1023,77 @@
       "desc": "O mapa fica no escuro. Holofote e estilingue pagam o aluguel.",
       "dark": true
     }
-  ]
+  ],
+  "molho": {
+    "eventos": {
+      "barco_pirata": {
+        "titulo": "BARCO ENCALHADO",
+        "texto": "Casco novo na maré. Dá pra saquear. Dá pra o Zé se cortar no ferro.",
+        "sim": "SAQUEAR",
+        "nao": "DEIXAR"
+      },
+      "gaivota_ladra": {
+        "titulo": "GAIVOTA LADRA",
+        "texto": "Ela levou uma peça do campo e não tem intenção de devolver. O Zé corre atrás, se você pagar a gasolina.",
+        "sim": "MANDAR O ZÉ (60)",
+        "nao": "ACEITAR"
+      },
+      "lu_janela": {
+        "titulo": "DONA LÚ JOGOU ALGO",
+        "texto": "Veio pela janela. Não foi por educação. Aproveita.",
+        "sim": "PEGAR",
+        "nao": ""
+      },
+      "toquinho_balao": {
+        "titulo": "TOQUINHO SOLTOU UM BALÃO",
+        "texto": "Os bichos vão olhar pra cima por uma onda. Burro, mas funcional.",
+        "sim": "OK",
+        "nao": ""
+      },
+      "bau_mar": {
+        "titulo": "O MAR DEVOLVEU UM BAÚ",
+        "texto": "Tampa enferrujada. Dentro tem sucata... ou tem dente.",
+        "sim": "ABRIR",
+        "nao": "DEIXAR"
+      },
+      "bicho_raro": {
+        "titulo": "BOIANDO NO CANO",
+        "texto": "Não é da onda. É visita. Vale mais morto.",
+        "sim": "OK",
+        "nao": ""
+      },
+      "radio_estacao": {
+        "titulo": "ESTAÇÃO NOVA",
+        "texto": "O rádio achou uma frequência. Toca até o fim da partida. Nenhuma é oficial.",
+        "sim": "OK",
+        "nao": ""
+      },
+      "garrafa_ze": {
+        "titulo": "GARRAFA COM RECADO",
+        "texto": "Dentro tem um papel. O Zé leu, riu, e não contou.",
+        "sim": "OK",
+        "nao": ""
+      },
+      "cachorro_real": {
+        "titulo": "UM CACHORRO DE VERDADE",
+        "texto": "Apareceu, latiu, e os bichos pequenos deram meia volta. Se você tem o balde, os dois vão se encontrar.",
+        "sim": "OK",
+        "nao": ""
+      }
+    },
+    "gritos": [
+      "OLHA O TAMANHO DISSO!",
+      "ISSO NÃO ERA PEIXE. ERA IDEIA.",
+      "SEGURA AÍ!",
+      "A SOGRA ME BUSCANDO?",
+      "CORRE, ZÉ!",
+      "ESSE AQUI É TEIMOSO!"
+    ],
+    "variacoes": {
+      "tema": "ONDA DE %s",
+      "silenciosa": "...SILÊNCIO...",
+      "corredor": "TUDO NUM CORREDOR SÓ",
+      "bonus": "ONDA BÔNUS: SUCATA NA ÁREA"
+    }
+  }
 }

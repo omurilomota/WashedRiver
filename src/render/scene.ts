@@ -78,6 +78,8 @@ export function drawField(){
     if(G.boss&&G.boss.lane===l&&!G.bossDeath)drawEnemy(G.boss);
   }
   for(const d of G.deaths)if(BOSSES[d.type])drawBossDeath({...d,b:d.type});
+  // molho (BLOCO M.6): maré subindo, nevoeiro e o peixe que assusta
+  drawMicros(G);
   // apresentações diegéticas (BLOCO M.3): sombra passando no horizonte e
   // desenho na parede da vila. É a descoberta, não um banner de sistema.
   drawIntros(G);
@@ -117,6 +119,48 @@ export function drawHazard(h){
     }
   }
 }
+/**
+ * Micro-surpresas visuais (BLOCO M.6).
+ *
+ * Só o que se vê: a maré subindo (faixa de água limpando o campo), o
+ * nevoeiro (véu escuro) e o peixe grande saltando. Nada de texto na tela —
+ * o aviso já saiu como faixa do radiador.
+ */
+export function drawMicros(g: { micros: { tipo: string; t: number; dur: number }[] }): void {
+  for (const m of g.micros) {
+    const p = Math.min(1, m.t / m.dur);
+    if (m.tipo === 'mare') {
+      // a maré sobe: uma laia de água sobe e desce nos 3 primeiros lanes
+      const subida = Math.sin(p * Math.PI) * 26;
+      ctx.fillStyle = 'rgba(20,60,60,.35)';
+      ctx.fillRect(VX, LANE_Y0, FIELD_R - VX, subida);
+      ctx.fillStyle = 'rgba(180,220,210,.20)';
+      for (let i = 0; i < 5; i++) {
+        ctx.fillRect(VX + ((G!.t * 90 + i * 240) % (FIELD_R - VX)), LANE_Y0 + subida - 4, 40, 3);
+      }
+    } else if (m.tipo === 'nevoeiro') {
+      ctx.fillStyle = `rgba(6,14,14,${0.5 * Math.sin(p * Math.PI)})`;
+      ctx.fillRect(0, LANE_Y0, W, H - LANE_Y0);
+    } else if (m.tipo === 'peixe') {
+      // salto: um vulto atravessa a tela e volta pro mar. Não machuca.
+      const x = lerp(FIELD_R + 60, VX - 60, p);
+      const alto = Math.sin(p * Math.PI) * 90;
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = '#101a1c';
+      ctx.beginPath();
+      ctx.ellipse(x, H - 60 - alto, 54, 20, -0.25, 0, 7);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - 46, H - 66 - alto);
+      ctx.lineTo(x - 74, H - 44 - alto);
+      ctx.lineTo(x - 46, H - 52 - alto);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
 // ---------------------------------------------------------------------
 //  Apresentações diegéticas (BLOCO M.3)
 // ---------------------------------------------------------------------

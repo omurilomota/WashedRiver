@@ -1119,5 +1119,52 @@
       "metodo": "radio",
       "fala": "Passageiro no trilho. Também não é bicho."
     }
+  },
+  "molho": {
+    "chanceEvento": 0.8,
+    "micro": {
+      "intervalo": [
+        20,
+        38
+      ],
+      "mare": {
+        "dur": 3,
+        "vel": 0.4
+      },
+      "nevoeiro": {
+        "dur": 5
+      },
+      "chuva": {
+        "dur": 6,
+        "lento": 0.15
+      },
+      "peixe": {
+        "dur": 1.2
+      },
+      "chiado": {
+        "dur": 2
+      },
+      "ferrujem": {
+        "dur": 3
+      }
+    },
+    "variacoes": {
+      "chance": 0.45,
+      "tema": {
+        "ondas": [
+          0,
+          1
+        ]
+      },
+      "silenciosa": {
+        "atraso": 15,
+        "espaco": 0.8
+      },
+      "corredor": {},
+      "bonus": {
+        "sucata": 180,
+        "pilhas": 5
+      }
+    }
   }
 }

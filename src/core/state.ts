@@ -321,6 +321,12 @@ export interface GameState {
    * Vazio/`null` = sem escolha (sandbox, primeira partida): a banca mostra
    * tudo que está liberado.
    */
+  /** Molho (BLOCO M.6): evento entre ondas e micro-surpresas. */
+  evento: { id: string; t: number } | null;
+  micros: { tipo: string; t: number; dur: number }[];
+  microT: number;
+  /** Variação da onda da vez (tema/silenciosa/corredor/bonus). */
+  variacao: string | null;
   deck: string[] | null;
   /** Apresentações diegéticas rolando (BLOCO M.3). */
   intros: { type: string; lane: number; kind: string; t: number; dur: number }[];
@@ -390,7 +396,7 @@ export interface BossDeath {
 
 // ---------- estado da aplicação ----------
 
-export type Screen = 'title' | 'play' | 'pause' | 'end' | 'maps' | 'shop';
+export type Screen = 'title' | 'play' | 'pause' | 'end' | 'maps' | 'shop' | 'evento';
 
 export interface GameApi {
   screen: Screen;
@@ -474,6 +480,10 @@ function emptyState(): GameState {
     intros: [],
     marcaPendente: null,
     deck: null,
+    evento: null,
+    micros: [],
+    microT: 20,
+    variacao: null,
     vizinhoSay: ['', '', ''],
     vizinhoT: [0, 0, 0],
     vizinhoClicks: [0, 0, 0],

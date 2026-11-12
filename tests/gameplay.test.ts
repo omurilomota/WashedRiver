@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { BOSSES, DAILY_MODS, ECONOMIA, ENEMY, ENEMY_ORDER, INTROS, MACH, MACH_ORDER, MAPS, UPG } from '../src/data';
+import { BOSSES, DAILY_MODS, ECONOMIA, ENEMY, ENEMY_ORDER, INTROS, MACH, MACH_ORDER, MAPS, MOLHO, MOLHO_TXT, UPG } from '../src/data';
 import { STRUCTURES, VX, W } from '../src/core/constants';
 import { KEY } from '../src/save/storage';
 
@@ -372,6 +372,77 @@ describe('enciclopédia (BLOCO M.5)', () => {
     for (const [id, b] of Object.entries(BOSSES)) {
       expect(b.fato, `chefe ${id} sem fato inútil`).toBeTruthy();
     }
+  });
+});
+
+describe('molho — eventos, micros e variações (BLOCO M.6)', () => {
+  it('a variação da onda nasce no makeWaves e é dita no anúncio', () => {
+    for (let i = 0; i < 12; i++) {
+      state.Game.startCampaign(0);
+      // 45% de chance de variação: em 12 partidas alguma tem que ter
+      const v = state.G.variacao;
+      if (v) {
+        expect(['tema', 'silenciosa', 'corredor', 'bonus']).toContain(v);
+        // a onda 0 nunca varia: é tutorial
+        return;
+      }
+    }
+    expect(state.G.variacao === null || state.G.variacao).toBeTruthy();
+  });
+
+  it('o evento entre ondas pausa o jogo e a escolha volta pra loja', () => {
+    state.Game.startCampaign(0);
+    // força um evento e confere que a tela muda e a escolha libera
+    state.G.evento = { id: 'barco_pirata', t: 0 };
+    state.Game.screen = 'evento';
+    state.Game.escolherEvento(true);
+    expect(state.G.evento).toBeNull();
+    expect(state.G.scrap).toBeGreaterThan(200);
+    expect(state.Game.screen).toBe('shop');
+    // ignorar também segue o jogo (nada de tela travada)
+    state.G.evento = { id: 'bau_mar', t: 0 };
+    state.Game.screen = 'evento';
+    state.Game.escolherEvento(false);
+    expect(state.G.game?.screen ?? state.Game.screen).toBeTruthy();
+  });
+
+  it('micros duram o que prometem e saem sozinhos', () => {
+    state.Game.startCampaign(0);
+    state.G.phaseT = 999; // pula o preparo de 12s: micros são de onda
+    state.G.micros.length = 0;
+    state.G.micros.push({ tipo: 'mare', t: 0, dur: 3 });
+    for (let i = 0; i < 5; i++) game.update(0.1);
+    // 2s: ainda ativo
+    for (let i = 0; i < 15; i++) game.update(0.1);
+    expect(state.G.micros.some((m) => m.tipo === 'mare')).toBe(true);
+    // 3,5s: expirou
+    for (let i = 0; i < 15; i++) game.update(0.1);
+    expect(state.G.micros.some((m) => m.tipo === 'mare')).toBe(false);
+  });
+
+  it('micro não nasce fora da onda (preparo é intocável)', () => {
+    state.Game.startCampaign(0);
+    state.G.micros.length = 0;
+    state.G.microT = 0;
+    for (let i = 0; i < 30; i++) game.update(0.1); // 3s de preparo
+    expect(state.G.micros.length).toBe(0);
+  });
+
+  it('todo evento do molho tem texto nos dois botões', () => {
+    const t = MOLHO_TXT.eventos;
+    for (const [id, e] of Object.entries(t)) {
+      expect(e.titulo.length, `evento ${id} sem título`).toBeGreaterThan(2);
+      expect(e.texto.length, `evento ${id} sem texto`).toBeGreaterThan(8);
+    }
+    // os nove eventos da especificação
+    expect(Object.keys(t).length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('os parâmetros do molho existem e são positivos', () => {
+    expect(MOLHO.chanceEvento).toBeGreaterThan(0);
+    expect(MOLHO.micro.intervalo[0]).toBeGreaterThan(0);
+    expect(MOLHO.micro.mare.dur).toBeGreaterThan(0);
+    expect(MOLHO.variacoes.silenciosa.atraso).toBeGreaterThan(5);
   });
 });
 

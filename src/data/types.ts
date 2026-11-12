@@ -216,6 +216,30 @@ export interface DificuldadeDef {
   };
 }
 
+/**
+ * Molho (BLOCO M.6): eventos aleatórios entre ondas, micro-surpresas durante
+ * a onda e variações de onda. Texto em `maps.json`, números em `balance.json`.
+ */
+export interface MolhoDef {
+  chanceEvento: number;
+  micro: {
+    intervalo: [number, number];
+    mare: { dur: number; vel: number };
+    nevoeiro: { dur: number };
+    chuva: { dur: number; lento: number };
+    peixe: { dur: number };
+    chiado: { dur: number };
+    ferrujem: { dur: number };
+  };
+  variacoes: {
+    chance: number;
+    tema: { ondas: number[] };
+    silenciosa: { atraso: number; espaco: number };
+    corredor: Record<string, never>;
+    bonus: { sucata: number; pilhas: number };
+  };
+}
+
 // ---------- mapas ----------
 
 export interface Palette {

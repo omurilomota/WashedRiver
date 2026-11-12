@@ -164,6 +164,20 @@ export const UI=(function(){
     if (deck.includes('coisa_ze')) return 'Levando a minha obra. Ela funciona. Mais ou menos.';
     return 'Escolheu. Agora aguenta.';
   }
+  /**
+   * Tela de evento do molho (BLOCO M.6).
+   *
+   * Pausa o jogo e oferece a escolha — mesma regra do Zé: nada de evento
+   * com tempo obrigatório. `nao` vazio = evento sem escolha (só "OK").
+   */
+  function evento(id: string, titulo: string, texto: string, sim: string, nao: string){
+    setScreen('<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:32px;margin:0">'+titulo+'</h2>'+
+      '<p class="muted" style="max-width:60ch;margin:8px auto">'+texto+'</p>'+
+      '<div class="menu">'+
+      (nao ? btn(sim,'eventook','1','primary')+btn(nao,'eventook','0','') : btn(sim||'OK','eventook','1','primary'))+
+      '</div>'+
+      '<div class="bottomline">Escolha do Zé também pausa. Nada aqui é cronometrado.</div>');
+  }
   function maps(){
     const cards=MAPS.map((m,i)=>{
       const unl=mapUnlocked(i);const st=SaveDB.slot.stars[i]||0;
@@ -610,6 +624,7 @@ export const UI=(function(){
           break;
         }
         case 'deck':api.deckModo='campaign';UI.deckScreen(Number(arg));break;
+        case 'eventook':Game.escolherEvento(arg==='1');break;
         case 'map':Game.startFromOpts({kind:'campaign',map:Number(arg)});break;
         case 'resetmapa':{
           const i=Number(arg);
@@ -674,7 +689,7 @@ export const UI=(function(){
   }
   bind();
 
-  const api={title,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
+  const api={title,evento,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
     hideOverlays:hide,updateTopbar,toast,cardAt,drawHUD,drawScene};
   return api;
 })();
