@@ -21,9 +21,6 @@
   **não** é aceita.
 - Build single-file: `npm run build` → `dist/index.html`
 - Jogar o build: abrir `dist/index.html` no navegador
-- **Ver sem abrir o jogo:** `node tools/shot.mjs --map 0 --zoom` (Chrome
-  headless: começa a partida, planta peças pelo HUD e salva PNG em
-  `/tmp/opencode/`)
 - Commits: Conventional Commits + gitmoji (`npm run commit` / `cz`)
 - Branch: `feature/*`, `bugfix/*`, `chore/*` → PR para `develop`
 
@@ -67,9 +64,6 @@
   não é usado em lugar nenhum) — **pendente**
 - Teste agora compara a sequência de traços (arte sem Y) e exige arranjo
   diferente por lane (ADR 013) — a padronização não virou textura
-- Sessão de screenshots (`tools/shot.mjs`) confirmou o campo; o zoom mostra
-  que ainda é o mesmo *formato* repetido — variação de layout (silhueta
-  diferente por lane) é a próxima etapa de arte, se vocês quiserem
 
 ### Parte 2 — corpo das máquinas (pendente)
 - "Sombra de ventre" das máquinas e dos bichos é desenhada **antes** do corpo:
@@ -146,7 +140,11 @@
   Noite Infinita e Modo Chefão passam pela escolha. Testes: save (deck por
   mapa, teto 8, reset não apaga), economia (banca = deck) e gameplay (deck
   carregado do save).
-- **M.5:** enciclopédia (bestiário, galeria de peças, chefes; descoberta persistente).
+- **M.5 (feito):** enciclopédia `CADERNO DO ZÉ` com abas BICHOS (20),
+  ENGENHOCAS (18), CHEFES (6), RÁDIO e SELOS. Bestiário abre por morte
+  (`mateiB`), galeria por construção (`seenM`), chefes por vitória (`venciB`).
+  Cada entrada tem **fato inútil** (dado novo em balance.json) e contador vivo.
+  Acesso pelo menu principal e pela pausa; descoberta persiste no save.
 - **M.6:** molho (eventos aleatórios entre ondas, micro-surpresas na onda, ondas temáticas).
 
 ## Próximos passos planejados (não fazer agora, só contexto)

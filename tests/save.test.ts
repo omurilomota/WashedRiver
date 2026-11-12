@@ -139,6 +139,24 @@ describe('save', () => {
     expect(SaveDB.getDeck(1)).toEqual(['boia', 'torradeira']);
   });
 
+  it('bestiário abre por morte, não por visão (BLOCO M.5)', async () => {
+    const { SaveDB } = await freshSave();
+    SaveDB.setSlot(0);
+    // viu o bicho: bestiário continua fechado
+    SaveDB.seenEnemy('baiacu');
+    expect(SaveDB.slot.mateiB['baiacu']).toBeUndefined();
+    // matou: abre
+    SaveDB.mateu('baiacu');
+    expect(SaveDB.slot.mateiB['baiacu']).toBe(1);
+    // e não repete
+    SaveDB.mateu('baiacu');
+    expect(SaveDB.slot.mateiB['baiacu']).toBe(1);
+    // chefe derrotado tem registro próprio
+    SaveDB.venci('bento');
+    expect(SaveDB.slot.venciB['bento']).toBe(1);
+    expect(SaveDB.slot.mateiB['bento']).toBeUndefined();
+  });
+
   it('sobe a versão de um save antigo sem quebrar', async () => {
     const { KEY, SAVE_VERSION } = await freshSave();
     // Save v1: formato antigo, com buracos.

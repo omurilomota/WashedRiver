@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { DAILY_MODS, ECONOMIA, ENEMY_ORDER, INTROS, MACH, MAPS } from '../src/data';
+import { BOSSES, DAILY_MODS, ECONOMIA, ENEMY, ENEMY_ORDER, INTROS, MACH, MACH_ORDER, MAPS, UPG } from '../src/data';
 import { STRUCTURES, VX, W } from '../src/core/constants';
 import { KEY } from '../src/save/storage';
 
@@ -337,6 +337,41 @@ describe('deck da partida (BLOCO M.4)', () => {
     // ventilaor não está no deck: ainda planta (a sucata paga), mas não
     // aparece como carta — a escolha foi feita antes.
     expect(economia.availableMachines().includes('ventilador')).toBe(false);
+  });
+});
+
+describe('enciclopédia (BLOCO M.5)', () => {
+  it('ver o bicho não abre o bestiário; matar abre', () => {
+    save.SaveDB.resetSlot(0);
+    save.SaveDB.setSlot(0);
+    state.Game.startCampaign(0);
+    const baiacu = game.spawnEnemy('baiacu', 0, 900); // visto, não morto
+    expect(baiacu).not.toBeNull();
+    expect(save.SaveDB.slot.mateiB['baiacu']).toBeUndefined();
+    expect(save.SaveDB.slot.seenB['baiacu']).toBeTruthy(); // serviu pra intro
+
+    game.damageEnemy(baiacu!, 9999, 'boom');
+    expect(save.SaveDB.slot.mateiB['baiacu']).toBe(1); // agora sim
+  });
+
+  it('todo bicho do bestiário tem fato inútil', () => {
+    for (const id of ENEMY_ORDER) {
+      expect(ENEMY[id].fato, `${id} sem fato inútil`).toBeTruthy();
+    }
+    expect(ENEMY_ORDER.length).toBe(20);
+  });
+
+  it('toda peça da galeria tem fato inútil e upgrade máximo', () => {
+    for (const id of MACH_ORDER.filter((k) => k !== 'remover')) {
+      expect(MACH[id].fato, `${id} sem fato inútil`).toBeTruthy();
+      expect(UPG[id] && UPG[id].length, `${id} sem upgrade`).toBeGreaterThan(0);
+    }
+  });
+
+  it('todo chefe tem fato inútil', () => {
+    for (const [id, b] of Object.entries(BOSSES)) {
+      expect(b.fato, `chefe ${id} sem fato inútil`).toBeTruthy();
+    }
   });
 });
 

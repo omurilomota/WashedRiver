@@ -6,7 +6,7 @@
 ## Contexto
 
 A ADR 011 unificou o piso das lanes de baixo (3–5) por mapa. A primeira
-screenshot de verificação (`tools/shot.mjs`) mostrou o efeito colateral: o
+screenshot de verificação — ferramenta de screenshot já removida a pedido do usuário mostrou o efeito colateral: o
 mesmo canteiro repetido três vezes, alinhado na mesma coluna, lê-se como
 **tecido/textura**, não como cenário. A padronização tinha ficado
 "uniforme demais" — o campo perdia leitura de lugar.

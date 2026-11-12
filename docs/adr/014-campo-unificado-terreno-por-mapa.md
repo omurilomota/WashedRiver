@@ -13,7 +13,7 @@ um tema e a parte de baixo com outro, sem nunca ler o mapa como um lugar. A
 padronização anterior (ADR 011) acertou só a metade de baixo — a reclamação
 foi literal: *"padronizou só uma parte preta do cenário"*.
 
-A screenshot de verificação (`tools/shot.mjs`) deixou isso claro: em um mapa
+A verificação por screenshot deixou isso claro: em um mapa
 de rio havia rio apenas numa faixa, e as lanes seguintes mostravam calçada,
 canal e jardim.
 

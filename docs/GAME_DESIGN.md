@@ -174,6 +174,21 @@ Chefes são **fases**, não sacos de vida:
 | Fábrica Podre | energia (×1.25) | cinzas | O Gerente | a origem tem expediente até domingo |
 | Cemitério de Barcos | tudo (×1.4) | vendaval | A MARÉ | o fim da costa e o começo do mar |
 
+### Enciclopédia — o Caderno do Zé (BLOCO M.5)
+
+O codex virou enciclopédia de verdade: cada entrada é piada, não ficha.
+
+- **Bichos (20):** abre quando o bicho **morre** (não quando aparece). Nome,
+  descrição, "como resolver" em uma linha e um **fato inútil** absurdo
+  ("Baiacu: já foi tainha."). Contador `X/20`.
+- **Engenhocas (18):** abre quando o jogador **planta** a primeira. Custo,
+  vida, recarga, nível máximo, sinergia e fato inútil.
+- **Chefes (6):** abre quando **derrotados**, com HP, fases e o fato inútil.
+- **Acesso:** menu principal e pausa. Nunca no meio da ação.
+- **Descoberta é permanente:** fica no save (`mateiB`, `seenM`, `venciB`).
+  Save novo começa vazio — descobrir de novo faz parte.
+- Fones de rádio e selos continuam no mesmo caderno.
+
 ### Deck escolhido antes da partida (BLOCO M.4)
 
 Campanha, Noite Infinita e Modo Chefe abrem a tela **O QUE LEVAR**: o jogador
