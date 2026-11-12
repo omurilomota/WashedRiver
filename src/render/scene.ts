@@ -36,10 +36,22 @@ export function drawField(){
     const c=Math.floor((Game.mouse.x-VX)/COLW),l=Math.floor((Game.mouse.y-LANE_Y0)/LANE_H);
     if(c>=0&&c<COLS&&l>=0&&l<LANES){
       const free=!machineAt(l,c),can=G.scrap>=machCost(G.selected);
-      ctx.fillStyle=free&&can?'rgba(200,220,120,.12)':'rgba(220,80,60,.14)';ctx.fillRect(VX+c*COLW,LANE_Y0+l*LANE_H,COLW,LANE_H);
-      ctx.strokeStyle='rgba(220,220,180,.25)';ctx.setLineDash([6,6]);
+      // Modo daltonismo: quem não distingue verde de vermelho precisa de
+      // outra pista além da cor — tracejado e luminância diferente.
+      const cb=!!SaveDB.options.cb;
+      const okCol=cb?'rgba(255,225,120,.16)':'rgba(200,220,120,.12)';
+      const noCol=cb?'rgba(255,150,60,.20)':'rgba(220,80,60,.14)';
+      ctx.fillStyle=free&&can?okCol:noCol;
+      ctx.fillRect(VX+c*COLW,LANE_Y0+l*LANE_H,COLW,LANE_H);
+      ctx.strokeStyle='rgba(220,220,180,.25)';
+      ctx.setLineDash([6,6]);
       for(let i=0;i<=COLS;i++){ctx.beginPath();ctx.moveTo(VX+i*COLW,LANE_Y0+l*LANE_H);ctx.lineTo(VX+i*COLW,LANE_Y0+(l+1)*LANE_H);ctx.stroke();}
       ctx.setLineDash([]);
+      if(!(free&&can)){ // ocupado ou caro: borda cheia, sem depender de matiz
+        ctx.setLineDash([3,3]);ctx.strokeStyle=cb?'rgba(255,180,90,.8)':'rgba(220,120,100,.5)';ctx.lineWidth=2;
+        ctx.strokeRect(VX+c*COLW+1,LANE_Y0+l*LANE_H+1,COLW-2,LANE_H-2);
+        ctx.setLineDash([]);ctx.lineWidth=1;
+      }
       if(free&&G.selected!=='remover'){ctx.globalAlpha=.45;drawMachine({type:G.selected,x:colX(c),lane:l,t:G.t,hp:1,maxhp:1,anim:0,act:0,flash:0});ctx.globalAlpha=1;}
     }
   }
