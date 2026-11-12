@@ -1,13 +1,19 @@
 {
   "name": "mare-podre",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MARÉ PODRE — tower defense de sucata numa costa podre. Canvas 2D + TypeScript, build single-file para web/itch.io.",
   "type": "module",
   "private": true,
   "license": "MIT",
   "author": "Murilo Mota",
   "homepage": "https://github.com/omurilomota/WashedRiver",
-  "keywords": ["game", "canvas", "typescript", "tower-defense", "itch.io"],
+  "keywords": [
+    "game",
+    "canvas",
+    "typescript",
+    "tower-defense",
+    "itch.io"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
