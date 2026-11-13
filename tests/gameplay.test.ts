@@ -42,26 +42,26 @@ function fakeContext(): CanvasRenderingContext2D {
 }
 
 let game: typeof import('../src/game/game');
-let state: typeof import('../src/core/state');
+let state: typeof import('../src/core/state') & typeof import('../src/ui/ui');
 let save: typeof import('../src/save/storage');
 let economia: typeof import('../src/game/economy');
 let jogo: typeof import('../src/game/game') & Record<string, any>;
 
 beforeAll(async () => {
   document.body.innerHTML = `
-    <canvas id="cv"></canvas>
+    <div id="stage"><canvas id="cv"></canvas>
     <div id="topbar"><div id="trackName"></div><div id="radioLamp"></div></div>
     <div id="screen"></div>
     <div id="shop"></div>
     <div id="ctxmenu"></div>
     <div id="toasts"></div>
-    <div id="flash"></div>
+    <div id="flash"></div></div>
   `;
   const ctx = fakeContext();
   HTMLCanvasElement.prototype.getContext = (() =>
     ctx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   game = await import('../src/game/game');
-  state = await import('../src/core/state');
+  state = Object.assign(await import('../src/core/state'), await import('../src/ui/ui'));
   save = await import('../src/save/storage');
   economia = await import('../src/game/economy');
   jogo = (await import('../src/game/game')) as typeof import('../src/game/game') & Record<string, any>;
@@ -446,6 +446,53 @@ describe('molho — eventos, micros e variações (BLOCO M.6)', () => {
     expect(MOLHO.micro.intervalo[0]).toBeGreaterThan(0);
     expect(MOLHO.micro.mare.dur).toBeGreaterThan(0);
     expect(MOLHO.variacoes.silenciosa.atraso).toBeGreaterThan(5);
+  });
+});
+
+describe('menu de contexto nas telas (botão direito)', () => {
+  it('o contextmenu do navegador não aparece dentro do palco', () => {
+    const stage = document.getElementById('stage')!;
+    const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 });
+    stage.dispatchEvent(ev);
+    expect(ev.defaultPrevented, 'menu do Chrome ainda abre no palco').toBe(true);
+  });
+
+  it('cada tela oferece itens, com título', () => {
+    // slots: cada card é um alvo
+    state.UI.slots();
+    const card = document.querySelector('[data-ctx="slot:1"]');
+    expect(card, 'card de slot sem data-ctx').not.toBeNull();
+    // mapas
+    state.UI.maps();
+    expect(document.querySelector('[data-ctx="mapa:0"]')).not.toBeNull();
+    // deck
+    state.UI.deckScreen(0);
+    expect(document.querySelector('[data-ctx^="deckpick:"]')).not.toBeNull();
+    // caderno
+    state.UI.codex('bestiary');
+    expect(document.querySelector('[data-ctx="aba:machines"]')).not.toBeNull();
+    // loja: precisa de ofertas/banca montadas pra desenhar
+    state.Game.startCampaign(0);
+    state.Game.screen = 'shop';
+    state.Game.offers = [{ kind: 'repair' }, { kind: 'heal' }];
+    state.Game.shopItems = [
+      { id: 'reforco', nome: 'REFORÇAR', desc: 'x', cost: 150 },
+      { id: 'tabua', nome: 'TÁBUA', desc: 'y', cost: 220 },
+    ];
+    state.UI.shop();
+    expect(document.querySelector('[data-ctx^="offer:"]')).not.toBeNull();
+    expect(document.querySelector('[data-ctx^="buyitem:"]')).not.toBeNull();
+  });
+
+  it('ação do menu mexe no save de verdade', () => {
+    save.SaveDB.setSlot(0);
+    save.SaveDB.setSlot(1);
+    save.SaveDB.resetSlot(1);
+    state.UI.ctxAcaoTela('slot_usar', '1');
+    expect(save.SaveDB.slotIndex).toBe(1);
+    state.UI.ctxAcaoTela('mapa_info', '0');
+    // a ação da tela não travou nada: a tela continua sendo a da loja
+    expect(state.Game.screen).toBe('shop');
   });
 });
 

@@ -74,6 +74,101 @@ export const UI=(function(){
   }
   function ctxEstaAberto(){return ctxAberto;}
 
+  /**
+   * Menu de contexto FORA do jogo (telas DOM).
+   *
+   * Regra: dentro do palco o botão direito nunca abre o menu do navegador —
+   * ele sempre abre o nosso, com itens do que está sob o cursor. Cada
+   * elemento clicável ganha `data-ctx="<tópico>:<arg>"`; sem alvo, o menu
+   * oferece o que a tela tem.
+   */
+  function ctxAcaoTela(act: string, arg: string): void {
+    switch(act){
+      case 'slot_usar':SaveDB.setSlot(Number(arg));toast('story','SLOT '+String(Number(arg)+1)+' EM USO.');title();break;
+      case 'slot_apagar':if(confirm('APAGAR o slot '+String(Number(arg)+1)+'? Árvore, campanha e bestiário vão junto.')){SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();}break;
+      case 'slot_sucata':toast('ach','SUCATA VELHA: '+SaveDB.slotInfo(Number(arg)).oldScrap+'. NÃO VIAJA ENTRE SLOTS.');break;
+      case 'mapa_jogar':api.deckModo='campaign';deckScreen(Number(arg));break;
+      case 'mapa_endless':api.deckModo='endless';deckScreen(clamp(SaveDB.slot.campaign,0,MAPS.length-1));break;
+      case 'mapa_boss':api.deckModo='boss';deckScreen(Number(arg));break;
+      case 'mapa_reset':if(confirm('Apagar o progresso deste mapa?')){SaveDB.resetMapa(Number(arg));toast('story','PROGRESSO APAGADO. O ZÉ NÃO VIU NADA.');maps();}break;
+      case 'mapa_info':{const m=MAPS[Number(arg)];toast('story',m.nome+': '+m.bio);break;}
+      case 'deck_pick':{const k=String(arg);toast('story',(MACH[k]?MACH[k].nome:k)+': '+(MACH[k]?MACH[k].desc:''));break;}
+      case 'codex_aba':codex(String(arg));break;
+      case 'pause_acao':{const a=String(arg);if(a==='resume')Game.resume();else if(a==='options')options();else if(a==='codex')codex();else if(a==='retry')Game.restart();else if(a==='title')Game.quitToTitle();else if(a==='save')SaveDB.save();break;}
+      default:UI.hideCtx();break;
+    }
+    UI.hideCtx();
+  }
+  function ctxDaTela(ev: MouseEvent): void {
+    ev.preventDefault(); // o menu do navegador nunca aparece dentro do palco
+    const alvo=(ev.target as HTMLElement|null)?.closest('[data-ctx]') as HTMLElement|null;
+    const r=document.getElementById('stage')!.getBoundingClientRect();
+    const px=ev.clientX-r.left, py=ev.clientY-r.top;
+    const montar=TELAS_CTX[Game.screen];
+    if(!montar){UI.ctxMenu('MARÉ PODRE',[{label:'Nada aqui',act:'nada'}],px,py);return;}
+    const {titulo,itens}=montar(alvo?alvo.dataset.ctx||'':'');
+    UI.ctxMenu(titulo,itens,px,py);
+  }
+  const stageEl=document.getElementById('stage');
+  if(stageEl)stageEl.addEventListener('contextmenu',ctxDaTela);
+
+  /** Itens por tela. Cada elemento com data-ctx="tópico:arg" entra aqui. */
+  const TELAS_CTX: Record<string,(alvo:string)=>{titulo:string,itens:CtxItem[]}>={
+    slots:(alvo)=>{
+      const idx=alvo.startsWith('slot:')?Number(alvo.split(':')[1]||0):Number(SaveDB.slotIndex);
+      const atual=idx===SaveDB.slotIndex;
+      const travado=atual&&!!G;
+      return{titulo:(SaveDB.slotInfo(idx).name||'SLOT '+(idx+1)),itens:[
+        {label:'Usar este slot',act:'slot_usar',arg:String(idx),dis:travado,hint:travado?'partida em andamento':''},
+        {label:'Quanto de sucata velha',act:'slot_sucata',arg:String(idx)},
+        {sep:true,label:''},
+        {label:'Apagar o slot',act:'slot_apagar',arg:String(idx),dis:travado},
+        {label:'Fechar',act:'nada'}]};
+    },
+    maps:(alvo)=>{
+      if(!alvo.startsWith('mapa:'))return{titulo:'A COSTA',itens:[
+        {label:'Ver o caderno',act:'codex_aba',arg:'bestiary'},
+        {label:'Fechar',act:'nada'}]};
+      const i=Number(alvo.split(':')[1]||0),m=MAPS[i],unl=mapUnlocked(i);
+      const podeLimpar=unl&&((SaveDB.slot.stars[i]||0)>0||(SaveDB.slot.best[i]||0)>0);
+      return{titulo:m.nome,itens:[
+        {label:'Jogar (escolher deck)',act:'mapa_jogar',arg:String(i),dis:!unl},
+        {label:'Noite Infinita neste mapa',act:'mapa_endless',arg:String(i)},
+        {label:'Modo Chefe',act:'mapa_boss',arg:String(i),dis:!unl},
+        {sep:true,label:''},
+        {label:'Ler a bio',act:'mapa_info',arg:String(i)},
+        {label:'Apagar o progresso do mapa',act:'mapa_reset',arg:String(i),dis:!podeLimpar}]};
+    },
+    deck:(alvo)=>(alvo.startsWith('deckpick:')
+      ? {titulo:'PEÇA',itens:[
+          {label:'Ver a ficha',act:'deck_pick',arg:alvo.split(':')[1]||''},
+          {label:'Ver o caderno',act:'codex_aba',arg:'machines'},
+          {label:'Fechar',act:'nada'}]}
+      : {titulo:'O QUE LEVAR',itens:[
+          {label:'Ver a galeria de peças',act:'codex_aba',arg:'machines'},
+          {label:'Como resolver bichos',act:'codex_aba',arg:'bestiary'},
+          {label:'Fechar',act:'nada'}]}),
+    shop:(alvo)=>alvo.startsWith('offer:')
+      ? {titulo:'OFERTA DO ZÉ',itens:[{label:'Pegar essa',act:'eventook',arg:'1'},{label:'Recusar',act:'eventook',arg:'0'}]}
+      : {titulo:'BANCA DO ZÉ',itens:[
+          {label:'Ver o caderno',act:'codex_aba',arg:'machines'},
+          {label:'Fechar',act:'nada'}]},
+    pause:()=>({titulo:'PAUSA',itens:[
+      {label:'Retomar',act:'pause_acao',arg:'resume'},
+      {label:'Opções',act:'pause_acao',arg:'options'},
+      {label:'Caderno do Zé',act:'pause_acao',arg:'codex'},
+      {sep:true,label:''},
+      {label:'Reiniciar o mapa',act:'pause_acao',arg:'retry'},
+      {label:'Salvar',act:'pause_acao',arg:'save'},
+      {label:'Sair pro título',act:'pause_acao',arg:'title'}]}),
+    codex:(alvo)=>({titulo:'CADERNO DO ZÉ',itens:[
+      ...['bestiary','machines','chefes','radio','ach'].map(t=>({label:'Aba: '+t,act:'codex_aba',arg:t,dis:alvo==='aba:'+t})),
+      {sep:true,label:''},
+      {label:'Fechar o caderno',act:'geral_voltar'}]}),
+    options:()=>({titulo:'OPÇÕES',itens:[
+      {label:'Salvar tudo',act:'pause_acao',arg:'save'},
+      {label:'Fechar',act:'nada'}]}),
+  };
   function fechaCtxNoCliqueFora(ev: MouseEvent): void {
     if(!ctxAberto)return;
     const alvo=ev.target as HTMLElement|null;
@@ -135,7 +230,7 @@ export const UI=(function(){
   // ---------- SLOTS ----------
   function slots(){
     const cards=[0,1,2].map(i=>{const s=SaveDB.slotInfo(i);
-      return '<div class="slot '+(i===SaveDB.slotIndex?'current':'')+'">'+
+      return '<div class="slot '+(i===SaveDB.slotIndex?'current':'')+'" data-ctx="slot:'+i+'">'+
         '<h3>'+s.name+'</h3>'+
         '<div class="kv">sucata velha: <b>'+s.oldScrap+'</b><br>campanha: <b>'+Math.min(MAPS.length,s.campaign+1)+'/'+MAPS.length+'</b><br>partidas: <b>'+(s.runs||0)+'</b> · selos: <b>'+Object.keys(s.ach||{}).length+'/'+ACHIEVEMENTS.length+'</b><br>'+
         'último jogo: '+(s.lastPlayed?new Date(s.lastPlayed).toLocaleDateString('pt-BR'):'nunca')+'</div>'+
@@ -169,7 +264,7 @@ export const UI=(function(){
     const cartas = liberadas.map(k => {
       const on = deckSel.includes(k);
       const custo = machCost(k);
-      return '<div class="node '+(on ? 'max' : '')+'" data-act="deckpick" data-arg="'+k+'" tabindex="0" style="cursor:pointer">'+
+      return '<div class="node '+(on ? 'max' : '')+'" data-act="deckpick" data-arg="'+k+'" data-ctx="deckpick:'+k+'" tabindex="0" style="cursor:pointer">'+
         '<h4>'+MACH[k].nome+(on ? ' ✔' : '')+'</h4>'+
         '<small>'+MACH[k].desc+'</small>'+
         '<div class="cost"><span>'+(k === 'coisa_ze' ? 'DO ZÉ' : custo + ' sucata')+'</span><span>vida '+(MACH[k].hp||'?')+' · '+(MACH[k].cd||'?')+'s</span></div>'+
@@ -225,7 +320,7 @@ export const UI=(function(){
       const unl=mapUnlocked(i);const st=SaveDB.slot.stars[i]||0;
       // resetar save deste mapa: só faz sentido em mapa já aberto/jogado
       const podeLimpar=unl&&(st>0||(SaveDB.slot.best[i]||0)>0);
-      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'deck':'nada')+'" data-arg="'+i+'">'+
+      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'deck':'nada')+'" data-arg="'+i+'" data-ctx="mapa:'+i+'">'+
         '<div class="art" style="'+mapArt(m)+'"><div class="no">'+(i+1)+'</div>'+(unl?'<div class="stars">'+stars(st)+'</div>':'<div class="stars" style="color:#777">TRANCADO</div>')+'</div>'+
         '<h3>'+m.nome+'</h3><p>'+m.sub+'</p>'+
         '<div class="tags">'+tag(m.weather.toUpperCase())+tag(m.resShort,'hot')+tag(m.boss==='mare'?'FINAL':'CHEFE')+'</div>'+
@@ -348,7 +443,7 @@ export const UI=(function(){
         '</div><p class="muted">Conquistas não dão vantagem. Dão assunto.</p>';
     }
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:30px;color:var(--bone)">CADERNO DO ZÉ</h2>'+
-      '<div class="tabs">'+tabs.map(t=>'<div class="tab '+(codexTab===t?'on':'')+'" data-act="codextab" data-arg="'+t+'">'+nomeTab[t]+'</div>').join('')+'</div>'+body+
+      '<div class="tabs">'+tabs.map(t=>'<div class="tab '+(codexTab===t?'on':'')+'" data-act="codextab" data-arg="'+t+'" data-ctx="aba:'+t+'">'+nomeTab[t]+'</div>').join('')+'</div>'+body+
       '<div class="space"></div>'+btn('VOLTAR','back','','small'));
   }
 
@@ -404,13 +499,13 @@ export const UI=(function(){
     shopEl.innerHTML='<div class="scr"><div class="scr-inner">'+
       '<div class="logo" style="font-size:clamp(26px,5vw,54px)">O ZÉ TROUXE<br><em>UMAS COISAS</em></div>'+
       '<p class="muted">Onda '+(G.survived||0)+' aguentada. Escolhe uma e volta pro corredor. Não tem tempo pra duas — tirando o tempo que você quiser.</p>'+
-      '<div class="offers">'+offers.map((o,i)=>'<div class="offer"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':o.kind==='sucataVelha'?'CONVERTER':'RECURSO')+'</div>'+
+      '<div class="offers">'+offers.map((o,i)=>'<div class="offer" data-ctx="offer:'+i+'"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':o.kind==='sucataVelha'?'CONVERTER':'RECURSO')+'</div>'+
         '<h4>'+desc[o.kind](o)+'</h4><p>'+sub[o.kind](o)+'</p>'+
         (o.kind==='up'?'<p class="gold">nível '+(((G.up[o.k||'']||0))+1)+'/3</p>':'')+
         '<div class="price">'+btn('ESCOLHER','offer',i,'small primary')+'</div></div>').join('')+'</div>'+
       '<div class="hr"></div>'+
       '<p class="muted">BANCA DO ZÉ — compra com a sucata do corredor. Pode levar quantas quiser.</p>'+
-      '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" title="'+it.desc+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
+      '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" data-ctx="buyitem:'+it.id+'" title="'+it.desc+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
         it.nome+' · '+it.cost+'</button>').join('')+'</div>'+
       '<p class="muted" style="margin-top:6px;font-size:12px">'+(Game.shopItems||[]).map(it=>'<b>'+it.nome+':</b> '+it.desc).join(' · ')+'</p>'+
       '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+fmt(G.scrap)+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+' · imposto do próximo round: <b>'+impostoDoRound(G.machines.length,G.survived)+'</b></p>'+
@@ -670,7 +765,9 @@ export const UI=(function(){
         }
         case 'deck':api.deckModo='campaign';UI.deckScreen(Number(arg));break;
         case 'eventook':Game.escolherEvento(arg==='1');break;
-        case 'ctxacao':UI.hideCtx();Game.ctxExecutar(String(arg));break;
+        case 'ctxacao':{const parts=String(arg).split(':');UI.hideCtx();
+          const tela=parts[0].match(/^(slot|mapa|deck|codex|pause|geral|nada|buyitem|offer|aba|deckpick)/);
+          if(tela)UI.ctxAcaoTela(parts[0],parts.slice(1).join(':'));else Game.ctxExecutar(String(arg));break;}
         case 'map':Game.startFromOpts({kind:'campaign',map:Number(arg)});break;
         case 'resetmapa':{
           const i=Number(arg);
@@ -735,7 +832,7 @@ export const UI=(function(){
   }
   bind();
 
-  const api={title,evento,ctxMenu,hideCtx,ctxEstaAberto,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
+  const api={title,evento,ctxMenu,hideCtx,ctxEstaAberto,ctxAcaoTela,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
     hideOverlays:hide,updateTopbar,toast,cardAt,drawHUD,drawScene};
   return api;
 })();
