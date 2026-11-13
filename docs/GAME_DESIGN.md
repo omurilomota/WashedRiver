@@ -33,8 +33,12 @@ barco que era do irmão do Zé, uma escolha no final que ninguém vai achar boa.
 - **6 lanes** (índices 0–5) × **7 colunas** = **42 slots** de plantio.
 - Canvas lógico **1280×846** (`LANE_Y0=90`, `LANE_H=126`).
 - A vila fica à esquerda (`VX=170`); os inimigos entram pela direita.
-- Cada lane tem nome próprio por mapa (o corredor nasce do cenário, não de um
-  grid) e duas **estruturas** que a maré tenta derrubar.
+- Cada lane tem duas **estruturas** que a maré tenta derrubar.
+- **O campo é um terreno só por mapa** (ADR 014): onde tem rio, tem rio nas
+  seis lanes; onde tem penhasco, penhasco nas seis. O nome das seis lanes é o
+  do terreno (`RIO DO PÍER`, `PENHASCO`, `TRILHO`, `CALÇADA`,
+  `PISO DA FÁBRICA`, `ÁGUA RASA`). Variedade vem dos props e da variação de
+  arranjo por lane (ADR 013), não de microcenários diferentes.
 
 ## Estruturas
 
@@ -128,7 +132,7 @@ contra, não o lore.
 | Peixe-Lata | 110 | **devolve até 3 torradas** | corpo a corpo, explosão; a quarta entra |
 | Peixe-Fantasma | 55 | **invisível** | Ataque/Holofote/Estilingue |
 | Polvo-Garrafa | 140 | **sabotagem** (desliga peça) | matar rápido |
-| Água-Viva-Fantasma | 60 | **voa + invisível** | **só luz ou explosão** |
+| Água-Viva-Fantasma | 60 | **voa + intangível** | **só luz ou explosão** (nem `airPierce` fura) |
 | Mariposa de Espelho | 80 | **voa**, atraída pela luz | deixar na luz |
 | Sapo de Óleo | 100 | pula 2 colunas | cobertura atrás |
 | Piranha-Coral | 25 | cardume forte | área / Bujão |
@@ -170,9 +174,74 @@ Chefes são **fases**, não sacos de vida:
 | Fábrica Podre | energia (×1.25) | cinzas | O Gerente | a origem tem expediente até domingo |
 | Cemitério de Barcos | tudo (×1.4) | vendaval | A MARÉ | o fim da costa e o começo do mar |
 
-Cada mapa tem: paleta própria, clima, 3 nomes de lane (repetidos nas 6 lanes
-com variação), 2 estruturas por lane, pool de criaturas, chefe, intro, fala
-do chefe e bio.
+### Enciclopédia — o Caderno do Zé (BLOCO M.5)
+
+O codex virou enciclopédia de verdade: cada entrada é piada, não ficha.
+
+- **Bichos (20):** abre quando o bicho **morre** (não quando aparece). Nome,
+  descrição, "como resolver" em uma linha e um **fato inútil** absurdo
+  ("Baiacu: já foi tainha."). Contador `X/20`.
+- **Engenhocas (18):** abre quando o jogador **planta** a primeira. Custo,
+  vida, recarga, nível máximo, sinergia e fato inútil.
+- **Chefes (6):** abre quando **derrotados**, com HP, fases e o fato inútil.
+- **Acesso:** menu principal e pausa. Nunca no meio da ação.
+- **Descoberta é permanente:** fica no save (`mateiB`, `seenM`, `venciB`).
+  Save novo começa vazio — descobrir de novo faz parte.
+- Fones de rádio e selos continuam no mesmo caderno.
+
+### Deck escolhido antes da partida (BLOCO M.4)
+
+Campanha, Noite Infinita e Modo Chefe abrem a tela **O QUE LEVAR**: o jogador
+monta um deck de **7 peças** entre as desbloqueadas e joga com ele. A banca
+durante a partida mostra só o deck. Regras:
+
+- contador 3/7 e botão COMEÇAR só com 7 (nem mais, nem menos);
+- peça trancada aparece como `???`;
+- o Zé comenta a escolha (tudo caro, tudo barato, quatro geladeiras…);
+- deck fica salvo por mapa no save (`SaveDB.setDeck/getDeck`), então não
+  precisa reescolher toda vez;
+- **sandbox ignora**: todas as peças, sem tela de escolha;
+- o menu do Zé pode oferecer uma peça **fora** do deck como recompensa rara.
+
+### Descoberta (BLOCO M.3)
+
+Bicho novo não avisa com banner de sistema. Cada um se apresenta de um jeito
+(`intros` em `balance.json`, método por bicho):
+
+- **silhueta** — uma forma escura passa pela margem antes dele entrar
+- **ze** — o Zé comenta, em deboche ("Olha o tamanho da garra desse aí.")
+- **radio** — se houver rádio no campo, chiado e a voz distante; sem rádio, o Zé
+- **cartaz** — um desenho tosco aparece pendurado na vila
+- **marca** — o primeiro cadáver deixa uma marca estranha e "TEM MAIS VINDO."
+- **nada** — o bicho só aparece, e o jogador descobre no susto
+
+O bestiário (codex) continua escondido até o bicho ser visto — a descoberta é
+na tela, não na interface.
+
+### Curva de dificuldade (BLOCO M.2)
+
+Os números de onda moram em `src/data/balance.json` (`dificuldade`), não
+soltos no código. A régua:
+
+- **Onda 1** — tutorial disfarçado: 7 bichos, **um** tipo (o mais fraco do
+  pool), 6,5 s entre eles, em **2 corredores** só. Dá pra passar sem suar e
+  sem perder peça (testado em `tests/curva.test.ts`, nos 6 mapas).
+- **Onda 2** — introdução: 13 bichos, 4 tipos, 5,4 s, 4 corredores, com
+  respiro de 30 s antes (o jogador cobre as lanes que faltam). As cenas
+  pesadas saíram daqui: eram elas que faziam da onda 2 o paredão.
+- **Onda 3** — teste: 22 bichos, pool inteiro, 4 s, 6 corredores, com polvo,
+  cardume, baleia e o exclusivo do mapa.
+- **Respiro** de 15 s antes do chefe, com reparo na loja.
+- **Mapa seguinte** começa um degrau acima (`degrauPorMapa`).
+- **Noite Infinita**: onda 1 igual à da campanha; degrau a cada 3 ondas;
+  chefe a cada 5.
+
+`tests/curva.test.ts` joga os 6 mapas com um jogador de referência e imprime
+a tabela de peças/estruturas perdidas por fase — a régra é medida, não
+achismo.
+
+Cada mapa tem: paleta própria, clima, **um terreno** (nome das 6 lanes),
+2 estruturas por lane, pool de criaturas, chefe, intro, fala do chefe e bio.
 
 ### Ondas e pool de criaturas
 

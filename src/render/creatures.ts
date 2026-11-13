@@ -39,8 +39,6 @@ export function drawEnemy(e){
   if(e.grounded>0)ctx.rotate(.12);
   if(e.hypno>0){ctx.translate(Math.sin(t*9)*2,0);}
   ctx.rotate(P.tilt);ctx.scale(P.sx,P.sy);
-  // volume: sombra de ventre dá "corpo" a todos os bichos
-  if(!flying){ctx.fillStyle='rgba(0,0,0,.16)';ctx.beginPath();ctx.ellipse(0,-(e.r||12)*.45,(e.r||12)*.8,(e.r||12)*.32,0,0,7);ctx.fill();}
   const bite=e.eating?Math.abs(Math.sin(t*10))*6:0;
   if(e.lit>0){ctx.strokeStyle='rgba(255,240,170,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-e.r*.9,e.r+5,0,7);ctx.stroke();}
   if(e.hypno>0){ctx.fillStyle='#d8c0e0';ctx.font='bold 12px monospace';ctx.fillText('@',-4,-e.r-16+Math.sin(t*8)*3);}
@@ -224,6 +222,17 @@ export function drawEnemy(e){
     ctx.fillStyle='#5a4a3a';ctx.fillRect(12,-22,14,12);ctx.fillStyle='#d8c8a0';ctx.fillRect(14,-20,10,3);
     ctx.strokeStyle='#4a4a44';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-8,-4);ctx.lineTo(-8,6);ctx.moveTo(8,-4);ctx.lineTo(8,6);ctx.stroke();
     if(e.switching){ctx.fillStyle='#ffd070';ctx.font='9px monospace';ctx.fillText('PRÓXIMO!',-24,-70);}
+  }
+  // volume: oclusão na base do corpo. Desenhada DEPOIS do bicho de propósito —
+  // a "sombra de ventre" antiga era pintada antes e desaparecia atrás do
+  // próprio corpo, não dando volume nenhum.
+  if(!flying){
+    const br=(e.r||12);
+    const ocl=ctx.createRadialGradient(0,-br*.3,1,0,-br*.3,br*.95);
+    ocl.addColorStop(0,'rgba(0,0,0,.18)');
+    ocl.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=ocl;
+    ctx.beginPath();ctx.ellipse(0,-br*.3,br*.72,br*.3,0,0,7);ctx.fill();
   }
   // "quase morrendo": sangue, contorno, peça faltando
   if(low&&e.type!=='baleia'&&e.type!=='pescador'){
@@ -457,7 +466,7 @@ export function drawDeath(d){
     ctx.save();ctx.rotate(.2);ctx.fillStyle='#5a7078';ctx.beginPath();ctx.ellipse(0,-18,40,22,0,0,7);ctx.fill();
     ctx.fillStyle='#3a4a50';ctx.beginPath();ctx.arc(-26,-18,6,0,7);ctx.fill();ctx.restore();
     ctx.fillStyle='#c8d8d8';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(-6+i*12,-44-t*8%12,4,0,7);ctx.fill();}
-    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('ELA NÃO SABIA.',-40,-62);
+    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('ELA NÃO SABIA. AGORA SABE. TARDE.',-52,-62);
   }else if(B==='pescador'){ // ele tira o boné, agradece e entra no mar
     ctx.fillStyle='#3a5a6a';ctx.fillRect(-8,-26,16,22);
     ctx.fillStyle='#8aa8a0';ctx.beginPath();ctx.ellipse(0,-34,12,10,0,0,7);ctx.fill();
@@ -494,8 +503,8 @@ export function drawBossDeath(d){
     ctx.fillStyle='#e8c84a';ctx.beginPath();ctx.ellipse(20,hatY,26,6,0,0,7);ctx.fill();ctx.fillRect(6,hatY-16,28,16);
     ctx.fillStyle='#c8a83a';ctx.fillRect(6,hatY-6,28,4);
     ctx.fillStyle='#e8d9a8';ctx.font='10px monospace';
-    ctx.fillText('AS BOTAS CONTINUARAM.',-44,-98);
-    if(t>2.4)ctx.fillText('O CHAPÉU VOLTOU. O DONO NÃO.',-62,-84);
+    ctx.fillText('AS BOTAS FICARAM. O DONO NÃO.',-44,-98);
+    if(t>2.4)ctx.fillText('O CHAPÉU VOLTOU. O RESTO NÃO QUIS.',-62,-84);
     if(t>4.2)ctx.fillText('E A TATUAGEM FICOU NA AREIA.',-66,-72);
     ctx.fillStyle='rgba(60,48,90,.5)';for(let i=0;i<8;i++){ctx.beginPath();ctx.arc(rnd(-40,40),rnd(-60,-10)-((t*8)%20),rnd(1,3),0,7);ctx.fill();}
   }else if(B==='faroleiro'){ // a luz sai dele e entra no mar; ele fica pequeno
@@ -507,7 +516,7 @@ export function drawBossDeath(d){
     ctx.fillStyle='#0e1618';ctx.beginPath();ctx.arc(0,-82,10*(1-p*.4),Math.PI,0);ctx.fill();
     ctx.fillStyle='#3a3a2a';ctx.fillRect(-30,-4,60,4);
     ctx.fillStyle='#0e0e0c';ctx.beginPath();ctx.arc(30+((t*14)%40),-8,8,0,7);ctx.fill();
-    if(t>1.2){ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('A LUZ ENTROU NO MAR.',-52,-100);}
+    if(t>1.2){ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('A LUZ ENTROU NO MAR. ELE FICOU NO ESCURO.',-72,-100);}
     if(t>3){ctx.fillStyle='#c8d8c0';ctx.font='9px monospace';ctx.fillText('O POSTO FICOU VAZIO. O CHAPÉU TAMBÉM.',-80,-86);}
     ctx.fillStyle=`rgba(255,245,190,${.4*(1-p)})`;ctx.fillRect(-90,-140,180,150);
   }else if(B==='maquinista'){ // descarrilha, apita, as rodas continuam
@@ -515,7 +524,7 @@ export function drawBossDeath(d){
     ctx.fillStyle='#1a1412';ctx.beginPath();ctx.moveTo(40,-40);ctx.lineTo(60,-60);ctx.lineTo(60,-40);ctx.fill();ctx.restore();
     for(const s of[-1,1]){const cx=s*(30+t*80);ctx.strokeStyle='#6a5a40';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,-10,13,0,7);ctx.stroke();}
     ctx.fillStyle='rgba(200,200,190,.35)';for(let i=0;i<8;i++){ctx.beginPath();ctx.arc(-40+i*24,-52-Math.sin(t*3+i)*14,10+i*2,0,7);ctx.fill();}
-    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('O APITO CONTINUA.',-40,-100);
+    ctx.fillStyle='#e8d9a8';ctx.font='9px monospace';ctx.fillText('O APITO AINDA APITA. NINGUÉM VEM.',-56,-100);
     ctx.fillStyle='#8a7a5a';ctx.fillRect(-8,-70,16,8);ctx.fillStyle='#e8d070';ctx.fillRect(12,-64,10,4);
     if(t>3)ctx.fillText('NINGUÉM VIU O CONDUTOR.',-52,-86);
   }else if(B==='peixe_mae'){ // explode em 50 peixes: a maternidade
@@ -541,8 +550,8 @@ export function drawBossDeath(d){
     const dawn=clamp(p*1.6,0,1);
     ctx.fillStyle=`rgba(255,180,110,${dawn*.35})`;ctx.fillRect(FIELD_R-100,0,W-FIELD_R+100,H);
     ctx.fillStyle='#e8d9a8';ctx.font='bold 12px monospace';ctx.fillText('AMANHECEU.',-40,-80);
-    if(t>2){ctx.fillStyle='#f0e4bd';ctx.fillText('O MAR NÃO FOI EMBORA.',-56,-62);}
-    if(t>4){ctx.fillStyle='#c8d8c0';ctx.fillText('ELE SÓ PAROU DE GRITAR.',-56,-46);}
+    if(t>2){ctx.fillStyle='#f0e4bd';ctx.fillText('O MAR NÃO FOI EMBORA. MUDOU DE IDEIA.',-72,-62);}
+    if(t>4){ctx.fillStyle='#c8d8c0';ctx.fillText('PAROU DE GRITAR. ATÉ QUE ENFIM.',-70,-46);}
     ctx.fillStyle='rgba(220,240,230,.3)';for(let i=0;i<10;i++){ctx.beginPath();ctx.arc(rnd(-60,60),rnd(-100,-10),rnd(2,5),0,7);ctx.fill();}
   }
   ctx.restore();ctx.globalAlpha=1;

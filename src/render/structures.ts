@@ -72,6 +72,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fillRect(13, -11 + ((t * 22) % 6), 2, 7);
       return true;
     case 'cerca': // cerca do jardim
+      sombra(22);
       ctx.strokeStyle = '#6a5a3a';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -99,11 +100,17 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       roda(12, -2, 9);
       return true;
     case 'lata_agua': // lata d'água suspensa
+      sombra(16);
       ctx.strokeStyle = '#7a6a4a';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(-16, -52);
       ctx.lineTo(16, -52);
+      ctx.stroke();
+      // o arame sobe: ela está pendurada, não flutuando
+      ctx.beginPath();
+      ctx.moveTo(0, -52);
+      ctx.lineTo(0, -80);
       ctx.stroke();
       ctx.fillStyle = '#8a8a70';
       rr(-16, -46, 32, 40, 6);
@@ -213,6 +220,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fillRect(-9, -22, 18, 3);
       return true;
     case 'trapiche': // trapiche velho
+      sombra(26);
       ctx.fillStyle = '#4a3a26';
       ctx.fillRect(-26, -12, 52, 12);
       ctx.fillStyle = '#3a2e1e';
@@ -573,6 +581,7 @@ export function drawEstruturaNova(s: StructureDef, map: MapDef, t: number): bool
       ctx.fillRect(-24, -4, 40, 4);
       return true;
     case 'quilha': // quilha de navio
+      sombra(30);
       ctx.strokeStyle = '#3a3228';
       ctx.lineWidth = 7;
       ctx.beginPath();

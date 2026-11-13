@@ -19,6 +19,8 @@ export interface MachineDef {
   special?: boolean;
   /** Projétil pesado o bastante para acertar voador sem holofote. */
   air?: boolean;
+  /** Fato inútil: a enciclopédia vive disso (BLOCO M.5). */
+  fato?: string;
 }
 
 /**
@@ -31,6 +33,8 @@ export interface MachineDef {
 export interface EconomiaDef {
   /** Sucata por segundo, sozinha. */
   passiva: number;
+  /** Sucata com que o jogador começa a partida (mão de abertura). */
+  startScrap: number;
   /** Multiplicador geral no custo das engenhocas. */
   fatorCustoMaquina: number;
   /** Custo do nível 1, 2 e 3 de melhoria de peça. */
@@ -95,6 +99,8 @@ export interface EnemyDef {
    * Sem isso, uma peça que reflete vira parede eterna contra a torradeira.
    */
   reflect?: number;
+  /** Fato inútil (BLOCO M.5): entra no bestiário, não na ficha. */
+  fato?: string;
 }
 
 export interface BossDef {
@@ -108,6 +114,20 @@ export interface BossDef {
   hint: string;
   /** Não se mata. A MARÉ é o mar com vontade. */
   unbeatable?: boolean;
+  /** Fato inútil (BLOCO M.5). */
+  fato?: string;
+}
+
+/**
+ * Como um bicho novo se apresenta (BLOCO M.3).
+ *
+ * Onboarding diegético: o jogador descobre, não recebe banner de sistema.
+ * `metodo` é silhueta | ze | radio | cartaz | marca | nada.
+ */
+export interface IntroDef {
+  metodo: 'silhueta' | 'ze' | 'radio' | 'cartaz' | 'marca' | 'nada';
+  /** O que o Zé (ou o rádio) fala. Vazio em `nada`. */
+  fala: string;
 }
 
 // ---------- sinergias ----------
@@ -162,6 +182,62 @@ export interface Achievement {
   id: string;
   nome: string;
   desc: string;
+}
+
+/**
+ * Curva de dificuldade (ADR do BLOCO M.2).
+ *
+ * Os números de onda moram aqui, não soltos em `game.ts`: a onda 1 é
+ * tutorial disfarçado (poucos bichos, um tipo só, espaçado), a onda 3 é
+ * teste, e o mapa seguinte começa um degrau acima do anterior.
+ */
+export interface OndaDificuldade {
+  bichos: number;
+  /** Segundos entre bichos. */
+  espacamento: number;
+  /** Quantos tipos diferentes do pool entram na onda. */
+  tipos: number;
+  /** Quantas lanes recebem bichos (ondas iniciais não enchem o campo). */
+  corredores: number;
+}
+
+export interface DificuldadeDef {
+  ondas: OndaDificuldade[];
+  /** Quanto cada mapa soma em cima da curva base. */
+  degrauPorMapa: { bichos: number; espacamento: number; tipos: number; corredores: number };
+  noiteInfinita: {
+    chefeACada: number;
+    degrauACada: number;
+    bichosPorDegrau: number;
+    tetoBichos: number;
+    espacamentoMin: number;
+    hpPorDegrau: number;
+    tetoHp: number;
+  };
+}
+
+/**
+ * Molho (BLOCO M.6): eventos aleatórios entre ondas, micro-surpresas durante
+ * a onda e variações de onda. Texto em `maps.json`, números em `balance.json`.
+ */
+export interface MolhoDef {
+  chanceEvento: number;
+  micro: {
+    intervalo: [number, number];
+    mare: { dur: number; vel: number };
+    nevoeiro: { dur: number };
+    chuva: { dur: number; lento: number };
+    peixe: { dur: number };
+    chiado: { dur: number };
+    ferrujem: { dur: number };
+  };
+  variacoes: {
+    chance: number;
+    tema: { ondas: number[] };
+    silenciosa: { atraso: number; espaco: number };
+    corredor: Record<string, never>;
+    bonus: { sucata: number; pilhas: number };
+  };
 }
 
 // ---------- mapas ----------

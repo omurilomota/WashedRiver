@@ -18,6 +18,11 @@ Os mesmos registros ficam espelhados na memória do projeto (ai-memory), em
 | [007](adr/007-regras-de-gameplay.md) | aceito | Pool do mapa nas ondas, derrota só com as 12, mods que cumprem |
 | [008](adr/008-combate-justo-e-qualidade-de-vida.md) | aceito | Contramedida para voador e baleia, lata devolve 3, Faroleiro no campo, imposto, hover/ESC/autosave |
 | [009](adr/009-sete-colunas-e-pedagio-do-pescador.md) | aceito | 7 colunas por lane (42 slots) e Pescador cobra pedágio em vez de derrubar estrutura |
+| [010](adr/010-hud-cards-quebra-de-linha.md) | aceito | Barra de cartas do HUD quebra em duas linhas (regra depois inalcançável) |
+| [011](adr/011-lanes-de-baixo-piso-unico.md) | aceito | Lanes de baixo (3–5) com um piso único por mapa |
+| [012](adr/012-barra-de-cartas-linha-unica.md) | aceito | Barra de cartas do HUD em linha única (substitui a quebra da 010) |
+| [013](adr/013-variacao-de-arranjo-no-piso-unificado.md) | aceito | Variação de arranjo (offset e tom) dentro do piso único |
+| [014](adr/014-campo-unificado-terreno-por-mapa.md) | aceito | Campo unificado: um terreno por mapa, nas 6 lanes (substitui o recorte da 011) |
 
 ## Como registrar uma decisão nova
 

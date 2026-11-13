@@ -180,6 +180,21 @@ input[type=range]{width:100%;accent-color:#a5b45a;background:transparent}
 select{background:#20261f;color:#e6dcc0;border:1px solid #4a5142;padding:5px;font-family:inherit;font-size:calc(11px * var(--fs))}
 
 /* ---------- Toasts / radio ---------- */
+/* Menu de contexto (botão direito): some com o alvo,some com o ESC */
+#ctxmenu{position:absolute;z-index:25;min-width:190px;max-width:290px;background:rgba(10,14,12,.96);
+  border:1px solid #4a5142;border-left:3px solid var(--gold);box-shadow:0 8px 28px rgba(0,0,0,.6);
+  padding:5px 0;font-family:inherit;color:var(--ink);display:none}
+#ctxmenu.on{display:block}
+#ctxmenu .ctxhead{padding:5px 10px 6px;font-size:calc(9px * var(--fs));letter-spacing:.14em;color:var(--dim);
+  border-bottom:1px solid #2b3229;margin-bottom:4px}
+#ctxmenu .ctxitem{display:block;width:100%;text-align:left;background:none;border:0;color:var(--ink);
+  font:inherit;font-size:calc(11px * var(--fs));padding:6px 10px;cursor:pointer;line-height:1.35}
+#ctxmenu .ctxitem:hover:not(.dis),#ctxmenu .ctxitem:focus-visible{background:#2c352b;color:#fff;outline:none}
+#ctxmenu .ctxitem.dis{color:#666d5e;cursor:default}
+#ctxmenu .ctxitem .custo{color:var(--gold)}
+#ctxmenu .ctxitem .dis-custo{color:#8d7a4a}
+#ctxmenu .ctxsep{height:1px;background:#2b3229;margin:4px 0}
+#ctxmenu .ctxhint{padding:4px 10px 6px;font-size:calc(9px * var(--fs));color:var(--dim);line-height:1.4}
 #toasts{position:absolute;right:8px;top:34px;z-index:20;display:flex;flex-direction:column;gap:6px;
   align-items:flex-end;pointer-events:none;max-width:min(440px,60%)}
 .toast{background:rgba(12,16,14,.92);border-left:3px solid #8b8f6c;color:#d9d2b6;

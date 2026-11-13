@@ -9,6 +9,9 @@ import balanceJson from './balance.json';
 import mapsJson from './maps.json';
 import type {
   Achievement,
+  DificuldadeDef,
+  MolhoDef,
+  IntroDef,
   BossDef,
   Cartazes,
   DailyMod,
@@ -31,6 +34,9 @@ export const SHOP_BASE = balanceJson.shopBase as string[];
 export const MACH_ORDER = balanceJson.machOrder as string[];
 export const UPG = balanceJson.upgrades as Record<string, string[]>;
 export const ECONOMIA = balanceJson.economia as EconomiaDef;
+export const DIFICULDADE = balanceJson.dificuldade as DificuldadeDef;
+export const MOLHO = balanceJson.molho as MolhoDef;
+export const INTROS = balanceJson.intros as Record<string, IntroDef>;
 
 export const ENEMY = balanceJson.enemy as Record<string, EnemyDef>;
 export const ENEMY_ORDER = balanceJson.enemyOrder as string[];
@@ -50,6 +56,10 @@ export const LU_LINES = mapsJson.luLines as string[];
 export const LU_CLICKS = mapsJson.luClicks as string[];
 export const DOG_LINES = mapsJson.dogLines as string[];
 export const TOQ_LINES = mapsJson.toqLines as string[];
+export const VIZINHOS_NOMES = mapsJson.vizinhosNomes as string[];
+export const VIZINHOS_FALAS = mapsJson.vizinhosFalas as string[][];
+export const VIZINHOS_SEGREDO = mapsJson.vizinhosSegredo as string;
+export const MOLHO_TXT = mapsJson.molho as { eventos: Record<string, { titulo: string; texto: string; sim: string; nao: string }>; gritos: string[]; variacoes: Record<string, string> };
 export const VOZ_LINES = mapsJson.vozLines as string[];
 export const CARTAZES = mapsJson.cartazes as Cartazes;
 export const ENDINGS = mapsJson.endings as Ending[];

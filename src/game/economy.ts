@@ -54,9 +54,20 @@ export function machCost(k: string): number {
   );
 }
 
-/** Engenhocas disponíveis, na ordem do baralho. */
+/**
+ * Engenhocas disponíveis, na ordem do baralho.
+ *
+ * BLOCO M.4: se a partida tem um deck escolhido (campanha, infinita, chefe),
+ * a banca mostra **só** o deck — o jogador se comprometeu antes de começar.
+ * Sem deck (sandbox, primeira partida sem escolha), vale o desbloqueio.
+ */
 export function availableMachines(): string[] {
-  return MACH_ORDER.filter(isMachUnlocked);
+  const liberadas = MACH_ORDER.filter(isMachUnlocked);
+  const deck = G && G.deck && G.deck.length ? G.deck : null;
+  if (!deck) return liberadas;
+  // o deck manda, mas só o que está liberado de verdade
+  const noDeck = deck.filter((k) => liberadas.includes(k));
+  return noDeck.length ? noDeck : liberadas;
 }
 
 /**

@@ -10,12 +10,12 @@
       "weather": "rain",
       "track": "barra",
       "lanes": [
-        "PÍER",
-        "RUA",
-        "CANAL",
-        "JARDIM RIBEIRINHO",
-        "HORTA DO ZÉ",
-        "BECO DO ZÉ"
+        "RIO DO PÍER",
+        "RIO DO PÍER",
+        "RIO DO PÍER",
+        "RIO DO PÍER",
+        "RIO DO PÍER",
+        "RIO DO PÍER"
       ],
       "pal": {
         "sky1": "#5a3a22",
@@ -133,12 +133,12 @@
       "weather": "fog",
       "track": "farol",
       "lanes": [
-        "CAMINHO DE PEDRA",
-        "ESCADARIA",
-        "RESTINGA",
-        "FAROL VELHO",
-        "TRAPICHE VELHO",
-        "ROTA DO FAROLEIRO"
+        "PENHASCO",
+        "PENHASCO",
+        "PENHASCO",
+        "PENHASCO",
+        "PENHASCO",
+        "PENHASCO"
       ],
       "pal": {
         "sky1": "#14262e",
@@ -253,12 +253,12 @@
       "weather": "storm",
       "track": "estacao",
       "lanes": [
-        "TRILHO NORTE",
-        "PLATAFORMA",
-        "TRILHO CEGO",
-        "ARMAZÉM DE BAGAGEM",
-        "DEPÓSITO",
-        "FIM DE LINHA"
+        "TRILHO",
+        "TRILHO",
+        "TRILHO",
+        "TRILHO",
+        "TRILHO",
+        "TRILHO"
       ],
       "pal": {
         "sky1": "#2e3640",
@@ -373,12 +373,12 @@
       "weather": "heat",
       "track": "feira",
       "lanes": [
-        "CORREDOR DE BARRACAS",
-        "CALÇADA DO PEIXE",
-        "DESCARGA",
-        "CAMELÔ DO PEIXE",
-        "GELO",
-        "CALDEIRÃO"
+        "CALÇADA",
+        "CALÇADA",
+        "CALÇADA",
+        "CALÇADA",
+        "CALÇADA",
+        "CALÇADA"
       ],
       "pal": {
         "sky1": "#7a4a22",
@@ -494,12 +494,12 @@
       "weather": "ash",
       "track": "fabrica",
       "lanes": [
-        "ESTEIRA",
-        "CORREDOR DE CANOS",
-        "VALA QUÍMICA",
-        "PÁTIO DE CARGA",
-        "CALDEIRAS",
-        "ESCRITÓRIO DO GERENTE"
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA",
+        "PISO DA FÁBRICA"
       ],
       "pal": {
         "sky1": "#3a1e18",
@@ -614,12 +614,12 @@
       "weather": "gale",
       "track": "cemiterio",
       "lanes": [
-        "CONVÉS APODRECIDO",
-        "CAIS QUEBRADO",
         "ÁGUA RASA",
-        "CASCO ENCALHADO",
-        "OSSOS DO CASCO",
-        "MARGEM"
+        "ÁGUA RASA",
+        "ÁGUA RASA",
+        "ÁGUA RASA",
+        "ÁGUA RASA",
+        "ÁGUA RASA"
       ],
       "pal": {
         "sky1": "#1c242c",
@@ -838,7 +838,7 @@
     "O Bento não era pra estar ali. Nem o peixe.",
     "Se sobrar um, a gente come. Se sobrar dois, a gente negocia."
   ],
-  "zeRaro": "Meu irmão foi no barco. Ele não voltou. O peixe voltou com o boné dele. Eu não contei isso pra ninguém.",
+  "zeRaro": "Meu irmão foi no barco. Voltou o boné dele. Eu uso até hoje. Não conta pra ninguém.",
   "luClicks": [
     "Imposto é todo round. Arma na rua não é de graça.",
     "Eu cobro. Não é gosto, é contabilidade.",
@@ -859,6 +859,29 @@
     "Toda noite eu fecho a janela. Toda noite alguém bate do lado de fora.",
     "Você já reparou que o rádio fala o seu nome antes de você pensar nele?"
   ],
+  "vizinhosNomes": [
+    "SEU ANTÃO",
+    "DONA NICE",
+    "CABEÇA"
+  ],
+  "vizinhosFalas": [
+    [
+      "Antigamente aqui dava peixe.",
+      "Agora dá o que aparecer.",
+      "Não converso com estranho. Continua."
+    ],
+    [
+      "Eu conto as ondas. Cheguei em sete.",
+      "Se subir mais uma, eu me vou.",
+      "Guarda essa sucata pra você."
+    ],
+    [
+      "...",
+      "Não é balde. É chapéu.",
+      "Ele ouve o mar antes de mim."
+    ]
+  ],
+  "vizinhosSegredo": "OS TRÊS: a maré subiu e ninguém combinou de consertar.",
   "toqLines": [
     "Eu vou ser pescador igual você, Zé!",
     "Pega ele! Pega! Pega!",
@@ -870,7 +893,7 @@
   "vozLines": [
     "Boa noite, costa podre. Você está ouvindo a Voz da Maré.",
     "Não sou gravação. Gravação não erra o seu nome.",
-    "Eu era gente. Isso não é um pedido de desculpa, é informação.",
+    "Eu era gente. Não é pedido de desculpa. É currículo.",
     "O mar não odeia vocês. O mar só carrega. Carregar cansa.",
     "Amanhã, às seis, a maré vira. Escolha antes."
   ],
@@ -917,31 +940,31 @@
       "id": "farol",
       "titulo": "ACENDER O FAROL",
       "escolha": "Acender o farol e apontar a luz pro mar",
-      "txt": "A vila acendeu o farol. Não como desculpa: como aviso. A luz entrou na água e o mar foi descendo, devagar, como quem se retira de uma conversa. Barra Suja não afundou. Ficou mais longe da costa. O peixe voltou a ter um olho só. Não todo peixe.",
-      "ze": "A gente acendeu. Não consertou nada. Mas dá pra ver o horizonte, e isso já é uma diferença.",
+      "txt": "A vila acendeu o farol. O mar deu meia-volta devagar, com vergonha. Barra Suja não afundou: só ficou mais longe da costa. O peixe voltou a ter um olho só. Um ou outro.",
+      "ze": "Acendeu. Não consertou nada, mas agora dá pra ver de onde vem a próxima onda.",
       "lu": "Eu vou ficar na casa. Com a luz acesa, a vista até que presta.",
-      "toq": "O farol tem uma manivela. Se eu girar sozinho, ele fica aceso a noite inteira?",
-      "voz": "A Voz do Rádio não falou mais depois daquela noite."
+      "toq": "Tem uma manivela. Se eu girar sozinho a noite inteira, ganho o quê?",
+      "voz": "A Voz do Rádio calou a boca naquela noite. Melhor assim."
     },
     {
       "id": "fechar",
       "titulo": "FECHAR A BAÍA",
       "escolha": "Fechar a baía com os navios e os escombros",
-      "txt": "A vila fechou a baía com o que existia: barcaça, pneu, portão de galpão, duas geladeiras. Parou de chegar. Também parou de sair. Barra Suja virou uma tampa. O peixe dentro apodreceu. O que restou de gente aprendeu a viver de pé, no escuro, com a água no tornozelo.",
+      "txt": "A vila fechou a baía com barcaça, pneu, portão de galpão e duas geladeiras. Parou de entrar. Também parou de sair. O peixe de dentro apodreceu com cheiro de vitória. A gente aprendeu a andar no escuro com água no tornozelo.",
       "ze": "Fechou. Pronto. Não tem mar, não tem peixe, não tem problema. Só tem a gente, que é o problema.",
       "lu": "Tem uma toalha no varal que nunca mais secou. Umidade.",
-      "toq": "Eu ainda escuto o peixe batendo do outro lado. Ele quer entrar. Ou quer que eu saia?",
-      "voz": "A Voz do Rádio ficou do lado de fora. Repetia nomes. Nunca os mesmos."
+      "toq": "Ainda escuto o peixe batendo do outro lado. Quer entrar. Ou quer que eu saia. Um dos dois.",
+      "voz": "A Voz ficou do lado de fora, lendo nome. Nenhum era meu."
     },
     {
       "id": "ouvir",
       "titulo": "RESPONDER AO RÁDIO",
       "escolha": "Responder a Voz do Rádio e aceitar o que ela é",
-      "txt": "A vila respondeu ao rádio. A Voz agradeceu. O mar não ficou limpo: ficou quieto. A maré entrou sem quebrar nada, cobriu a rua, a casa, o barco, tudo, e ficou. Debaixo da água, a vila continua igual, e o peixe passa entre as portas sem comer o que não é peixe. Quem escuta o rádio de madrugada diz que a Voz agora lê uma lista de nomes. O primeiro é o irmão do Zé.",
-      "ze": "Ela não mentiu. O mar só carregava. Agora ele tem com quem falar. É diferente.",
-      "lu": "Eu fui embora. Não da vila. Da costa. Ainda abro a janela. A água tem a mesma cor de antes.",
-      "toq": "A Voz disse meu nome certo. Do jeito que a minha mãe dizia. Eu não tenho medo.",
-      "voz": "A Voz do Rádio não era o mar. Era uma mulher que o mar carregou e nunca devolveu. Ela só queria responder."
+      "txt": "A vila respondeu ao rádio. A Voz agradeceu e desligou. O mar não ficou limpo: ficou quieto, que é o melhor que ele faz. A maré entrou, cobriu a rua, a casa e o barco, e parou aí, como visita mal-educada. O peixe passa entre as portas e não come nada: não é educação, é falta de interesse. Quem escuta de madrugada diz que a Voz agora lê uma lista de mercado. O primeiro item é café.",
+      "ze": "Ela não mentiu. O mar só carregava. Agora tem com quem conversar. Sina de quem não tem mais o que fazer.",
+      "lu": "Eu fui embora. Da costa, não da vila. Abro a janela do mesmo jeito. A água continua com a mesma cor, o que me irrita.",
+      "toq": "A Voz disse meu nome certo, do jeito que minha mãe dizia quando eu tava encrencado.",
+      "voz": "A Voz não era o mar. Era gente que o mar carregou e não devolveu. Ela só queria terminar a conversa."
     }
   ],
   "dailyMods": [
@@ -1000,5 +1023,77 @@
       "desc": "O mapa fica no escuro. Holofote e estilingue pagam o aluguel.",
       "dark": true
     }
-  ]
+  ],
+  "molho": {
+    "eventos": {
+      "barco_pirata": {
+        "titulo": "BARCO ENCALHADO",
+        "texto": "Casco novo na maré. Dá pra saquear. Dá pra o Zé se cortar no ferro.",
+        "sim": "SAQUEAR",
+        "nao": "DEIXAR"
+      },
+      "gaivota_ladra": {
+        "titulo": "GAIVOTA LADRA",
+        "texto": "Ela levou uma peça do campo e não tem intenção de devolver. O Zé corre atrás, se você pagar a gasolina.",
+        "sim": "MANDAR O ZÉ (60)",
+        "nao": "ACEITAR"
+      },
+      "lu_janela": {
+        "titulo": "DONA LÚ JOGOU ALGO",
+        "texto": "Veio pela janela. Não foi por educação. Aproveita.",
+        "sim": "PEGAR",
+        "nao": ""
+      },
+      "toquinho_balao": {
+        "titulo": "TOQUINHO SOLTOU UM BALÃO",
+        "texto": "Os bichos vão olhar pra cima por uma onda. Burro, mas funcional.",
+        "sim": "OK",
+        "nao": ""
+      },
+      "bau_mar": {
+        "titulo": "O MAR DEVOLVEU UM BAÚ",
+        "texto": "Tampa enferrujada. Dentro tem sucata... ou tem dente.",
+        "sim": "ABRIR",
+        "nao": "DEIXAR"
+      },
+      "bicho_raro": {
+        "titulo": "BOIANDO NO CANO",
+        "texto": "Não é da onda. É visita. Vale mais morto.",
+        "sim": "OK",
+        "nao": ""
+      },
+      "radio_estacao": {
+        "titulo": "ESTAÇÃO NOVA",
+        "texto": "O rádio achou uma frequência. Toca até o fim da partida. Nenhuma é oficial.",
+        "sim": "OK",
+        "nao": ""
+      },
+      "garrafa_ze": {
+        "titulo": "GARRAFA COM RECADO",
+        "texto": "Dentro tem um papel. O Zé leu, riu, e não contou.",
+        "sim": "OK",
+        "nao": ""
+      },
+      "cachorro_real": {
+        "titulo": "UM CACHORRO DE VERDADE",
+        "texto": "Apareceu, latiu, e os bichos pequenos deram meia volta. Se você tem o balde, os dois vão se encontrar.",
+        "sim": "OK",
+        "nao": ""
+      }
+    },
+    "gritos": [
+      "OLHA O TAMANHO DISSO!",
+      "ISSO NÃO ERA PEIXE. ERA IDEIA.",
+      "SEGURA AÍ!",
+      "A SOGRA ME BUSCANDO?",
+      "CORRE, ZÉ!",
+      "ESSE AQUI É TEIMOSO!"
+    ],
+    "variacoes": {
+      "tema": "ONDA DE %s",
+      "silenciosa": "...SILÊNCIO...",
+      "corredor": "TUDO NUM CORREDOR SÓ",
+      "bonus": "ONDA BÔNUS: SUCATA NA ÁREA"
+    }
+  }
 }

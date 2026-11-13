@@ -40,7 +40,147 @@ export const UI=(function(){
     if(!el)throw new Error('elemento #'+id+' não encontrado no documento');
     return el;
   };
-  const scr=must('screen'),shopEl=must('shop'),top=must('topbar');
+  const scr=must('screen'),shopEl=must('shop'),top=must('topbar'),ctxEl=must('ctxmenu');
+
+  /**
+   * Menu de contexto (botão direito).
+   *
+   * O jogo desenha em canvas, então o menu é um painel DOM posicionado por
+   * cima: herda foco, teclado e a escala de fonte das opções. Quem decide os
+   * itens é `game.ts` (`abrirMenuContexto`) — a UI só desenha e despacha.
+   */
+  type CtxItem={label:string;act?:string;arg?:string;dis?:boolean;hint?:string;custo?:string;sep?:boolean};
+  let ctxAberto=false;
+  function hideCtx(){ctxEl.classList.remove('on');ctxEl.classList.add('hidden');ctxAberto=false;}
+  function ctxMenu(titulo:string,itens:CtxItem[],px:number,py:number){
+    let html='<div class="ctxhead">'+titulo+'</div>';
+    for(const it of itens){
+      if(it.sep){html+='<div class="ctxsep"></div>';continue;}
+      const custo=it.custo?' <span class="'+(it.dis?'dis-custo':'custo')+'">'+it.custo+'</span>':'';
+      html+='<button class="ctxitem'+(it.dis?' dis':'')+'" data-act="'+(it.act||'nada')+'"'+
+        (it.arg!==undefined?' data-arg="'+it.arg+'"':'')+(it.dis?' disabled':'')+'>'+
+        it.label+custo+(it.hint?'<br><span class="ctxhint">'+it.hint+'</span>':'')+'</button>';
+    }
+    ctxEl.innerHTML=html;
+    // px/py são PIXELS relativos ao #stage (é lá que o menu mora). Torna
+    // visível antes de medir — display:none não tem tamanho.
+    ctxEl.classList.remove('hidden');ctxEl.classList.add('on');ctxAberto=true;
+    const st=document.getElementById('stage')!.getBoundingClientRect();
+    const w=ctxEl.offsetWidth||240, h=ctxEl.offsetHeight||200;
+    // cabe pra direita/baixo? se não couber, espelha pro outro lado do cursor
+    const x=px+w+8<=st.width?px:Math.max(4,px-w);
+    const y=py+h+8<=st.height?py:Math.max(4,py-h);
+    ctxEl.style.left=Math.round(Math.max(4,Math.min(x,st.width-w-4)))+'px';
+    ctxEl.style.top=Math.round(Math.max(4,Math.min(y,st.height-h-4)))+'px';
+    const primeiro=ctxEl.querySelector('.ctxitem:not(.dis)') as HTMLButtonElement|null;
+    if(primeiro)primeiro.focus();
+  }
+  function ctxEstaAberto(){return ctxAberto;}
+
+  /**
+   * Menu de contexto FORA do jogo (telas DOM).
+   *
+   * Regra: dentro do palco o botão direito nunca abre o menu do navegador —
+   * ele sempre abre o nosso, com itens do que está sob o cursor. Cada
+   * elemento clicável ganha `data-ctx="<tópico>:<arg>"`; sem alvo, o menu
+   * oferece o que a tela tem.
+   */
+  function ctxAcaoTela(act: string, arg: string): void {
+    switch(act){
+      case 'slot_usar':SaveDB.setSlot(Number(arg));toast('story','SLOT '+String(Number(arg)+1)+' EM USO.');title();break;
+      case 'slot_apagar':if(confirm('APAGAR o slot '+String(Number(arg)+1)+'? Árvore, campanha e bestiário vão junto.')){SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();}break;
+      case 'slot_sucata':toast('ach','SUCATA VELHA: '+SaveDB.slotInfo(Number(arg)).oldScrap+'. NÃO VIAJA ENTRE SLOTS.');break;
+      case 'mapa_jogar':api.deckModo='campaign';deckScreen(Number(arg));break;
+      case 'mapa_endless':api.deckModo='endless';deckScreen(clamp(SaveDB.slot.campaign,0,MAPS.length-1));break;
+      case 'mapa_boss':api.deckModo='boss';deckScreen(Number(arg));break;
+      case 'mapa_reset':if(confirm('Apagar o progresso deste mapa?')){SaveDB.resetMapa(Number(arg));toast('story','PROGRESSO APAGADO. O ZÉ NÃO VIU NADA.');maps();}break;
+      case 'mapa_info':{const m=MAPS[Number(arg)];toast('story',m.nome+': '+m.bio);break;}
+      case 'deck_pick':{const k=String(arg);toast('story',(MACH[k]?MACH[k].nome:k)+': '+(MACH[k]?MACH[k].desc:''));break;}
+      case 'codex_aba':codex(String(arg));break;
+      case 'pause_acao':{const a=String(arg);if(a==='resume')Game.resume();else if(a==='options')options();else if(a==='codex')codex();else if(a==='retry')Game.restart();else if(a==='title')Game.quitToTitle();else if(a==='save')SaveDB.save();break;}
+      default:UI.hideCtx();break;
+    }
+    UI.hideCtx();
+  }
+  function ctxDaTela(ev: MouseEvent): void {
+    ev.preventDefault(); // o menu do navegador nunca aparece dentro do palco
+    const alvo=(ev.target as HTMLElement|null)?.closest('[data-ctx]') as HTMLElement|null;
+    const r=document.getElementById('stage')!.getBoundingClientRect();
+    const px=ev.clientX-r.left, py=ev.clientY-r.top;
+    const montar=TELAS_CTX[Game.screen];
+    if(!montar){UI.ctxMenu('MARÉ PODRE',[{label:'Nada aqui',act:'nada'}],px,py);return;}
+    const {titulo,itens}=montar(alvo?alvo.dataset.ctx||'':'');
+    UI.ctxMenu(titulo,itens,px,py);
+  }
+  const stageEl=document.getElementById('stage');
+  if(stageEl)stageEl.addEventListener('contextmenu',ctxDaTela);
+
+  /** Itens por tela. Cada elemento com data-ctx="tópico:arg" entra aqui. */
+  const TELAS_CTX: Record<string,(alvo:string)=>{titulo:string,itens:CtxItem[]}>={
+    slots:(alvo)=>{
+      const idx=alvo.startsWith('slot:')?Number(alvo.split(':')[1]||0):Number(SaveDB.slotIndex);
+      const atual=idx===SaveDB.slotIndex;
+      const travado=atual&&!!G;
+      return{titulo:(SaveDB.slotInfo(idx).name||'SLOT '+(idx+1)),itens:[
+        {label:'Usar este slot',act:'slot_usar',arg:String(idx),dis:travado,hint:travado?'partida em andamento':''},
+        {label:'Quanto de sucata velha',act:'slot_sucata',arg:String(idx)},
+        {sep:true,label:''},
+        {label:'Apagar o slot',act:'slot_apagar',arg:String(idx),dis:travado},
+        {label:'Fechar',act:'nada'}]};
+    },
+    maps:(alvo)=>{
+      if(!alvo.startsWith('mapa:'))return{titulo:'A COSTA',itens:[
+        {label:'Ver o caderno',act:'codex_aba',arg:'bestiary'},
+        {label:'Fechar',act:'nada'}]};
+      const i=Number(alvo.split(':')[1]||0),m=MAPS[i],unl=mapUnlocked(i);
+      const podeLimpar=unl&&((SaveDB.slot.stars[i]||0)>0||(SaveDB.slot.best[i]||0)>0);
+      return{titulo:m.nome,itens:[
+        {label:'Jogar (escolher deck)',act:'mapa_jogar',arg:String(i),dis:!unl},
+        {label:'Noite Infinita neste mapa',act:'mapa_endless',arg:String(i)},
+        {label:'Modo Chefe',act:'mapa_boss',arg:String(i),dis:!unl},
+        {sep:true,label:''},
+        {label:'Ler a bio',act:'mapa_info',arg:String(i)},
+        {label:'Apagar o progresso do mapa',act:'mapa_reset',arg:String(i),dis:!podeLimpar}]};
+    },
+    deck:(alvo)=>(alvo.startsWith('deckpick:')
+      ? {titulo:'PEÇA',itens:[
+          {label:'Ver a ficha',act:'deck_pick',arg:alvo.split(':')[1]||''},
+          {label:'Ver o caderno',act:'codex_aba',arg:'machines'},
+          {label:'Fechar',act:'nada'}]}
+      : {titulo:'O QUE LEVAR',itens:[
+          {label:'Ver a galeria de peças',act:'codex_aba',arg:'machines'},
+          {label:'Como resolver bichos',act:'codex_aba',arg:'bestiary'},
+          {label:'Fechar',act:'nada'}]}),
+    shop:(alvo)=>alvo.startsWith('offer:')
+      ? {titulo:'OFERTA DO ZÉ',itens:[{label:'Pegar essa',act:'eventook',arg:'1'},{label:'Recusar',act:'eventook',arg:'0'}]}
+      : {titulo:'BANCA DO ZÉ',itens:[
+          {label:'Ver o caderno',act:'codex_aba',arg:'machines'},
+          {label:'Fechar',act:'nada'}]},
+    pause:()=>({titulo:'PAUSA',itens:[
+      {label:'Retomar',act:'pause_acao',arg:'resume'},
+      {label:'Opções',act:'pause_acao',arg:'options'},
+      {label:'Caderno do Zé',act:'pause_acao',arg:'codex'},
+      {sep:true,label:''},
+      {label:'Reiniciar o mapa',act:'pause_acao',arg:'retry'},
+      {label:'Salvar',act:'pause_acao',arg:'save'},
+      {label:'Sair pro título',act:'pause_acao',arg:'title'}]}),
+    codex:(alvo)=>({titulo:'CADERNO DO ZÉ',itens:[
+      ...['bestiary','machines','chefes','radio','ach'].map(t=>({label:'Aba: '+t,act:'codex_aba',arg:t,dis:alvo==='aba:'+t})),
+      {sep:true,label:''},
+      {label:'Fechar o caderno',act:'geral_voltar'}]}),
+    options:()=>({titulo:'OPÇÕES',itens:[
+      {label:'Salvar tudo',act:'pause_acao',arg:'save'},
+      {label:'Fechar',act:'nada'}]}),
+  };
+  function fechaCtxNoCliqueFora(ev: MouseEvent): void {
+    if(!ctxAberto)return;
+    const alvo=ev.target as HTMLElement|null;
+    if(alvo&&ctxEl.contains(alvo))return;
+    hideCtx();
+  }
+  document.addEventListener('mousedown',fechaCtxNoCliqueFora,true);
+  window.addEventListener('blur',hideCtx);
+  document.addEventListener('keydown',(e)=>{if(e.key==='Escape'&&ctxAberto){hideCtx();e.stopPropagation();}},true);
 
   // ---------- utilidades ----------
   function stars(n: number){return '<span class="stars">'+'★'.repeat(n)+'☆'.repeat(3-n)+'</span>';}
@@ -93,7 +233,7 @@ export const UI=(function(){
   // ---------- SLOTS ----------
   function slots(){
     const cards=[0,1,2].map(i=>{const s=SaveDB.slotInfo(i);
-      return '<div class="slot '+(i===SaveDB.slotIndex?'current':'')+'">'+
+      return '<div class="slot '+(i===SaveDB.slotIndex?'current':'')+'" data-ctx="slot:'+i+'">'+
         '<h3>'+s.name+'</h3>'+
         '<div class="kv">sucata velha: <b>'+s.oldScrap+'</b><br>campanha: <b>'+Math.min(MAPS.length,s.campaign+1)+'/'+MAPS.length+'</b><br>partidas: <b>'+(s.runs||0)+'</b> · selos: <b>'+Object.keys(s.ach||{}).length+'/'+ACHIEVEMENTS.length+'</b><br>'+
         'último jogo: '+(s.lastPlayed?new Date(s.lastPlayed).toLocaleDateString('pt-BR'):'nunca')+'</div>'+
@@ -107,14 +247,89 @@ export const UI=(function(){
 
   // ---------- MAPAS ----------
   function mapArt(m){const p=m.pal;return 'background:linear-gradient(180deg,'+p.sky1+' 0%,'+p.sky2+' 55%,'+p.water+' 56%,'+p.water+' 100%)';}
+  /**
+   * Tela de seleção de plantas (BLOCO M.4).
+   *
+   * Antes da partida o jogador monta um deck de 7 e joga com ele: menos
+   * opções, mais compromisso. Cartas grandes, contador, trava bloqueada
+   * mostrando o que ainda não existe, e o Zé comentando a escolha.
+   */
+  let deckSel: string[] = [];
+  function deckScreen(map: number){
+    deckSel = (SaveDB.getDeck(map) || []).slice(0, 7);
+    api.deckMapa = map;
+    drawDeck(map);
+  }
+  function drawDeck(map: number){
+    // Pé de Cabra é ferramenta, não peça: não entra no deck
+    const liberadas = availableMachines().filter(k => k !== 'remover');
+    const trava = MACH_ORDER.filter(k => MACH[k] && k !== 'remover' && !liberadas.includes(k));
+    const cartas = liberadas.map(k => {
+      const on = deckSel.includes(k);
+      const custo = machCost(k);
+      return '<div class="node '+(on ? 'max' : '')+'" data-act="deckpick" data-arg="'+k+'" data-ctx="deckpick:'+k+'" tabindex="0" style="cursor:pointer">'+
+        '<h4>'+MACH[k].nome+(on ? ' ✔' : '')+'</h4>'+
+        '<small>'+MACH[k].desc+'</small>'+
+        '<div class="cost"><span>'+(k === 'coisa_ze' ? 'DO ZÉ' : custo + ' sucata')+'</span><span>vida '+(MACH[k].hp||'?')+' · '+(MACH[k].cd||'?')+'s</span></div>'+
+        '</div>';
+    }).join('');
+    const tranca = trava.map(k => {
+      const dica = SaveDB.slot.seenM[k] ? MACH[k].sin : 'O Zé ainda não trouxe isso.';
+      return '<div class="node locked"><h4>???</h4><small>'+dica+'</small></div>';
+    }).join('');
+    const n = deckSel.length;
+    const pode = n === 7;
+    const zeDeck = zeComentaDeck(deckSel, liberadas);
+    const top = '<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:32px;margin:0">O QUE LEVAR</h2>'+
+      '<p class="muted">Sete peças. Escolhe com cuidado — na volta pro corredor não tem troca.</p>'+
+      '<div class="kv" style="margin:8px 0">ESCOLHIDAS: <b class="'+(pode ? 'gold' : 'bad')+'">'+n+'/7</b>'+
+      (pode ? '' : ' <span class="muted">— faltam ' + (7 - n) + '</span>')+'</div>'+
+      (zeDeck ? '<p class="ze" style="border-left:2px solid #6c5b21;padding-left:8px;color:#e3cf95;font-style:italic;margin:0 0 10px">ZÉ: '+zeDeck+'</p>' : '')+
+      '<div class="row">'+btn(pode ? 'COMEÇAR' : 'FALTAM ' + (7 - n), pode ? 'deckgo' : 'nada', '' + map, pode ? 'primary' : '')+'</div>'+
+      '<div class="space"></div>';
+    const grade = '<div class="branches" style="grid-template-columns:repeat(2,1fr)">'+cartas+tranca+'</div>';
+    setScreen(top + grade +
+      '<div class="row" style="margin-top:14px">'+btn('GUARDAR PRA DEPOIS','decksave','' + map, 'small')+btn('VOLTAR','maps','','small')+'</div>');
+  }
+  /** O Zé comenta a escolha: peça cara demais, barata demais, ou balde. */
+  function zeComentaDeck(deck: string[], liberadas: string[]): string {
+    if (deck.length === 0) return 'Nada? Vai de mão abanando, então.';
+    const custo = (k: string) => MACH[k] ? (MACH[k].cost || 0) : 0;
+    const soma = deck.reduce((a, k) => a + custo(k), 0);
+    const mediano = liberadas.map(custo).sort((a, b) => a - b)[Math.floor(liberadas.length / 2)] || 100;
+    const baldes = deck.filter(k => k === 'geladeira' || k === 'geladeira_bomba').length;
+    if (baldes >= 4) return 'Quatro geladeira. Isso é mudança, não defesa.';
+    if (soma > mediano * deck.length * 1.6) return 'Tudo caro. Quando a maré vier, tu vai tá catando moeda.';
+    if (soma < mediano * deck.length * 0.5) return 'Tudo barato. Corajoso. Ou com pressa.';
+    if (deck.includes('coisa_ze')) return 'Levando a minha obra. Ela funciona. Mais ou menos.';
+    return 'Escolheu. Agora aguenta.';
+  }
+  /**
+   * Tela de evento do molho (BLOCO M.6).
+   *
+   * Pausa o jogo e oferece a escolha — mesma regra do Zé: nada de evento
+   * com tempo obrigatório. `nao` vazio = evento sem escolha (só "OK").
+   */
+  function evento(id: string, titulo: string, texto: string, sim: string, nao: string){
+    setScreen('<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:32px;margin:0">'+titulo+'</h2>'+
+      '<p class="muted" style="max-width:60ch;margin:8px auto">'+texto+'</p>'+
+      '<div class="menu">'+
+      (nao ? btn(sim,'eventook','1','primary')+btn(nao,'eventook','0','') : btn(sim||'OK','eventook','1','primary'))+
+      '</div>'+
+      '<div class="bottomline">Escolha do Zé também pausa. Nada aqui é cronometrado.</div>');
+  }
   function maps(){
     const cards=MAPS.map((m,i)=>{
       const unl=mapUnlocked(i);const st=SaveDB.slot.stars[i]||0;
-      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'map':'nada')+'" data-arg="'+i+'">'+
+      // resetar save deste mapa: só faz sentido em mapa já aberto/jogado
+      const podeLimpar=unl&&(st>0||(SaveDB.slot.best[i]||0)>0);
+      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'deck':'nada')+'" data-arg="'+i+'" data-ctx="mapa:'+i+'">'+
         '<div class="art" style="'+mapArt(m)+'"><div class="no">'+(i+1)+'</div>'+(unl?'<div class="stars">'+stars(st)+'</div>':'<div class="stars" style="color:#777">TRANCADO</div>')+'</div>'+
         '<h3>'+m.nome+'</h3><p>'+m.sub+'</p>'+
         '<div class="tags">'+tag(m.weather.toUpperCase())+tag(m.resShort,'hot')+tag(m.boss==='mare'?'FINAL':'CHEFE')+'</div>'+
-        '<p style="margin-top:6px;color:#8d907c">'+m.bio+'</p></div>';}).join('');
+        '<p style="margin-top:6px;color:#8d907c">'+m.bio+'</p>'+
+        (podeLimpar?'<p style="margin-top:8px">'+btn('APAGAR ESTE MAPA','resetmapa',''+i,'tiny')+'</p>':'')+
+        '</div>';}).join('');
     setScreen('<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:30px;margin:0">A COSTA</h2>'+
       '<p class="muted">Três ondas e um chefe por mapa. Terminar um mapa abre o próximo. Você pode voltar e melhorar a nota.</p>'+
       '<div class="mapgrid">'+cards+'</div>'+
@@ -128,13 +343,13 @@ export const UI=(function(){
       '<p class="muted">Sem chefe marcado, sem amanhã. A cada três ondas vem um Seu Bento de encomenda. Melhor marca: '+JSON.stringify(SaveDB.slot.endlessBest)+'.</p>'+
       '<div class="mapgrid" style="grid-template-columns:repeat(3,1fr)">'+
       [['DEVAGAR','costa calma, maré mansa',0],['COMO SEMPRE','do jeito que o mar gosta',1],['SEM DÓ','eles comeram o almoço',2]].map(d=>
-        '<div class="mapcard" data-act="endless" data-arg="'+d[2]+'"><div class="art" style="background:linear-gradient(180deg,#1a2a2e,#0a1418)"><div class="no">∞</div></div>'+
+        '<div class="mapcard" data-act="deckendless" data-arg="'+d[2]+'"><div class="art" style="background:linear-gradient(180deg,#1a2a2e,#0a1418)"><div class="no">∞</div></div>'+
         '<h3>'+d[0]+'</h3><p>'+d[1]+'</p><div class="tags">'+tag('MAPA: '+MAPS[map].nome)+'</div></div>').join('')+
       '</div><div class="space"></div>'+btn('VOLTAR','title','','small'));
   }
   function bossMenu(){
     const cards=MAPS.map((m,i)=>{const b=BOSSES[m.boss];const unl=mapUnlocked(i);const best=SaveDB.slot.bossBest[i];
-      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'boss':'nada')+'" data-arg="'+i+'">'+
+      return '<div class="mapcard '+(unl?'':'locked')+'" data-act="'+(unl?'deckboss':'nada')+'" data-arg="'+i+'">'+
         '<div class="art" style="'+mapArt(m)+'"><div class="no">'+(i+1)+'</div></div>'+
         '<h3>'+b.nome+'</h3><p>'+b.desc+'</p><div class="tags">'+tag('FASES: '+(m.boss==='mare'?'SOBREVIVER':m.boss==='gerente'?'7':'3'))+'</div>'+
         (best?'<p class="gold">melhor: '+Math.round(best)+'s</p>':'')+'</div>';}).join('');
@@ -161,7 +376,7 @@ export const UI=(function(){
   function pause(){
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:34px;color:var(--bone)">PAUSA</h2>'+
       '<p class="muted">'+G.map.nome+' · '+String(G.map.resShort)+' · onda '+(G.survived+1)+' · '+Math.round(G.t)+'s<br>'+
-      'peças: '+G.machines.length+' · bichos mortos: '+G.kills+' · sucata: '+G.scrap+'</p>'+
+      'peças: '+G.machines.length+' · bichos mortos: '+G.kills+' · sucata: '+fmt(G.scrap)+'</p>'+
       '<div class="menu">'+btn('RETOMAR','resume','','primary')+btn('OPÇÕES','options','')+btn('BESTIÁRIO','codex','')+
       btn('REINICIAR','retry','','danger')+btn('SALVAR','save','','small')+btn('SAIR PRO TÍTULO','title','','small')+'</div>'+
       '<div class="bottomline">Salva automaticamente a cada onda e ao pausar. ESC ou P pausa, M silencia, 1–9 escolhe peça.<br>Legenda: 🟩 estrutura de pé · 🟥 destruída · ícones da vila = vidas.</div>');
@@ -196,38 +411,45 @@ export const UI=(function(){
   function codex(tab?: string){
     if(tab)codexTab=tab;
     const s=SaveDB.slot;
-    const seenB=Object.keys(s.seenB||{}).length,seenM=Object.keys(s.seenM||{}).length;
-    const tabs=['bestiary','machines','radio','ach'];
+    // BLOCO M.5: o bestiário abre por MORTE (mateiB), a galeria por construção
+    // (seenM) e os chefes por vitória (venciB). Save novo: tudo vazio.
+    const mates=Object.keys(s.mateiB||{}).length,plantadas=Object.keys(s.seenM||{}).length;
+    const tabs=['bestiary','machines','chefes','radio','ach'];
+    const nomeTab: Record<string,string>={bestiary:'BICHOS',machines:'ENGENHOCAS',chefes:'CHEFES',radio:'RÁDIO',ach:'SELOS'};
     let body='';
     if(codexTab==='bestiary'){
       body='<div class="codexGrid">'+ENEMY_ORDER.map(id=>{
-        const e=ENEMY[id],seen=!!s.seenB[id]||seenB>0&&false;
-        return '<div class="beast '+(seen?'seen':'locked')+'"><h4>'+(seen?e.nome:'???')+'</h4>'+
-          '<p>'+(seen?e.desc:'Você ainda não viu esse. Ou viu e não voltou pra contar.')+'</p>'+
-          '<div class="kill">'+(seen?'COMO RESOLVER: '+e.hint:'DICA: sobreviva.')+'</div></div>';}).join('')+
-        Object.entries(BOSSES).map(([id,b])=>'<div class="beast '+(s.seenB[id]?'seen':'locked')+'"><h4>'+(s.seenB[id]?b.nome:'???')+'</h4>'+
-          '<p>'+(s.seenB[id]?b.desc:'Chefe não catalogado.')+'</p><div class="kill">'+(s.seenB[id]?b.hint:'')+'</div></div>').join('')+'</div>'+
-        '<p class="muted" style="margin-top:8px">'+seenB+'/'+ENEMY_ORDER.length+' criaturas catalogadas. O que não viu continua borrado.</p>';
+        const e=ENEMY[id],visto=!!s.mateiB[id];
+        return '<div class="beast '+(visto?'seen':'locked')+'"><h4>'+(visto?e.nome:'???')+'</h4>'+
+          '<p>'+(visto?e.desc:'Não matou esse ainda. Ou não voltou pra contar.')+'</p>'+
+          '<div class="kill">'+(visto?'COMO RESOLVER: '+e.hint+'<br><span class="muted">FATO INÚTIL: '+(e.fato||'—')+'</span>':'DICA: aparece, morre, volta aqui.')+'</div></div>';}).join('')+'</div>'+
+        '<p class="muted" style="margin-top:8px">'+mates+'/'+ENEMY_ORDER.length+' bichos no caderno. O resto continua borrado — e é por isso que você volta.</p>';
     }else if(codexTab==='machines'){
-      body='<div class="codexGrid">'+MACH_ORDER.map(id=>{const m=MACH[id],seen=!!s.seenM[id];
-        return '<div class="beast '+(seen?'seen':'locked')+'"><h4>'+(seen?m.nome:'???')+'</h4><p>'+(seen?m.desc:'Ainda não construiu.')+'</p>'+
-          '<div class="kill">'+(seen?'SINERGIA: '+m.sin:'')+'</div></div>';}).join('')+'</div>'+
-        '<p class="muted" style="margin-top:8px">'+seenM+'/'+MACH_ORDER.length+' engenhocas na galeria.</p>';
+      body='<div class="codexGrid">'+MACH_ORDER.filter(k=>k!=='remover').map(id=>{const m=MACH[id],visto=!!s.seenM[id];
+        return '<div class="beast '+(visto?'seen':'locked')+'"><h4>'+(visto?m.nome:'???')+'</h4><p>'+(visto?m.desc:'Ainda não construiu essa.')+'</p>'+
+          '<div class="kill">'+(visto?'CUSTO '+machCost(id)+' · VIDA '+m.hp+' · RECARGA '+m.cd+'s · NÍVEL MAX '+(UPG[id]?UPG[id].length:0)+'<br><span class="muted">SINERGIA: '+m.sin+' · FATO INÚTIL: '+(m.fato||'—')+'</span>':'')+'</div></div>';}).join('')+'</div>'+
+        '<p class="muted" style="margin-top:8px">'+plantadas+'/18 engenhocas na galeria. Planta uma vez, fica no caderno pra sempre.</p>';
+    }else if(codexTab==='chefes'){
+      body='<div class="codexGrid">'+Object.entries(BOSSES).map(([id,b])=>{
+        const vencido=!!s.venciB[id];
+        return '<div class="beast '+(vencido?'seen':'locked')+'"><h4>'+(vencido?b.nome:'???')+'</h4>'+
+          '<p>'+(vencido?b.desc:'Ninguém derrotou esse ainda. O Zé não comenta.')+'</p>'+
+          '<div class="kill">'+(vencido?'FASES: 3+ · HP '+b.hp+'<br><span class="muted">FATO INÚTIL: '+(b.fato||'—')+'</span> · ZÉ: "Sobreviveu. Não pergunte como."':'')+'</div></div>';}).join('')+'</div>'+
+        '<p class="muted" style="margin-top:8px">'+Object.keys(s.venciB||{}).length+'/6 chefes no caderno. Cada um é um mapa, e cada mapa é uma história.</p>';
     }else if(codexTab==='radio'){
-      const unlocked=!!s.tree['historias']||true;
       body='<div class="scroll"><div class="panel">'+
-        RADIO.map(r=>'<p style="margin-bottom:7px">'+(r.map<=s.campaign||unlocked?'<span class="acid">['+MAPS[r.map].nome+']</span> '+r.txt:'<span class="muted">[frequência morta]</span>')+'</p>').join('')+
+        RADIO.map(r=>'<p style="margin-bottom:7px">'+(r.map<=s.campaign?'<span class="acid">['+MAPS[r.map].nome+']</span> '+r.txt:'<span class="muted">[frequência morta]</span>')+'</p>').join('')+
         '</div></div><p class="muted">A Voz do Rádio fala em todas as frequências. Nenhuma é oficial.</p>';
     }else{
      body='<div class="codexGrid">'+ACHIEVEMENTS.map(a=>{const got=!!s.ach[a.id];
-        return '<div class="beast '+(got?'seen':'locked')+'"><h4>'+(got?a.nome:'SELO OCULTO')+'</h4><p>'+(got?a.desc:'O Zé sabe. Não fala.')+'</p></div>';}).join('')+'</div>'+
-        '<p class="muted">Conquistas não dão vantagem. Dão assunto.</p>';
+        return '<div class="beast '+(got?'seen':'locked')+'"><h4>'+(got?a.nome:'SELO OCULTO')+'</h4><p>'+(got?a.desc:'O Zé sabe. Não fala.')+'</p></div>';}).join('')+
+        '</div><p class="muted">Conquistas não dão vantagem. Dão assunto.</p>';
     }
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:30px;color:var(--bone)">CADERNO DO ZÉ</h2>'+
-      '<div class="tabs">'+tabs.map(t=>'<div class="tab '+(codexTab===t?'on':'')+'" data-act="codextab" data-arg="'+t+'">'+
-        ({bestiary:'BICHOS',machines:'ENGENHOCAS',radio:'RÁDIO',ach:'SELOS'})[t]+'</div>').join('')+'</div>'+body+
+      '<div class="tabs">'+tabs.map(t=>'<div class="tab '+(codexTab===t?'on':'')+'" data-act="codextab" data-arg="'+t+'" data-ctx="aba:'+t+'">'+nomeTab[t]+'</div>').join('')+'</div>'+body+
       '<div class="space"></div>'+btn('VOLTAR','back','','small'));
   }
+
 
   // ---------- ÁRVORE ----------
   function tree(){
@@ -280,16 +502,16 @@ export const UI=(function(){
     shopEl.innerHTML='<div class="scr"><div class="scr-inner">'+
       '<div class="logo" style="font-size:clamp(26px,5vw,54px)">O ZÉ TROUXE<br><em>UMAS COISAS</em></div>'+
       '<p class="muted">Onda '+(G.survived||0)+' aguentada. Escolhe uma e volta pro corredor. Não tem tempo pra duas — tirando o tempo que você quiser.</p>'+
-      '<div class="offers">'+offers.map((o,i)=>'<div class="offer"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':o.kind==='sucataVelha'?'CONVERTER':'RECURSO')+'</div>'+
+      '<div class="offers">'+offers.map((o,i)=>'<div class="offer" data-ctx="offer:'+i+'"><div class="kind">'+(o.kind==='up'?'MELHORIA':o.kind==='unlock'?'PEÇA NOVA':o.kind==='repair'?'REBOQUE':o.kind==='heal'?'GRAXA':o.kind==='sucataVelha'?'CONVERTER':'RECURSO')+'</div>'+
         '<h4>'+desc[o.kind](o)+'</h4><p>'+sub[o.kind](o)+'</p>'+
         (o.kind==='up'?'<p class="gold">nível '+(((G.up[o.k||'']||0))+1)+'/3</p>':'')+
         '<div class="price">'+btn('ESCOLHER','offer',i,'small primary')+'</div></div>').join('')+'</div>'+
       '<div class="hr"></div>'+
       '<p class="muted">BANCA DO ZÉ — compra com a sucata do corredor. Pode levar quantas quiser.</p>'+
-      '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" title="'+it.desc+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
+      '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" data-ctx="buyitem:'+it.id+'" title="'+it.desc+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
         it.nome+' · '+it.cost+'</button>').join('')+'</div>'+
       '<p class="muted" style="margin-top:6px;font-size:12px">'+(Game.shopItems||[]).map(it=>'<b>'+it.nome+':</b> '+it.desc).join(' · ')+'</p>'+
-      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+G.scrap+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+' · imposto do próximo round: <b>'+impostoDoRound(G.machines.length,G.survived)+'</b></p>'+
+      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+fmt(G.scrap)+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+' · imposto do próximo round: <b>'+impostoDoRound(G.machines.length,G.survived)+'</b></p>'+
       '<div class="bottomline">"+ reconstruir uma parede" pode salvar a partida. "Um ímã" também. O Zé não dá garantia.</div>'+
       '</div></div>';
     shopEl.classList.remove('hidden');scr.classList.add('hidden');top.classList.add('hidden');
@@ -304,14 +526,14 @@ export const UI=(function(){
     const who=(summary.mapName||'A VILA');
     if(summary.win){
       title=summary.mode==='endless'?'A NOITE CANSou':'A VILA AGUENTOU';
-      text=lost.length?'Perdemos '+list(lost)+'. O mar continua podre. '+who+' continua de pé, do jeito que dá.'
-        :'Nada caiu hoje. '+who+' continua de pé. O mar continua podre. Amanhã tem mais.';
+      text=lost.length?'Perdemos '+list(lost)+'. O mar continuou podre, do jeito que ele gosta. '+who+' continua de pé, do jeito que dá.'
+        :'Nada caiu hoje. '+who+' continua de pé. O mar continuou podre. Amanhã tem mais bicho.';
     }else if(summary.mode==='endless'){
       title='A NOITE GANHOU';
-      text='Chegou na onda '+(summary.survived+1)+'. Perdemos o Zé. Ele não era herói, era o que tinha.';
+      text='Chegou na onda '+(summary.survived+1)+'. O Zé foi. O chapéu ficou. A gente continua.';
     }else{
       title='PERDEMOS O ZÉ';
-      text=(lost.length?'Perdemos '+list(lost)+'. ':'')+'O mar ficou com o resto. Ninguém aqui era bom. Só era daqui.';
+      text=(lost.length?'Perdemos '+list(lost)+'. ':'')+'O mar levou o resto. A gente era ruim, mas era daqui.';
     }
     const next=summary.mode==='campaign'&&summary.win&&summary.mapIndex!==MAPS.length-1;
     setScreen('<div class="endTitle">'+title+'</div><div class="endText">'+text+'</div>'+
@@ -319,7 +541,7 @@ export const UI=(function(){
       '<div class="panel" style="max-width:560px;margin:12px auto"><div class="kv">'+
       'BICHOS MORTOS: <b>'+summary.kills+'</b> · TEMPO: <b>'+Math.round(summary.time)+'s</b> · ONDAS: <b>'+summary.survived+'</b><br>'+
       'SUCATA VELHA GANHA: <b class="gold">+'+summary.meta+'</b> · TOTAL: '+SaveDB.slot.oldScrap+'<br>'+
-      'BESTIÁRIO: '+Object.keys(SaveDB.slot.seenB||{}).length+'/'+ENEMY_ORDER.length+' · ESTRUTURAS: '+structuresAlive()+'/'+STRUCTURES+
+      'CADERNO: '+Object.keys(SaveDB.slot.mateiB||{}).length+'/'+ENEMY_ORDER.length+' bichos · '+Object.keys(SaveDB.slot.seenM||{}).length+'/18 peças · ESTRUTURAS: '+structuresAlive()+'/'+STRUCTURES+
       '</div></div>'+
       '<div class="menu">'+
       (next?btn('PRÓXIMO MAPA','nextmap','','primary'):'')+
@@ -355,72 +577,80 @@ export const UI=(function(){
   }
 
   // ---------- HUD ----------
+  /**
+   * Barra de cartas: uma linha, largura calculada.
+   *
+   * A ADR 010 mandava quebrar em duas linhas quando não coubesse. Na prática
+   * o ramo era inalcançável: com no máximo 19 cartas e `avail ≈ 1120`, a
+   * conta dava `cols ≈ 35` — maior que qualquer baralho possível, então a
+   * quebra nunca executava (código morto descrito como regra). A ADR 012
+   * registra a volta à linha única.
+   */
   function cardLayout(){
     const list=availableMachines();
-    const x0=136, gap=2, h=58, rowH=h+4;
-    const rightMargin=24;
-    const avail=W-x0-rightMargin;
-    const minW=30;
-    const cols=Math.max(1,Math.floor(avail/(minW+gap)));
-    if(list.length<=cols){
-      const w=Math.min(48,Math.floor(avail/list.length)-gap);
-      return list.map((k,i)=>({k,x:x0+i*(w+gap),y:6,w,h}));
-    }
-    // Muitas cartas: quebra em duas linhas em vez de colidir com o menu de base.
-    const rows=2;
-    const perRow=Math.ceil(list.length/rows);
-    const w=Math.min(48,Math.floor(avail/perRow)-gap);
-    const out: {k:string,x:number,y:number,w:number,h:number}[]=[];
-    for(let i=0;i<list.length;i++){
-      const row=Math.floor(i/perRow);
-      const col=i%perRow;
-      out.push({k:list[i],x:x0+col*(w+gap),y:6+row*rowH,w,h});
-    }
-    return out;
+    const x0=136, gap=2, h=58;
+    const avail=W-x0-24;
+    const w=Math.min(48,Math.floor(avail/list.length)-gap);
+    return list.map((k,i)=>({k,x:x0+i*(w+gap),y:6,w,h}));
   }
   function cardAt(x,y){
-    if(y>6+58*2+8)return null;
+    if(y>6+58+8)return null;
     const hit=cardLayout().find(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h);
     return hit?hit.k:null;
   }
+  /**
+   * Escala de fonte das opções.
+   *
+   * O CSS cuida do DOM (`--fs`), mas o HUD é desenhado em canvas e tinha
+   * tamanhos fixos: quem aumentava a fonte nas opções via o HUD do mesmo
+   * tamanho. Aqui o canvas acompanha a mesma escala.
+   */
+  function fmono(px: number, negrito = false): string {
+    return (negrito ? 'bold ' : '') + Math.round(px * (SaveDB.options.font || 1.15)) + 'px monospace';
+  }
   function drawHUD(g){
     const p=g.map;
+    const painelH=Math.round(64*(SaveDB.options.font||1.15));
     // recurso
-    ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,64,4);ctx.fill();
+    ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,painelH,4);ctx.fill();
     ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
-    ctx.fillStyle='#f0e4bd';ctx.font='bold 26px "Consolas","Menlo","Monaco",monospace';ctx.fillText(fmt(g.scrap),46,32);
-    ctx.fillStyle='#9aa08a';ctx.font='13px monospace';ctx.fillText(p.resShort,46,44);
-    ctx.fillStyle='#7a806a';ctx.font='12px monospace';ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,56);
-    ctx.fillStyle='#c8b070';ctx.font='12px monospace';ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,65);
+    ctx.fillStyle='#f0e4bd';ctx.font=fmono(26,true);ctx.fillText(fmt(g.scrap),46,Math.round(32*(SaveDB.options.font||1.15)));
+    ctx.fillStyle='#9aa08a';ctx.font=fmono(13);ctx.fillText(p.resShort,46,Math.round(44*(SaveDB.options.font||1.15)));
+    ctx.fillStyle='#7a806a';ctx.font=fmono(12);ctx.fillText('VELHA: '+SaveDB.slot.oldScrap,46,Math.round(56*(SaveDB.options.font||1.15)));
+    ctx.fillStyle='#c8b070';ctx.font=fmono(12);ctx.fillText(g.mode==='endless'?'ONDA '+Math.min(g.waves.length,g.survived+1):'ONDA '+(g.survived+1),46,Math.round(65*(SaveDB.options.font||1.15)));
     // cartas
     cardLayout().forEach((r,i)=>{
       const m=MACH[r.k],cost=machCost(r.k),cool=g.cds&&g.cds[r.k]||0,up=(g.up&&g.up[r.k])||0;
       const can=g.scrap>=cost&&cool<=0&&g.selected!==r.k;
+      const cb=!!SaveDB.options.cb;
       ctx.fillStyle=g.selected===r.k?'rgba(90,70,30,.92)':'rgba(14,18,16,.78)';rr(r.x,r.y,r.w,r.h,3);ctx.fill();
-      ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();
+      // carta disponível vs indisponível: em modo daltonismo a indisponível
+      // ganha tracejado, para a informação não depender só de matiz.
+      if(cb&&!can){ctx.setLineDash([3,2]);}
+      ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([]);
       ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h-19);ctx.scale(.36,.36);ctx.globalAlpha=can||g.selected===r.k?1:.45;
       drawMachine({type:r.k,x:0,lane:0,t:g.t,hp:1,maxhp:1,anim:0,act:0,flash:0,_icon:true});ctx.restore();
-      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font='bold 13px monospace';ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
+      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font=fmono(13,true);ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
       const short=m.nome.split(' ')[0].toUpperCase().slice(0,7);
-      ctx.fillStyle='#a8aa94';ctx.font='9px monospace';ctx.fillText(short,r.x+3,r.y+9);
+      ctx.fillStyle='#a8aa94';ctx.font=fmono(9);ctx.fillText(short,r.x+3,r.y+9);
       if(up){for(let j=0;j<3;j++){ctx.fillStyle=j<up?'#e8c84a':'#39402f';ctx.fillRect(r.x+r.w-8+j*2.4,r.y+3,2,4);}}
       if(cool>0){ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(r.x,r.y,r.w,r.h*(cool/m.cd));}
       // número do teclado que seleciona esta carta (em cima)
-      ctx.fillStyle='#c8b070';ctx.font='bold 9px monospace';ctx.textAlign='right';
+      ctx.fillStyle='#c8b070';ctx.font=fmono(9,true);ctx.textAlign='right';
       ctx.fillText(String(i+1),r.x+r.w-3,r.y+9);
       ctx.textAlign='left';
     });
     // descrição da peça sob o mouse (item sem descrição é item que ninguém entende)
     if(Game.mouse){const hov=cardLayout().find(r=>Game.mouse!.x>=r.x&&Game.mouse!.x<=r.x+r.w&&Game.mouse!.y>=r.y&&Game.mouse!.y<=r.y+r.h);
       if(hov)drawCardTip(hov);}
-    if(g.savedT>0){ctx.fillStyle='#7fb3a6';ctx.font='bold 10px monospace';ctx.fillText('SALVO',W-52,70);}
+    if(g.savedT>0){ctx.fillStyle='#7fb3a6';ctx.font=fmono(10,true);ctx.fillText('SALVO',W-52,70);}
     // status do modo
-    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font='9px monospace';ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
-    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font='10px monospace';ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
+    if(g.mode==='daily'&&g.dailyMods){ctx.fillStyle='#c8b070';ctx.font=fmono(9);ctx.fillText('DIÁRIO: '+g.dailyMods.map(d=>d.nome).join(' + '),138,72);}
+    if(g.shields>0){ctx.fillStyle='#7fb3a6';ctx.font=fmono(10);ctx.fillText('TÁBUAS: '+g.shields,W-120,70);}
     if(g.boss&&!g.bossDeath){
       const b=g.boss;
       ctx.fillStyle='rgba(8,10,8,.72)';rr(W/2-180,3,360,22,3);ctx.fill();
-      ctx.fillStyle='#e8d9a8';ctx.font='11px monospace';ctx.textAlign='center';
+      ctx.fillStyle='#e8d9a8';ctx.font=fmono(11);ctx.textAlign='center';
       ctx.fillText((BOSSES[b.b].nome)+' — FASE '+b.phase,W/2,13);
       ctx.fillStyle='#3a1a16';ctx.fillRect(W/2-170,18,340,4);ctx.fillStyle='#c84a30';ctx.fillRect(W/2-170,18,340*clamp(b.hp/b.maxhp,0,1),4);
       ctx.textAlign='left';
@@ -438,17 +668,20 @@ export const UI=(function(){
   }
   /** Ficha da peça: nome, número e o que ela faz (e com quem combina). */
   function drawCardTip(r: {k: string;x: number;y: number;w: number;h: number}){
-    const m=MACH[r.k],w=300,h=108;
-    const x=clamp(r.x-40,8,W-w-8),y=72;
+    const m=MACH[r.k],w=300,h=Math.round(108*(SaveDB.options.font||1.15));
+    const x=clamp(r.x-40,8,W-w-8),y=72,f=(SaveDB.options.font||1.15);
+    // largura da caixa em caracteres, escala-dependente: sem isso a fonte
+    // grande estoura os 300px do tooltip.
+    const col=Math.max(24,Math.round(46/f));
     ctx.fillStyle='rgba(8,12,10,.95)';rr(x,y,w,h,4);ctx.fill();
     ctx.strokeStyle='#5a6248';ctx.lineWidth=1;ctx.stroke();
-    ctx.fillStyle='#e8d9a8';ctx.font='bold 13px monospace';ctx.fillText(m.nome,x+9,y+17);
-    ctx.fillStyle='#9aa08a';ctx.font='10px monospace';
-    ctx.fillText('custo '+machCost(r.k)+' · vida '+m.hp+' · recarga '+m.cd+'s',x+9,y+31);
-    ctx.fillStyle='#d8d0b0';ctx.font='10px monospace';
-    wrap(m.desc,46).slice(0,3).forEach((l,i)=>ctx.fillText(l,x+9,y+47+i*12));
-    ctx.fillStyle='#b8a060';ctx.font='9px monospace';
-    wrap(m.sin,54).slice(0,2).forEach((l,i)=>ctx.fillText(l,x+9,y+88+i*11));
+    ctx.fillStyle='#e8d9a8';ctx.font=fmono(13,true);ctx.fillText(m.nome,x+9,y+Math.round(17*f));
+    ctx.fillStyle='#9aa08a';ctx.font=fmono(10);
+    ctx.fillText('custo '+machCost(r.k)+' · vida '+m.hp+' · recarga '+m.cd+'s',x+9,y+Math.round(31*f));
+    ctx.fillStyle='#d8d0b0';ctx.font=fmono(10);
+    wrap(m.desc,col).slice(0,3).forEach((l,i)=>ctx.fillText(l,x+9,y+Math.round((47+i*12)*f)));
+    ctx.fillStyle='#b8a060';ctx.font=fmono(9);
+    wrap(m.sin,Math.round(col*1.2)).slice(0,2).forEach((l,i)=>ctx.fillText(l,x+9,y+Math.round((88+i*11)*f)));
   }
   function drawScene(g){
     // intro de chefe
@@ -461,15 +694,15 @@ export const UI=(function(){
       const fake={boss:true,b:intro.b,type:intro.b,lane:1,x:W/2,anim:g.t,phase:3,hp:1,maxhp:1,rise:0,inflate:false,act:1,flash:0,revealed:1};
       try{drawBoss(fake);}catch{}
       ctx.restore();
-      ctx.textAlign='center';ctx.fillStyle='#e8d9a8';ctx.font='bold 30px Impact,sans-serif';
+      ctx.textAlign='center';ctx.fillStyle='#e8d9a8';ctx.font='bold '+Math.round(30*(SaveDB.options.font||1.15))+'px Impact,sans-serif';
       ctx.fillText(BOSSES[intro.b].nome,W/2,90);
-      ctx.fillStyle='#b06a4a';ctx.font='11px monospace';ctx.fillText(BOSSES[intro.b].desc,W/2,112);
-      ctx.fillStyle='#8a8a70';ctx.font='9px monospace';ctx.fillText(BOSSES[intro.b].hint||'',W/2,130);
+      ctx.fillStyle='#b06a4a';ctx.font=fmono(11);ctx.fillText(BOSSES[intro.b].desc,W/2,112);
+      ctx.fillStyle='#8a8a70';ctx.font=fmono(9);ctx.fillText(BOSSES[intro.b].hint||'',W/2,130);
       ctx.textAlign='left';
     }
     // aviso de escuro e chefe
-    if(g.dark&&g.darkT>0){ctx.fillStyle='rgba(200,230,220,.5)';ctx.font='10px monospace';ctx.fillText('A LUZ NÃO ESTÁ AQUI. HOLOFOTE AINDA ACENDE.',20,H-16);}
-    if(g.mode==='boss'&&g.boss){ctx.fillStyle='#8a8f7a';ctx.font='9px monospace';ctx.fillText('MODO CHEFE · '+g.map.nome,W-190,H-16);}
+    if(g.dark&&g.darkT>0){ctx.fillStyle='rgba(200,230,220,.5)';ctx.font=fmono(10);ctx.fillText('A LUZ NÃO ESTÁ AQUI. HOLOFOTE AINDA ACENDE.',20,H-16);}
+    if(g.mode==='boss'&&g.boss){ctx.fillStyle='#8a8f7a';ctx.font=fmono(9);ctx.fillText('MODO CHEFE · '+g.map.nome,W-190,H-16);}
   }
 
   // ---------- topo ----------
@@ -502,7 +735,53 @@ export const UI=(function(){
         case 'slot':SaveDB.setSlot(Number(arg));title();break;
         case 'slots':slots();break;
         case 'newslot':if(arg===null)break;SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();break;
+        case 'deckpick':{
+          const k=String(arg);
+          if(deckSel.includes(k))deckSel=deckSel.filter(x=>x!==k);
+          else if(deckSel.length<7)deckSel.push(k);
+          else {toast('story','SETE. JÁ SETE. TIRA UMA.');break;}
+          drawDeck(api.deckMapa);
+          break;
+        }
+        case 'deckendless':case 'deckboss':{
+          // a escolha de deck vale pra Noite Infinita e pro Modo Chefe também
+          api.deckModo=String(arg)==='deckendless'?'endless':'boss';
+          UI.deckScreen(clamp(SaveDB.slot.campaign,0,5));
+          break;
+        }
+        case 'deckgo':{
+          const i=Number(arg);
+          if(deckSel.length!==7){toast('story','SETE PEÇAS. NEM MAIS, NEM MENOS.');break;}
+          SaveDB.setDeck(i,deckSel);
+          if(api.deckModo==='endless')Game.startFromOpts({kind:'endless',level:0,map:i});
+          else if(api.deckModo==='boss')Game.startFromOpts({kind:'boss',map:i});
+          else Game.startFromOpts({kind:'campaign',map:i});
+          break;
+        }
+        case 'decksave':{
+          const i=Number(arg);
+          if(deckSel.length!==7){toast('story','SETE PEÇAS. AÍ SIM EU GUARDO.');break;}
+          SaveDB.setDeck(i,deckSel);
+          toast('ach','DECK GUARDADO. O ZÉ ANOTOU NUM PAPEL.');
+          drawDeck(i);
+          break;
+        }
+        case 'deck':api.deckModo='campaign';UI.deckScreen(Number(arg));break;
+        case 'eventook':Game.escolherEvento(arg==='1');break;
+        case 'ctxacao':{const parts=String(arg).split(':');UI.hideCtx();
+          const tela=parts[0].match(/^(slot|mapa|deck|codex|pause|geral|nada|buyitem|offer|aba|deckpick)/);
+          if(tela)UI.ctxAcaoTela(parts[0],parts.slice(1).join(':'));else Game.ctxExecutar(String(arg));break;}
         case 'map':Game.startFromOpts({kind:'campaign',map:Number(arg)});break;
+        case 'resetmapa':{
+          const i=Number(arg);
+          const nome=MAPS[i]?MAPS[i].nome:'ESSE MAPA';
+          if(confirm('APAGAR o progresso de '+nome+'? Estrelas e melhor tempo voltam a zero e o mapa precisa ser jogado de novo. Sucata velha, árvore e bestiário ficam.')){
+            SaveDB.resetMapa(i);
+            toast('story','PROGRESSO DE '+nome+' APAGADO. O ZÉ NÃO VIU NADA.');
+            maps();
+          }
+          break;
+        }
         case 'nextmap':Game.startCampaign(clamp(G.mapIndex+1,0,MAPS.length-1));break;
         case 'endlessmenu':endlessMenu();break;
         case 'endless':Game.startFromOpts({kind:'endless',level:Number(arg),map:clamp(SaveDB.slot.campaign,0,5)});break;
@@ -556,7 +835,7 @@ export const UI=(function(){
   }
   bind();
 
-  const api={title,maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
+  const api={title,evento,ctxMenu,hideCtx,ctxEstaAberto,ctxAcaoTela,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
     hideOverlays:hide,updateTopbar,toast,cardAt,drawHUD,drawScene};
   return api;
 })();

@@ -57,6 +57,12 @@ export interface Enemy {
   lit: number;
   revealed: number;
   hypno: number;
+  /** Ventilador espantou (só a Baleia-Filhote): ela foge pelo lado direito. */
+  spooked?: boolean;
+  /** Segundos comendo a mesma peça: a fome aumenta o dano (não trava onda). */
+  comendoT?: number;
+  /** Segundos até o polvo desgrudar da peça (jam é temporária). */
+  soltaT?: number;
   reflectT: number;
   /** Quantas torradas o Peixe-Lata ainda aguenta devolver. */
   reflectMax: number;
@@ -309,6 +315,28 @@ export interface GameState {
   toqBoost: number;
   dogSay: number;
   luTalking: string;
+  /**
+   * Deck escolhido antes da partida (BLOCO M.4).
+   *
+   * Vazio/`null` = sem escolha (sandbox, primeira partida): a banca mostra
+   * tudo que está liberado.
+   */
+  /** Molho (BLOCO M.6): evento entre ondas e micro-surpresas. */
+  evento: { id: string; t: number } | null;
+  micros: { tipo: string; t: number; dur: number }[];
+  microT: number;
+  /** Variação da onda da vez (tema/silenciosa/corredor/bonus). */
+  variacao: string | null;
+  deck: string[] | null;
+  /** Apresentações diegéticas rolando (BLOCO M.3). */
+  intros: { type: string; lane: number; kind: string; t: number; dur: number }[];
+  /** Bicho cujo primeiro cadáver deixa uma marca estranha. */
+  marcaPendente: string | null;
+  /** Vizinhos das lanes de baixo (3, 4 e 5): fala, timer e cliques de cada um. */
+  vizinhoSay: string[];
+  vizinhoT: number[];
+  vizinhoClicks: number[];
+  vizinhoSegredo: boolean;
 
   up: Record<string, number>;
   unlockedMach: Record<string, boolean>;
@@ -368,7 +396,7 @@ export interface BossDeath {
 
 // ---------- estado da aplicação ----------
 
-export type Screen = 'title' | 'play' | 'pause' | 'end' | 'maps' | 'shop';
+export type Screen = 'title' | 'play' | 'pause' | 'end' | 'maps' | 'shop' | 'evento';
 
 export interface GameApi {
   screen: Screen;
@@ -449,6 +477,17 @@ function emptyState(): GameState {
     toqBoost: 0,
     dogSay: 0,
     luTalking: '',
+    intros: [],
+    marcaPendente: null,
+    deck: null,
+    evento: null,
+    micros: [],
+    microT: 20,
+    variacao: null,
+    vizinhoSay: ['', '', ''],
+    vizinhoT: [0, 0, 0],
+    vizinhoClicks: [0, 0, 0],
+    vizinhoSegredo: false,
     up: {},
     unlockedMach: {},
     dmgBonus: 0,

@@ -7,11 +7,13 @@ import { LANES } from '../src/core/constants';
  * Cenário do campo.
  *
  * Estes testes não olham pixel: olham **comportamento de desenho**. O bug
- * que eles pegam é o que a auditoria achou nas lanes novas — as lanes de
- * índice 3 e 4 mostravam o mesmo jardim e o mesmo trapiche em todos os
- * seis mapas, e a lane 5 herdava o piso da lane 2. Nenhum typecheck, lint
- * ou teste de dado vê isso: o código compila, o JSON é válido, e o campo
- * simplesmente é o mesmo em todo mapa.
+ * que eles pegam é o que a auditoria achou nas lanes de baixo — as lanes
+ * 3, 4 e 5 acabaram desenhando o mesmo piso (`l = 3` forçado), com os nomes
+ * das lanes 4/5 em `maps.json` prometendo um cenário que não existia. A
+ * regra hoje (ADR 011) é o inverso: **um piso por mapa nas lanes de baixo**.
+ *
+ * Nenhum typecheck, lint ou teste de dado vê isso: o código compila, o JSON
+ * é válido, e o campo simplesmente é o mesmo em todo mapa.
  */
 
 /** O objeto que o jogo usa como contexto 2D (criado na importação). */
@@ -49,6 +51,7 @@ const ctx = new Proxy(alvo, {
 });
 
 let desenho: typeof import('../src/render/sprites');
+let lanes: typeof import('../src/render/lanes');
 
 beforeAll(async () => {
   // o módulo do canvas cria o contexto na importação: o DOM precisa existir
@@ -58,6 +61,7 @@ beforeAll(async () => {
     ctx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   instalarEspeciais();
   desenho = await import('../src/render/sprites');
+  lanes = await import('../src/render/lanes');
 });
 
 /** Assinatura do desenho: que métodos, chamados quantas vezes, com o quê. */
@@ -72,6 +76,27 @@ function piso(mapId: string, lane: number): string {
   const map = MAPS.find((m) => m.id === mapId);
   expect(map, `mapa ${mapId} existe`).toBeDefined();
   return assina(() => desenho.drawLaneFloor(map!, map!.pal, lane, 3.25));
+}
+
+/**
+ * Só os nomes das operações de desenho, sem os números.
+ *
+ * Compara a **arte**, não a posição: duas lanes com o mesmo cenário têm
+ * assinatas diferentes por causa do Y, e um teste que comparasse a
+ * assinatura inteira passaria por vacuidade (foi exatamente o buraco que
+ * escondeu a duplicação das lanes 3–5).
+ */
+function tracos(fn: () => void): string {
+  ops = [];
+  fn();
+  return ops.map((o) => o.replace(/\(.*$/, '')).join('|');
+}
+
+/** Arte do terreno com Y e lane fixos (0): isola o desenho da posição. */
+function arteDoTerreno(mapId: string, lane: number): string {
+  const map = MAPS.find((m) => m.id === mapId);
+  expect(map, `mapa ${mapId} existe`).toBeDefined();
+  return assina(() => lanes.drawLaneFloorNovaEm(map!, map!.pal, 3.25, 0, lane));
 }
 
 describe('o campo tem 6 lanes e cada uma desenha', () => {
@@ -92,34 +117,72 @@ describe('o campo tem 6 lanes e cada uma desenha', () => {
   });
 });
 
-describe('as lanes 4, 5 e 6 têm arte própria', () => {
-  // Os índices 3, 4 e 5 eram jardim/trapiche repetidos e piso herdado.
-  const NOVAS = [3, 4, 5];
+describe('o cache do piso não pode nascer vazio', () => {
+  // Regression: o cache (pisoCanvas) chamava a arte sem passar o contexto,
+  // a arte desenhava na TELA e o offscreen nascia vazio — o piso piscava a
+  // cada refresh. Os testes assinavam `drawLaneFloor`, que continua ao vivo,
+  // e não viam nada. Este teste assina o caminho que o jogo usa.
+  it('o offscreen recebe tinta de verdade, não a tela', () => {
+    const map = MAPS[0];
+    const off = document.createElement('canvas');
+    off.width = 256; off.height = 256;
+    const alvo: Record<string, unknown> = { canvas: off };
+    const especiais: Record<string, unknown> = {};
+    const opsOff: string[] = [];
+    especiais.createLinearGradient = () => { opsOff.push('grad'); return { addColorStop: () => undefined }; };
+    especiais.createRadialGradient = () => { opsOff.push('grad'); return { addColorStop: () => undefined }; };
+    const offCtx = new Proxy(alvo, {
+      get: (t, p: string) => (p in t ? t[p] : p in especiais ? especiais[p] : (...a: unknown[]) => { opsOff.push(`${p}(${a.map(String).join()})`); }),
+      set: (t, p, v) => { (t as Record<string, unknown>)[String(p)] = v; return true; },
+    }) as unknown as CanvasRenderingContext2D;
 
-  it('dentro de um mapa, as três lanes novas são diferentes entre si', () => {
-    for (const map of MAPS) {
-      const assinaturas = NOVAS.map((l) => piso(map.id, l));
-      expect(new Set(assinaturas).size, `${map.id}: lanes novas repetem a mesma arte`).toBe(NOVAS.length);
+    // 6 lanes no MESMO contexto: é o que o cache faz
+    for (let l = 0; l < LANES; l++) {
+      lanes.drawLaneFloorNovaEm(map, map.pal, 1.5, l * 126 + 90, l, offCtx);
     }
-  });
-
-  it('a mesma lane nova muda de mapa para mapa', () => {
-    for (const l of NOVAS) {
-      const assinaturas = MAPS.map((m) => piso(m.id, l));
-      expect(new Set(assinaturas).size, `lane ${l} é igual em todos os mapas`).toBe(MAPS.length);
-    }
-  });
-
-  it('a lane nova não desenha o mesmo que a lane 2 (não é piso herdado)', () => {
-    for (const map of MAPS) {
-      for (const l of NOVAS) {
-        expect(piso(map.id, l), `${map.id} lane ${l} copia a lane 2`).not.toBe(piso(map.id, 2));
-      }
-    }
+    // o offscreen tem que ter recebido milhares de operações, não zero
+    expect(opsOff.length, 'offscreen vazio: a arte foi pra tela de novo').toBeGreaterThan(500);
+    // e o caminho ao vivo (ctx do jogo) continua assinando a mesma arte:
+    // o parâmetro de contexto não mudou a forma do desenho.
+    const viva = assina(() => lanes.drawLaneFloorNovaEm(map, map.pal, 1.5, 90, 0));
+    expect(viva.length, 'arte ao vivo perdeu ops depois do refactor').toBeGreaterThan(500);
   });
 });
 
-describe('as estruturas das lanes 4, 5 e 6 têm silhueta própria', () => {
+describe('o campo tem um terreno só por mapa, nas 6 lanes', () => {
+  // ADR 014: um lugar por mapa — rio nas seis, penhasco nas seis, trilho
+  // nas seis. O teste antigo comparava assinaturas com Y e passava mesmo
+  // com arte repetida; aqui comparamos o terreno-base (o começo do desenho)
+  // e a variação de arranjo (a assinatura inteira).
+  const TODAS = [0, 1, 2, 3, 4, 5];
+
+  /** Primeiras operações do desenho: o terreno-base, antes dos props. */
+  function baseDoTerreno(fn: () => void): string {
+    return tracos(fn).split('|').slice(0, 40).join('|');
+  }
+
+  it('dentro de um mapa, as 6 lanes começam pelo mesmo terreno', () => {
+    for (const map of MAPS) {
+      const bases = TODAS.map((l) => baseDoTerreno(() => desenho.drawLaneFloor(map, map.pal, l, 3.25)));
+      expect(new Set(bases).size, `${map.id}: lane 0 e lane 5 desenham terrenos diferentes`).toBe(1);
+      expect(bases[0].length, `${map.id}: terreno-base vazio`).toBeGreaterThan(60);
+    }
+  });
+
+  it('...mas o arranjo muda de lane em lane: terreno único não vira textura (ADR 013)', () => {
+    for (const map of MAPS) {
+      const artes = TODAS.map((l) => arteDoTerreno(map.id, l));
+      expect(new Set(artes).size, `${map.id}: variação de arranjo não mudou nada`).toBe(TODAS.length);
+    }
+  });
+
+  it('o terreno muda de mapa para mapa', () => {
+    const artes = MAPS.map((m) => arteDoTerreno(m.id, 0));
+    expect(new Set(artes).size, 'terreno igual em todos os mapas').toBe(MAPS.length);
+  });
+});
+
+describe('as estruturas têm silhueta própria em todos os mapas', () => {
   /** Ids de estrutura usados nas lanes de baixo. */
   function idsLanesDeBaixo(): { id: string; map: (typeof MAPS)[number] }[] {
     const vistos = new Set<string>();

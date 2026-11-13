@@ -4,7 +4,7 @@
  * Recebe o estado da partida e devolve pixels. Não decide nada: quem
  * manda é o jogo. A HUD e os overlays de tela ficam em `ui.ts`.
  */
-import { COLS, COLW, H, LANES, LANE_H, LANE_Y0, SPAWN_X, VX, W, colX, lerp, plantY, rnd } from '../core/constants';
+import { COLS, COLW, FIELD_R, H, LANES, LANE_H, LANE_Y0, SPAWN_X, VX, W, colX, lerp, plantY, rnd } from '../core/constants';
 import { ctx } from '../core/canvas';
 import { G, Game } from '../core/state';
 import { BOSSES } from '../data';
@@ -36,10 +36,22 @@ export function drawField(){
     const c=Math.floor((Game.mouse.x-VX)/COLW),l=Math.floor((Game.mouse.y-LANE_Y0)/LANE_H);
     if(c>=0&&c<COLS&&l>=0&&l<LANES){
       const free=!machineAt(l,c),can=G.scrap>=machCost(G.selected);
-      ctx.fillStyle=free&&can?'rgba(200,220,120,.12)':'rgba(220,80,60,.14)';ctx.fillRect(VX+c*COLW,LANE_Y0+l*LANE_H,COLW,LANE_H);
-      ctx.strokeStyle='rgba(220,220,180,.25)';ctx.setLineDash([6,6]);
+      // Modo daltonismo: quem não distingue verde de vermelho precisa de
+      // outra pista além da cor — tracejado e luminância diferente.
+      const cb=!!SaveDB.options.cb;
+      const okCol=cb?'rgba(255,225,120,.16)':'rgba(200,220,120,.12)';
+      const noCol=cb?'rgba(255,150,60,.20)':'rgba(220,80,60,.14)';
+      ctx.fillStyle=free&&can?okCol:noCol;
+      ctx.fillRect(VX+c*COLW,LANE_Y0+l*LANE_H,COLW,LANE_H);
+      ctx.strokeStyle='rgba(220,220,180,.25)';
+      ctx.setLineDash([6,6]);
       for(let i=0;i<=COLS;i++){ctx.beginPath();ctx.moveTo(VX+i*COLW,LANE_Y0+l*LANE_H);ctx.lineTo(VX+i*COLW,LANE_Y0+(l+1)*LANE_H);ctx.stroke();}
       ctx.setLineDash([]);
+      if(!(free&&can)){ // ocupado ou caro: borda cheia, sem depender de matiz
+        ctx.setLineDash([3,3]);ctx.strokeStyle=cb?'rgba(255,180,90,.8)':'rgba(220,120,100,.5)';ctx.lineWidth=2;
+        ctx.strokeRect(VX+c*COLW+1,LANE_Y0+l*LANE_H+1,COLW-2,LANE_H-2);
+        ctx.setLineDash([]);ctx.lineWidth=1;
+      }
       if(free&&G.selected!=='remover'){ctx.globalAlpha=.45;drawMachine({type:G.selected,x:colX(c),lane:l,t:G.t,hp:1,maxhp:1,anim:0,act:0,flash:0});ctx.globalAlpha=1;}
     }
   }
@@ -66,6 +78,11 @@ export function drawField(){
     if(G.boss&&G.boss.lane===l&&!G.bossDeath)drawEnemy(G.boss);
   }
   for(const d of G.deaths)if(BOSSES[d.type])drawBossDeath({...d,b:d.type});
+  // molho (BLOCO M.6): maré subindo, nevoeiro e o peixe que assusta
+  drawMicros(G);
+  // apresentações diegéticas (BLOCO M.3): sombra passando no horizonte e
+  // desenho na parede da vila. É a descoberta, não um banner de sistema.
+  drawIntros(G);
   for(const p of G.projs)drawProjectile(p);
   for(const h of G.hazards)drawHazard(h);
   for(const p of G.pickups)drawPickup(p,G);
@@ -102,6 +119,135 @@ export function drawHazard(h){
     }
   }
 }
+/**
+ * Micro-surpresas visuais (BLOCO M.6).
+ *
+ * Só o que se vê: a maré subindo (faixa de água limpando o campo), o
+ * nevoeiro (véu escuro) e o peixe grande saltando. Nada de texto na tela —
+ * o aviso já saiu como faixa do radiador.
+ */
+export function drawMicros(g: { micros: { tipo: string; t: number; dur: number }[] }): void {
+  for (const m of g.micros) {
+    const p = Math.min(1, m.t / m.dur);
+    if (m.tipo === 'mare') {
+      // a maré sobe: uma laia de água sobe e desce nos 3 primeiros lanes
+      const subida = Math.sin(p * Math.PI) * 26;
+      ctx.fillStyle = 'rgba(20,60,60,.35)';
+      ctx.fillRect(VX, LANE_Y0, FIELD_R - VX, subida);
+      ctx.fillStyle = 'rgba(180,220,210,.20)';
+      for (let i = 0; i < 5; i++) {
+        ctx.fillRect(VX + ((G!.t * 90 + i * 240) % (FIELD_R - VX)), LANE_Y0 + subida - 4, 40, 3);
+      }
+    } else if (m.tipo === 'nevoeiro') {
+      ctx.fillStyle = `rgba(6,14,14,${0.5 * Math.sin(p * Math.PI)})`;
+      ctx.fillRect(0, LANE_Y0, W, H - LANE_Y0);
+    } else if (m.tipo === 'peixe') {
+      // salto: um vulto atravessa a tela e volta pro mar. Não machuca.
+      const x = lerp(FIELD_R + 60, VX - 60, p);
+      const alto = Math.sin(p * Math.PI) * 90;
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = '#101a1c';
+      ctx.beginPath();
+      ctx.ellipse(x, H - 60 - alto, 54, 20, -0.25, 0, 7);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - 46, H - 66 - alto);
+      ctx.lineTo(x - 74, H - 44 - alto);
+      ctx.lineTo(x - 46, H - 52 - alto);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// ---------------------------------------------------------------------
+//  Apresentações diegéticas (BLOCO M.3)
+// ---------------------------------------------------------------------
+
+/**
+ * Silhueta de um bicho no horizonte: forma escura passando pela margem
+ * d'água antes dele entrar. Uma por bicho novo, e some sozinha.
+ */
+function silhuetaIntro(it: { type: string; lane: number; t: number; dur: number }): void {
+  const g = G!;
+  const r = (g.enemies.find((e) => e.type === it.type)?.r) || 18;
+  const y = LANE_Y0 + it.lane * LANE_H + 40;
+  const p = it.t / it.dur;
+  // entra pela direita, atravessa a margem e sai — sem parar no campo
+  const x = lerp(SPAWN_X + 60, FIELD_R - 40, Math.min(1, p * 1.4));
+  ctx.save();
+  ctx.globalAlpha = 0.55 * Math.sin(Math.min(1, p * 1.2) * Math.PI);
+  ctx.fillStyle = '#050708';
+  // corpo: silhueta genérica com o tamanho do bicho
+  ctx.beginPath();
+  ctx.ellipse(x, y - r, r * 0.9, r * 0.7, 0, 0, 7);
+  ctx.fill();
+  // traço que diferencia: espinha, asa, garra
+  if (it.type === 'baiacu' || it.type === 'peixe_mae') {
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.6 + i * r * 0.3, y - r - r * 0.5);
+      ctx.lineTo(x - r * 0.6 + i * r * 0.3, y - r - r * 0.95);
+      ctx.stroke();
+    }
+  }
+  if (it.type === 'gaivota' || it.type === 'gaivota_r' || it.type === 'mariposa') {
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.quadraticCurveTo(x - r * 1.4, y - r * 2.2, x - r * 1.9, y - r * 0.7);
+    ctx.quadraticCurveTo(x - r * 1.1, y - r * 1.2, x, y - r * 0.8);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.quadraticCurveTo(x + r * 1.4, y - r * 2.2, x + r * 1.9, y - r * 0.7);
+    ctx.quadraticCurveTo(x + r * 1.1, y - r * 1.2, x, y - r * 0.8);
+    ctx.fill();
+  }
+  if (it.type === 'enguia' || it.type === 'agua') {
+    ctx.lineCap = 'round';
+    ctx.lineWidth = r * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x - r, y - r * 0.8);
+    ctx.quadraticCurveTo(x, y - r * 1.6, x + r, y - r * 0.8);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+  ctx.restore();
+}
+
+/**
+ * Desenho na parede da vila: cartaz tosco mostrando o bicho que vem.
+ * Fica pendurado um tempo e some — o jogador que quiser, olha.
+ */
+function cartazIntro(it: { type: string; lane: number; t: number; dur: number }): void {
+  const y = plantY(it.lane);
+  const some = it.t > it.dur - 2; // pisca antes de cair
+  ctx.save();
+  if (Math.floor(it.t * 4) % 2 === 0 || !some) {
+    ctx.translate(60, y - 92);
+    ctx.rotate(-0.05);
+    ctx.fillStyle = '#d7c9a0';
+    ctx.fillRect(0, 0, 44, 34);
+    ctx.fillStyle = '#8a6a3a';
+    ctx.fillRect(20, -6, 4, 8);
+    ctx.fillStyle = '#3a3020';
+    ctx.font = '6px monospace';
+    ctx.fillText('TEM', 4, 12);
+    ctx.fillText('BICHO', 4, 20);
+    ctx.fillText('NOVO', 4, 28);
+  }
+  ctx.restore();
+}
+
+/** Desenha as apresentações rolando. */
+export function drawIntros(g: { intros: { type: string; lane: number; kind: string; t: number; dur: number }[] }): void {
+  for (const it of g.intros) {
+    if (it.kind === 'silhueta') silhuetaIntro(it);
+    else if (it.kind === 'cartaz') cartazIntro(it);
+  }
+}
+
 export function drawProp(p){
   const y=plantY(p.lane),step=Math.sin(p.anim*5);
   ctx.fillStyle='#2a2a30';ctx.fillRect(p.x-22+step*5,y-14,16,14);ctx.fillRect(p.x+4-step*5,y-14,16,14);

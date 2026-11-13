@@ -4,11 +4,11 @@
  * Tudo aqui é desenho puro: recebe estado, não muda regra. Os helpers
  * geométricos (`rr`, `eye`, `pose`) são compartilhados com `creatures.ts`.
  */
-import { COLS, COLW, FIELD_R, H, LANES, LANE_H, LANE_Y0, VX, W, clamp, plantY, rnd } from '../core/constants';
-import { ctx, rr, waterLines } from '../core/canvas';
+import { FIELD_R, H, LANES, LANE_H, LANE_Y0, VX, W, clamp, plantY, rnd, vizinhoX, vizinhoY } from '../core/constants';
+import { DPR, ctx, rr, waterLines } from '../core/canvas';
 import { G } from '../core/state';
-import { CARTAZES } from '../data';
-import { drawLaneFloorNova } from './lanes';
+import { CARTAZES, VIZINHOS_NOMES } from '../data';
+import { drawLaneFloorNova, drawLaneFloorNovaEm } from './lanes';
 import { drawEstruturaNova } from './structures';
 import { haloText, shadowEllipse } from './brush';
 
@@ -74,8 +74,13 @@ let _bgStatic: { id: string; canvas: HTMLCanvasElement } | null = null;
 function bgStaticCanvas(map): HTMLCanvasElement {
   if (_bgStatic && _bgStatic.id === map.id) return _bgStatic.canvas;
   const c = document.createElement('canvas');
-  c.width = W; c.height = H;
+  // O canvas do jogo é DPR 2 (ver core/canvas). O offscreen nasce na mesma
+  // resolução: em 1× ele era esticado no drawImage e o fundo cacheado
+  // aparecia borrado justamente onde não havia animação.
+  c.width = W * DPR;
+  c.height = H * DPR;
   const c2 = c.getContext('2d')!;
+  c2.scale(DPR, DPR);
   // desenha a camada estática no offscreen
   const p = map.pal;
   // gradient vertical: céu
@@ -99,7 +104,9 @@ function bgStaticCanvas(map): HTMLCanvasElement {
 export function drawBackground(map,G,t){
   t=t||0;const p=map.pal;
   // camada estática (cache offscreen): céu + sol/lua
-  ctx.drawImage(bgStaticCanvas(map), 0, 0);
+  // destino explícito (W, H): sem ele o offscreen em DPR 2 desenharia no
+  // tamanho intrínseco (2x maior) e a camada vazaria 2x sobre a tela.
+  ctx.drawImage(bgStaticCanvas(map), 0, 0, W, H);
 
   if(map.id==='barra'){drawBarra(p,t);}
   else if(map.id==='farol'){drawFarol(p,t);}
@@ -108,8 +115,8 @@ export function drawBackground(map,G,t){
   else if(map.id==='fabrica'){drawFabrica(p,t);}
   else{drawCemiterio(p,t);}
 
-  // os três corredores: cada um com piso próprio
-  for(let l=0;l<LANES;l++)drawLaneFloor(map,p,l,t);
+  // o piso do campo: 6 lanes de uma vez, do cache (ver pisoCanvas)
+  ctx.drawImage(pisoCanvas(map,t),0,0,W,H);
   // mar/margem à direita
   const g=ctx.createLinearGradient(FIELD_R-30,0,W,0);g.addColorStop(0,'rgba(5,18,20,0)');g.addColorStop(.35,p.water);g.addColorStop(1,'#061417');
   ctx.fillStyle=g;ctx.fillRect(FIELD_R-30,LANE_Y0,W-FIELD_R+30,H-LANE_Y0);
@@ -224,75 +231,50 @@ function drawCemiterio(p,t,cx=ctx){
   }
 }
 
-// Pisos por corredor, por mapa
+// Piso do campo: um terreno por mapa, nas 6 lanes (ADR 014).
+// A arte mora em lanes.ts — aqui já viveu a variante por mapa/lane, que
+// deixava metade do campo (lanas de cima) com um cenário e a outra metade
+// (lanas de baixo) com outro, e o campo não se lia como um lugar só.
+// Piso do campo: um terreno por mapa, nas 6 lanes (ADR 014).
+// A arte mora em lanes.ts — aqui já viveu a variante por mapa/lane, que
+// deixava metade do campo (lanes de cima) com um cenário e a outra metade
+// (lanes de baixo) com outro, e o campo não se lia como um lugar só.
 export function drawLaneFloor(map,p,l,t){
-  const y=LANE_Y0+l*LANE_H;
-  // lanes 4, 5 e 6: piso, props e silhueta próprios de cada mapa
-  // (moram em lanes.ts — aqui ficava jardim e trapiche repetidos).
-  if(l>=3){drawLaneFloorNova(map,p,l,t);return;}
-  if(map.id==='barra'){
-    if(l===0){ctx.fillStyle='#0f2e33';ctx.fillRect(VX,y,W-VX,LANE_H);waterLines(VX,y,W-VX,LANE_H,t,'rgba(120,160,140,.12)');
-      for(let i=0;i<38;i++){if((i*7)%9===0)continue;ctx.fillStyle=`rgb(${76+(i%4)*12},${56+(i%3)*8},${34} )`;ctx.fillRect(VX+i*20,y+26,18,LANE_H-30);}
-      ctx.fillStyle='#3a2a1a';for(let i=0;i<=COLS;i++)ctx.fillRect(VX+i*COLW-6,y+10,12,24);
-      ctx.fillStyle='#2a1f14';ctx.fillRect(VX,y+24,FIELD_R-VX,4);}
-    else if(l===1){ctx.fillStyle='#3a3834';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#55524a';ctx.fillRect(VX,y,W-VX,12);
-      ctx.fillStyle='#6a6648';for(let x=VX+10;x<FIELD_R;x+=50)ctx.fillRect(x,y+74,24,4);
-      for(let i=0;i<6;i++){const px=VX+90+i*120,py=y+50+Math.sin(t+i)*2;ctx.fillStyle='#1c1a1e';ctx.beginPath();ctx.ellipse(px,py,32,10,0,0,7);ctx.fill();
-        ctx.fillStyle=`hsla(${(t*30+i*70)%360},55%,55%,.16)`;ctx.beginPath();ctx.ellipse(px,py,16,5,0,0,7);ctx.fill();}
-      ctx.strokeStyle='#2a2824';ctx.lineWidth=2;for(let i=0;i<5;i++){const x=VX+50+i*160;ctx.beginPath();ctx.moveTo(x,y+40);ctx.lineTo(x+18,y+60);ctx.lineTo(x+10,y+84);ctx.stroke();}}
-    else{ctx.fillStyle='#5a5a54';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#3d4a22';ctx.fillRect(VX,y+22,W-VX,LANE_H-40);
-      waterLines(VX,y+28,W-VX,LANE_H-46,t*1.2,'rgba(160,180,90,.14)');
-      for(let i=0;i<10;i++){ctx.fillStyle=i%3?'rgba(220,220,210,.35)':'#7a4a3a';const tx=VX+40+i*70,ty=y+46+Math.sin(t+i)*3;ctx.fillRect(tx,ty,10,4);}
-      ctx.fillStyle='#4a4a44';ctx.fillRect(VX,y,W-VX,4);ctx.fillRect(VX,y+LANE_H-18,W-VX,4);}
-  }else if(map.id==='farol'){
-    if(l===0){ctx.fillStyle='#4a4a44';ctx.fillRect(VX,y,W-VX,LANE_H);
-      for(let i=0;i<10;i++){ctx.fillStyle=i%2?'#57574e':'#41413a';ctx.fillRect(VX+i*78,y+30,74,LANE_H-40);ctx.strokeStyle='#2e2e28';ctx.strokeRect(VX+i*78,y+30,74,LANE_H-40);}}
-    else if(l===1){ctx.fillStyle='#5a564c';ctx.fillRect(VX,y,W-VX,LANE_H);
-      for(let i=0;i<9;i++){ctx.fillStyle='#68635a';ctx.fillRect(VX+i*82,y+18+i%2*8,78,16);ctx.fillStyle='#3e3a32';ctx.fillRect(VX+i*82,y+34+i%2*8,78,4);}}
-    else{ctx.fillStyle='#3a3a32';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#2a3a34';ctx.fillRect(VX,y+24,W-VX,LANE_H-34);
-      waterLines(VX,y+30,W-VX,LANE_H-44,t,'rgba(180,210,200,.13)');
-      ctx.fillStyle='#6a6a58';for(let i=0;i<7;i++){const rx=VX+50+i*110;ctx.beginPath();ctx.ellipse(rx,y+112,rnd(14,26),rnd(6,10),0,0,7);ctx.fill();}}
-  }else if(map.id==='estacao'){
-    if(l===0||l===2){ctx.fillStyle='#3a403c';ctx.fillRect(VX,y,W-VX,LANE_H);
-      for(let i=0;i<Math.ceil((W-VX)/26);i++){ctx.fillStyle='#5a5040';ctx.fillRect(VX+i*26,y+58,20,10);}
-      ctx.fillStyle='#7a7a6a';ctx.fillRect(VX,y+56,W-VX,4);ctx.fillRect(VX,y+70,W-VX,3);
-      ctx.fillStyle='#2a302c';for(let i=0;i<9;i++)ctx.fillRect(VX+i*100,y+84,14,3);
-      if(l===2){ctx.fillStyle='rgba(40,70,70,.45)';ctx.fillRect(VX,y+96,W-VX,LANE_H-96);waterLines(VX,y+100,W-VX,LANE_H-104,t,'rgba(160,200,190,.14)');}}
-    else{ctx.fillStyle='#6a665a';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#7a7466';for(let i=0;i<12;i++)ctx.fillRect(VX+i*66,y+20,58,64);
-      ctx.strokeStyle='#4a463c';ctx.lineWidth=1;for(let i=0;i<12;i++)ctx.strokeRect(VX+i*66,y+20,58,64);
-      ctx.fillStyle='#c8b45a';ctx.fillRect(VX,y+88,W-VX,4);ctx.fillStyle='#2a2620';ctx.fillRect(VX,y+92,W-VX,8);}
-  }else if(map.id==='feira'){
-    if(l===0){ctx.fillStyle='#5a4a32';ctx.fillRect(VX,y,W-VX,LANE_H);for(let i=0;i<10;i++){ctx.fillStyle=i%2?'#66543a':'#524228';ctx.fillRect(VX+i*80,y+26,76,LANE_H-34);}
-     	for(let i=0;i<6;i++){ctx.fillStyle=['#b04836','#c8a03a','#4a7a6a'][i%3];ctx.fillRect(VX+20+i*130,y+16,60,12);}}
-    else if(l===1){ctx.fillStyle='#6a6050';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#7a7060';for(let i=0;i<20;i++)ctx.fillRect(VX+i*40,y+20,36,30);
-      ctx.fillStyle='#5a5040';for(let i=0;i<20;i++)ctx.fillRect(VX+i*40,y+56,36,28);ctx.fillStyle='#8a6a3a';ctx.fillRect(VX,y+86,W-VX,3);}
-    else{ctx.fillStyle='#4a4030';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#3a4a32';ctx.fillRect(VX,y+30,W-VX,LANE_H-40);
-      for(let i=0;i<8;i++){ctx.fillStyle='#8a7a4a';ctx.fillRect(VX+30+i*110,y+60,26,20);ctx.fillStyle='#6a5a3a';ctx.fillRect(VX+36+i*110,y+52,14,10);}
-      ctx.fillStyle='#7a6a3a';ctx.fillRect(VX,y+LANE_H-16,W-VX,6);}
-  }else if(map.id==='fabrica'){
-    if(l===0){ctx.fillStyle='#2e2a24';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#4a443a';ctx.fillRect(VX,y+40,W-VX,56);
-      for(let i=0;i<24;i++){const off=(t*30)%36;ctx.fillStyle='#5a5244';ctx.fillRect(VX+i*34-off,y+42,26,8);}
-      ctx.fillStyle='#e08a20';ctx.globalAlpha=.35;ctx.fillRect(VX,y+96,W-VX,4);ctx.globalAlpha=1;
-      ctx.strokeStyle='#6a5a40';ctx.lineWidth=3;for(let i=0;i<5;i++){ctx.beginPath();ctx.arc(VX+40+i*38,y+68,10,0,7);ctx.stroke();}}
-    else if(l===1){ctx.fillStyle='#3a322a';ctx.fillRect(VX,y,W-VX,LANE_H);
-      ctx.fillStyle='#6a5040';ctx.fillRect(VX,y+20,W-VX,14);ctx.fillRect(VX,y+96,W-VX,12);
-      ctx.fillStyle='#8a5a30';for(let i=0;i<8;i++)ctx.fillRect(VX+i*110,y+34,16,62);
-      ctx.fillStyle='#4a6a4a';ctx.fillRect(VX,y+82,W-VX,5);}
-    else{ctx.fillStyle='#2a3020';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#4a5a20';ctx.fillRect(VX,y+22,W-VX,LANE_H-34);
-      ctx.fillStyle='rgba(160,200,60,.16)';for(let i=0;i<6;i++){ctx.beginPath();ctx.arc(VX+60+i*130,y+70+Math.sin(t*2+i)*6,14+i*2,0,7);ctx.fill();}
-      ctx.fillStyle='#3a4a1a';ctx.fillRect(VX,y+22,W-VX,5);ctx.fillStyle='#3a3a30';ctx.fillRect(VX,y+LANE_H-14,W-VX,5);}
-  }else{
-    if(l===0){ctx.fillStyle='#3a3428';ctx.fillRect(VX,y,W-VX,LANE_H);
-      for(let i=0;i<30;i++){ctx.fillStyle=i%3?'#4a4030':'#2e2a22';ctx.fillRect(VX+i*26,y+26,24,LANE_H-30);}
-      ctx.fillStyle='#6a5a3a';ctx.fillRect(VX,y+30,FIELD_R-VX,3);ctx.strokeStyle='#2a261e';ctx.lineWidth=2;
-      for(let i=0;i<6;i++){ctx.beginPath();ctx.moveTo(VX+i*150,y+36);ctx.lineTo(VX+i*150,y+LANE_H-4);ctx.stroke();}}
-    else if(l===1){ctx.fillStyle='#2e3234';ctx.fillRect(VX,y,W-VX,LANE_H);ctx.fillStyle='#3e4442';for(let i=0;i<14;i++)ctx.fillRect(VX+i*56,y+30,50,58);
-      ctx.strokeStyle='#1e2422';ctx.lineWidth=2;for(let i=0;i<14;i++)ctx.strokeRect(VX+i*56,y+30,50,58);
-      ctx.fillStyle='#8a8a70';ctx.fillRect(VX,y+88,W-VX,3);}
-    else{ctx.fillStyle='#1a3034';ctx.fillRect(VX,y,W-VX,LANE_H);waterLines(VX,y+10,W-VX,LANE_H-10,t*1.3,'rgba(170,200,190,.16)',14);
-      for(let i=0;i<6;i++){ctx.strokeStyle='#2a3a38';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(VX+40+i*150,y+30);ctx.lineTo(VX+40+i*150,y+LANE_H);ctx.stroke();}
-      ctx.fillStyle='#6a5a3a';ctx.fillRect(VX,y+LANE_H-18,W-VX,8);}
+  drawLaneFloorNova(map,p,l,t);
+}
+
+/**
+ * Cache do piso do campo (performance).
+ *
+ * O piso era redesenhado por inteiro a cada frame: 6 lanes de arte pesada
+ * (pranchões, água, estacas) davam mais de mil operações de canvas por
+ * quadro — em máquina modesta o jogo engasgava, e a unificação das 6 lanes
+ * (ADR 014) deixou essa conta ainda mais salgada. Agora o piso inteiro é
+ * assado uma vez e refrescado a cada `PISO_T` segundos: o brilho da água e
+ * a poeira continuam vivos, mas a 5 quadros por segundo em vez de 60.
+ * Custo real por quadro: 1 drawImage.
+ */
+let _pisoCache: { id: string; canvas: HTMLCanvasElement; t: number } | null = null;
+const PISO_T = 0.2;
+
+function pisoCanvas(map, t: number): HTMLCanvasElement {
+  if (_pisoCache && _pisoCache.id === map.id && Math.abs(t - _pisoCache.t) < PISO_T) {
+    return _pisoCache.canvas;
   }
+  if (!_pisoCache || _pisoCache.id !== map.id) {
+    const c = document.createElement('canvas');
+    c.width = W * DPR;
+    c.height = H * DPR;
+    _pisoCache = { id: map.id, canvas: c, t: -999 };
+  }
+  const c2 = _pisoCache.canvas.getContext('2d')!;
+  c2.save();
+  c2.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c2.clearRect(0, 0, W, H);
+  for (let l = 0; l < LANES; l++) drawLaneFloorNovaEm(map, map.pal, t, LANE_Y0 + l * LANE_H, l, c2);
+  c2.restore();
+  _pisoCache.t = t;
+  return _pisoCache.canvas;
 }
 
 // =====================================================================
@@ -407,9 +389,11 @@ export function drawStructure(s,lane,i,map,t){
 let _villageBase: HTMLCanvasElement | null = null;
 function villageBase(): HTMLCanvasElement {
   if(_villageBase) return _villageBase;
+  // Mesma regra do fundo: offscreen em DPR 2 (ver core/canvas).
   const c = document.createElement('canvas');
-  c.width = VX; c.height = H;
+  c.width = VX * DPR; c.height = H * DPR;
   const c2 = c.getContext('2d')!;
+  c2.scale(DPR, DPR);
   const sidewalk=['#1e2622','#25251f','#1a201a','#222a24','#1c2228','#20262a'];
   c2.fillStyle='#151a18';c2.fillRect(0,LANE_Y0,VX-4,H-LANE_Y0);
   for(let l=0;l<LANES;l++){
@@ -423,13 +407,30 @@ function villageBase(): HTMLCanvasElement {
 export function drawVillage(G,t){
   const map=G.map;
   // calçada da vila (cache offscreen: estático)
-  ctx.drawImage(villageBase(),0,0);
-  // vizinhos extras nas novas lanes (animados)
+  // idem: destino (VX, H), sem isso a calçada escura invadia o campo.
+  ctx.drawImage(villageBase(), 0, 0, VX, H);
+  // vizinhos das lanes de baixo: gente, não decoração — clicam e falam
   for(let l=3;l<LANES;l++){
-    const x=30+Math.sin(G.t*1.2+l)*6, y=plantY(l)-18;
-    ctx.fillStyle=l%2?'#5a5a6a':'#6a5a4a';ctx.fillRect(x-4,y-14,8,14);
-    ctx.fillStyle='#c8a070';ctx.beginPath();ctx.arc(x,y-18,4.5,0,7);ctx.fill();
-    ctx.fillStyle='#2a2a28';ctx.fillRect(x-3,y-22,6,3);
+    const i=l-3;
+    const x=vizinhoX(l), y=vizinhoY(l)+Math.sin(G.t*1.6+i)*1.5;
+    // corpo: três vizinhos diferentes, pra não ser clone
+    const casacos=['#5a5a6a','#6a5a4a','#4a5a5a'][i];
+    ctx.fillStyle=casacos;ctx.fillRect(x-5,y-16,10,16);
+    ctx.fillStyle='#c8a070';ctx.beginPath();ctx.arc(x,y-21,4.5,0,7);ctx.fill();
+    ctx.fillStyle='#2a2a28';ctx.fillRect(x-4,y-25,8,3);
+    if(i===2){ctx.fillStyle='#8a8a70';ctx.fillRect(x-5,y-29,10,8);} // o chapéu-balde
+    if(i===1){ctx.fillStyle='#7a6a8a';ctx.fillRect(x-6,y-31,12,7);}   // o xale
+    // nome e fala
+    ctx.fillStyle='rgba(200,190,150,.55)';ctx.font='5px monospace';ctx.textAlign='center';
+    ctx.fillText(VIZINHOS_NOMES[i]||'',x,y-34);
+    ctx.textAlign='left';
+    if((G.vizinhoSay[i]||'')&&G.vizinhoT[i]>0){
+      const txt=G.vizinhoSay[i];
+      const w=Math.max(52,txt.length*5.4+10);
+      const bx=Math.min(x-6,W-w-6);
+      ctx.fillStyle='rgba(240,236,220,.94)';rr(bx,y-56,w,20,4);ctx.fill();
+      ctx.fillStyle='#222';ctx.font='7px monospace';ctx.fillText(txt.slice(0,42),bx+5,y-43);
+    }
   }
   for(let l=0;l<LANES;l++){
     const lane=G.structures[l]||[];
@@ -439,11 +440,13 @@ export function drawVillage(G,t){
   if(G.luAtWindow)drawLu(G,t);
   drawToquinho(G,t);
   drawRealDog(G,t);
-  // chuva de rádio/letreiro
+  // chuva de rádio/letreiro — o nome do mapa, não um nome encravado no código
+  const nomeMapa=(G.map&&G.map.nome)||'BARRA SUJA';
+  const subMapa=((G.map&&G.map.sub)||'').slice(0,22);
   ctx.save();ctx.translate(12,LANE_Y0+16);ctx.rotate(-.05);
   ctx.fillStyle='#2a2a22';ctx.fillRect(0,0,104,22);
-  ctx.fillStyle='#c8b060';ctx.font='bold 9px monospace';ctx.fillText('BARRA SUJA',6,10);
-  ctx.fillStyle='#8a8a6a';ctx.font='6px monospace';ctx.fillText('POP. 7 (ONTEM 9)',6,18);ctx.restore();
+  ctx.fillStyle='#c8b060';ctx.font='bold 9px monospace';ctx.fillText(nomeMapa.slice(0,14),6,10);
+  ctx.fillStyle='#8a8a6a';ctx.font='6px monospace';ctx.fillText(subMapa||'POP. 7 (ONTEM 9)',6,18);ctx.restore();
 }
 export function drawZe(G,_t){
   const z=G.ze,x=46,g=plantY(1)+2,sw=Math.sin(z.anim*4)*6;
@@ -671,22 +674,77 @@ const MACHINE_DRAWERS: Record<string, (c: MachineDrawerCtx) => void> = {
 };
 
 
+/**
+ * Corpo de cada engenhoca: largura, altura e base de apoio.
+ *
+ * Existe para o acabamento comum (`drawMachine`) poder dimensionar sombra
+ * de contato, oclusão de base e rim light **da peça**, em vez de um arco
+ * fixo em `(0,-24)` que não acompanha geladeira (74 px) nem espelho (88 px).
+ * Números derivados dos próprios desenhos em `MACHINE_DRAWERS`.
+ */
+const CORPO_MAQUINA: Record<string, { w: number; h: number; base: number }> = {
+  boia: { w: 48, h: 68, base: 26 },
+  torradeira: { w: 48, h: 58, base: 22 },
+  lancador_lata: { w: 44, h: 42, base: 20 },
+  ventilador: { w: 48, h: 64, base: 18 },
+  geladeira: { w: 44, h: 76, base: 22 },
+  geladeira_bomba: { w: 44, h: 76, base: 22 },
+  bujao: { w: 34, h: 70, base: 18 },
+  holofote: { w: 40, h: 58, base: 16 },
+  ima: { w: 36, h: 42, base: 16 },
+  radio: { w: 44, h: 72, base: 22 },
+  estilingue: { w: 56, h: 90, base: 18 },
+  aspirador: { w: 40, h: 52, base: 16 },
+  batedeira: { w: 40, h: 58, base: 14 },
+  espelho: { w: 36, h: 90, base: 12 },
+  pneu: { w: 48, h: 46, base: 22 },
+  aranha: { w: 48, h: 86, base: 12 },
+  cachorro: { w: 34, h: 56, base: 14 },
+  coisa_ze: { w: 40, h: 68, base: 20 },
+};
+
+/** Corpo padrão: peça sem entrada própria (ex.: `remover`). */
+const CORPO_PADRAO = { w: 40, h: 48, base: 22 };
+
+/** Corpo de uma engenhoca, com padrão para peça sem desenho. */
+export function corpoMaquina(tipo: string): { w: number; h: number; base: number } {
+  return CORPO_MAQUINA[tipo] || CORPO_PADRAO;
+}
+
 export function drawMachine(m){
   const icon=m._icon, x=m.x,y=icon?0:plantY(m.lane), t=icon?G.t:(m.t||0);m.t=t;
   const P=pose(m,t),f=P.f,act=P.st==='action',hurt=P.st==='hurt';
   const dmg=m.maxhp?clamp(1-m.hp/m.maxhp,0,1):0;
+  const corpo=corpoMaquina(m.type);
   ctx.save();ctx.translate(x,y);
-  if(!icon){ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,2,26,6,0,0,7);ctx.fill();}
+  // contato com o chão, proporcional à base da peça (não elipse solta)
+  if(!icon){ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,2,corpo.base,corpo.base*.24,0,0,7);ctx.fill();}
   ctx.rotate(P.tilt);ctx.scale(P.sx,P.sy);
   const k=m.type;
   const __drawer = MACHINE_DRAWERS[k];
   if(__drawer){__drawer({m,k,t,act,hurt,f,dmg});}
   drawUpgrades(m);
   if(hurt){ctx.fillStyle='#ffb040';for(let i=0;i<3;i++)ctx.fillRect(rnd(-16,16),rnd(-40,-10),2,2);}
-  // rim light (luz global topo-esquerda)
-  ctx.strokeStyle='rgba(230,220,180,.16)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,-24,24,Math.PI*1.05,Math.PI*1.65);ctx.stroke();
+  if(!icon){
+    // oclusão na base (a peça "tem" barriga) e luz de topo-esquerda,
+    // ambas dimensionadas pelo corpo. Antes era uma elipse em y=-14 que
+    // ficava escondida atrás do desenho, e um rim light fixo em (0,-24) r=24.
+    const oclusao=ctx.createRadialGradient(0,-corpo.h*.18,1,0,-corpo.h*.18,corpo.w*.62);
+    oclusao.addColorStop(0,'rgba(0,0,0,.20)');
+    oclusao.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=oclusao;
+    ctx.beginPath();ctx.ellipse(0,-corpo.h*.18,corpo.w*.5,corpo.h*.18,0,0,7);ctx.fill();
+    const brilho=ctx.createRadialGradient(-corpo.w*.16,-corpo.h*.6,1,-corpo.w*.16,-corpo.h*.6,corpo.w*.6);
+    brilho.addColorStop(0,'rgba(235,225,190,.10)');
+    brilho.addColorStop(1,'rgba(235,225,190,0)');
+    ctx.fillStyle=brilho;
+    ctx.beginPath();ctx.ellipse(-corpo.w*.16,-corpo.h*.6,corpo.w*.46,corpo.h*.16,0,0,7);ctx.fill();
+    // rim light (luz global topo-esquerda) seguindo o corpo
+    ctx.strokeStyle='rgba(230,220,180,.16)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(0,-corpo.h*.5,corpo.w*.5,corpo.h*.5,0,Math.PI*1.05,Math.PI*1.65);ctx.stroke();
+  }
   ctx.restore();
-  if(dmg>.02&&!icon){ctx.fillStyle='#222';ctx.fillRect(x-18,y+6,36,4);ctx.fillStyle='#b8b060';ctx.fillRect(x-18,y+6,36*(1-dmg),4);}
+  if(dmg>.02&&!icon){ctx.fillStyle='#222';ctx.fillRect(x-corpo.w/2,y+6,corpo.w,4);ctx.fillStyle='#b8b060';ctx.fillRect(x-corpo.w/2,y+6,corpo.w*(1-dmg),4);}
 }
 
 // =====================================================================

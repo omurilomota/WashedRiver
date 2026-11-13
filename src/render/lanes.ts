@@ -1,10 +1,16 @@
 /**
- * lanes.ts — o piso das lanes novas (4, 5 e 6).
+ * lanes.ts — o terreno do campo: um piso por mapa, nas 6 lanes.
  *
- * Com 6 lanes, metade do campo não existia como cenário: as lanes de
- * índice 3 e 4 mostravam o mesmo jardim e o mesmo trapiche em todos os
- * mapas, e a lane de índice 5 herdava o piso da lane 2. Aqui cada mapa
- * tem piso, props e silhueta próprios nas três lanes de baixo.
+ * Decisão (ADR 014, que substitui o recorte da ADR 011): o jogador precisa
+ * reconhecer **um lugar** por mapa, não seis microcenários. O rio é rio nas
+ * seis lanes, o penhasco é penhasco nas seis, o trilho é trilho nas seis.
+ * Antes as lanes 0–2 tinham arte própria por mapa (píer/rua/canal) e as de
+ * baixo herdavam um piso único — metade padronizada, metade não, e o campo
+ * inteiro ficava confuso de ler.
+ *
+ * O que continua dando variedade é o **terreno** (props, sucata, set pieces)
+ * e a **variação de arranjo** por lane (ADR 013): `v` (0–5) desloca os
+ * elementos e muda o tom, para seis lanes iguais não virarem textura.
  *
  * É desenho puro: recebe estado, não muda regra. Nenhum número de lane,
  * coluna ou tamanho vive solto — sai de `core/constants`.
@@ -13,863 +19,448 @@ import { FIELD_R, LANE_H, LANE_Y0, VX, W } from '../core/constants';
 import { ctx, rr, waterLines } from '../core/canvas';
 import type { MapDef, Palette } from '../data/types';
 
+// ---------- peças de desenho compartilhadas ----------
+
 /** Touceira de planta (mata, verdura, alguma coisa que ainda cresce). */
-function arbusto(x: number, y: number, r: number, col: string): void {
-  ctx.fillStyle = col;
-  ctx.beginPath();
-  ctx.ellipse(x, y, r, r * 0.62, 0, 0, 7);
-  ctx.fill();
+function arbusto(g: CanvasRenderingContext2D, x: number, y: number, r: number, col: string): void {
+  g.fillStyle = col;
+  g.beginPath();
+  g.ellipse(x, y, r, r * 0.62, 0, 0, 7);
+  g.fill();
 }
 
 /** Caixote de madeira. */
-function caixote(x: number, y: number, w: number, h: number): void {
-  ctx.fillStyle = '#6a5232';
-  ctx.fillRect(x, y - h, w, h);
-  ctx.fillStyle = '#4a3a20';
-  ctx.fillRect(x, y - h, w, 3);
-  ctx.fillRect(x + w / 2 - 1, y - h, 2, h);
+function caixote(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  g.fillStyle = '#6a5232';
+  g.fillRect(x, y - h, w, h);
+  g.fillStyle = '#4a3a20';
+  g.fillRect(x, y - h, w, 3);
+  g.fillRect(x + w / 2 - 1, y - h, 2, h);
 }
 
-/** Poste de madeira (cerca, vara, estaca). */
-function poste(x: number, y: number, h: number): void {
-  ctx.fillStyle = '#5a4a30';
-  ctx.fillRect(x - 3, y - h, 6, h);
+/** Barril/tambor de pé. */
+function barril(g: CanvasRenderingContext2D, x: number, y: number, r: number, cor: string): void {
+  g.fillStyle = cor;
+  rr(x - r, y - r * 2.2, r * 2, r * 2.2, r * 0.3);
+  g.fill();
+  g.fillStyle = 'rgba(0,0,0,.28)';
+  g.fillRect(x - r, y - r * 1.2, r * 2, 2);
+  g.fillRect(x - r, y - r * 0.4, r * 2, 2);
+}
+
+/** Poste/estaca de madeira. */
+function poste(g: CanvasRenderingContext2D, x: number, y: number, h: number): void {
+  g.fillStyle = '#5a4a30';
+  g.fillRect(x - 3, y - h, 6, h);
+  g.fillStyle = 'rgba(0,0,0,.25)';
+  g.fillRect(x + 1, y - h, 2, h);
+}
+
+/** Prancha de píer/tábu atravessando a lane. */
+function tabua(g: CanvasRenderingContext2D, y: number, h: number, corA: string, corB: string): void {
+  g.fillStyle = corA;
+  g.fillRect(VX, y, W - VX, h);
+  g.fillStyle = 'rgba(0,0,0,.22)';
+  g.fillRect(VX, y + h, W - VX, 2);
+  g.fillStyle = corB;
+  for (let x = VX + 12; x < W - 12; x += 74) g.fillRect(x, y, 2, h);
+}
+
+/** Pedra/solta de riba. */
+function pedra(g: CanvasRenderingContext2D, x: number, y: number, r: number, cor: string): void {
+  g.fillStyle = cor;
+  g.beginPath();
+  g.ellipse(x, y, r, r * 0.66, 0, 0, 7);
+  g.fill();
+}
+
+/** Poça de óleo/água parada no chão. */
+function poca(g: CanvasRenderingContext2D, x: number, y: number, r: number, cor: string): void {
+  g.fillStyle = cor;
+  g.beginPath();
+  g.ellipse(x, y, r, r * 0.3, 0, 0, 7);
+  g.fill();
 }
 
 /** Vapor subindo: o mapa esquenta, a comida ferve, a fábrica respira. */
-function vapor(x: number, y: number, t: number, n: number, cor: string): void {
-  ctx.fillStyle = cor;
+function vapor(g: CanvasRenderingContext2D, x: number, y: number, t: number, n: number, cor: string): void {
+  g.fillStyle = cor;
   for (let i = 0; i < n; i++) {
     const fy = y - ((t * 26 + i * 17) % 46);
-    ctx.beginPath();
-    ctx.arc(x + Math.sin(t * 2 + i) * 5, fy, 4 + i * 1.4, 0, 7);
-    ctx.fill();
+    g.beginPath();
+    g.arc(x + Math.sin(t * 2 + i) * 5, fy, 4 + i * 1.4, 0, 7);
+    g.fill();
   }
 }
 
 /** Fio esticado entre dois pontos (varal, corda, rede). */
-function fio(x1: number, y1: number, x2: number, y2: number, flacidez: number): void {
-  ctx.strokeStyle = '#8a7a5a';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.quadraticCurveTo((x1 + x2) / 2, (y1 + y2) / 2 + flacidez, x2, y2);
-  ctx.stroke();
+function fio(g: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, flacidez: number): void {
+  g.strokeStyle = '#8a7a5a';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(x1, y1);
+  g.quadraticCurveTo((x1 + x2) / 2, (y1 + y2) / 2 + flacidez, x2, y2);
+  g.stroke();
 }
 
 /** Faixa clara no topo da lane: faz o corredor ler como faixa. */
-function faixa(y: number, col: string, h: number): void {
-  ctx.fillStyle = col;
-  ctx.fillRect(VX, y, W - VX, h);
+function faixa(g: CanvasRenderingContext2D, y: number, col: string, h: number): void {
+  g.fillStyle = col;
+  g.fillRect(VX, y, W - VX, h);
+}
+
+/** Tom da lane pela variação (ADR 013): mesma família, luz diferente. */
+function tom(lista: readonly string[], v: number): string {
+  return lista[v % lista.length];
 }
 
 // =====================================================================
-//  BARRA SUJA — vila à chuva
+//  BARRA SUJA — o rio e o píer em todas as lanes
 // =====================================================================
-function barraNova(p: Palette, l: number, y: number, t: number): void {
-  l = 3; // unificado: mesmo piso em todas as lanes de baixo
-  if (l === 3) {
-    // JARDIM RIBEIRINHO — terra, canteiro, água de chuva
-    faixa(y, '#2f3a2c', LANE_H);
-    waterLines(VX, y + 4, W - VX, 16, t, 'rgba(140,190,150,.14)', 12);
-    for (let i = 0; i < 5; i++) {
-      const cx = VX + 40 + i * 200;
-      rr(cx, y + 54, 168, 46, 8);
-      ctx.fillStyle = '#4a3a24';
-      ctx.fill();
-      ctx.fillStyle = '#5a6a34';
-      for (let k = 0; k < 5; k++) arbusto(cx + 22 + k * 32, y + 62 + Math.sin(t + k) * 2, 9 + (k % 3) * 3, '#5a7a34');
-      arbusto(cx + 84, y + 48, 14, '#6a8a3a');
-    }
-    // cisterna grande, com torneira pingando
-    ctx.fillStyle = '#5a6a56';
-    rr(VX + 130, y + 8, 96, 44, 10);
-    ctx.fill();
-    ctx.fillStyle = '#4a5a48';
-    ctx.fillRect(VX + 134, y + 8, 88, 8);
-    ctx.fillStyle = '#7a8a70';
-    ctx.fillRect(VX + 196, y + 30, 8, 10);
-    ctx.fillStyle = 'rgba(180,210,200,.55)';
-    ctx.fillRect(VX + 199, y + 40 + ((t * 30) % 8), 2, 6);
-    // cerca de varas e flores de beira
-    for (let i = 0; i < 18; i++) poste(VX + 24 + i * 62, y + LANE_H, 26);
-    ctx.strokeStyle = '#6a5a3a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(VX, y + LANE_H - 24);
-    ctx.lineTo(FIELD_R, y + LANE_H - 26);
-    ctx.stroke();
-    for (let i = 0; i < 14; i++) {
-      ctx.fillStyle = ['#d06080', '#e0a040', '#c8d070'][i % 3];
-      ctx.beginPath();
-      ctx.arc(VX + 16 + i * 74, y + LANE_H - 4, 3, 0, 7);
-      ctx.fill();
-    }
-  } else if (l === 4) {
-    // HORTA DO ZÉ — fileiras de verdura, lata d'água, cavalete
-    faixa(y, p.ground, LANE_H);
-    for (let i = 0; i < 6; i++) {
-      const ry = y + 26 + i * 16;
-      ctx.fillStyle = i % 2 ? '#4a4228' : '#423c24';
-      ctx.fillRect(VX, ry, W - VX, 6);
-      ctx.fillStyle = '#5a7a34';
-      for (let k = 0; k < 22; k++) arbusto(VX + 14 + k * 50, ry + 2 + (k % 2), 6 + (k % 3) * 2, '#5a7a34');
-    }
-    // lata d'água suspensa (prop grande)
-    ctx.fillStyle = '#4a5a48';
-    rr(VX + 150, y + 2, 74, 40, 6);
-    ctx.fill();
-    ctx.fillStyle = '#6a7a60';
-    ctx.fillRect(VX + 148, y + 2, 78, 6);
-    ctx.fillStyle = '#8a9a80';
-    ctx.beginPath();
-    ctx.moveTo(VX + 224, y + 18);
-    ctx.lineTo(VX + 250, y + 28);
-    ctx.lineTo(VX + 224, y + 30);
-    ctx.fill();
-    fio(VX + 186, y, VX + 186, 0, 0);
-    // cavalete e varal de roupa
-    ctx.strokeStyle = '#7a6a4a';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(VX + 430, y + 56);
-    ctx.lineTo(VX + 430, y + 10);
-    ctx.moveTo(VX + 380, y + 12);
-    ctx.lineTo(VX + 480, y + 12);
-    ctx.stroke();
-    fio(VX + 300, y + 30, VX + 600, y + 30, 8);
-    for (let i = 0; i < 5; i++) {
-      ctx.fillStyle = ['#c8b8a0', '#8a9a80', '#a07850'][i % 3];
-      ctx.fillRect(VX + 320 + i * 56, y + 30, 26, 20);
-    }
-    // caixotes e pedras no caminho
-    caixote(VX + 620, y + LANE_H - 12, 44, 30);
-    caixote(VX + 660, y + LANE_H - 42, 36, 24);
-    ctx.fillStyle = '#6a6a62';
-    for (let i = 0; i < 10; i++) {
-      ctx.beginPath();
-      ctx.ellipse(VX + 40 + i * 108, y + LANE_H - 10, 12, 5, 0, 0, 7);
-      ctx.fill();
-    }
+function barraNova(g: CanvasRenderingContext2D, y: number, t: number, v: number): void {
+  // água do rio por baixo de tudo
+  faixa(g,y, tom(['#0f2e33', '#113338', '#0d2a30'], v), LANE_H);
+  waterLines(VX, y + 10, W - VX, LANE_H - 20, t + v * 0.6, 'rgba(120,160,140,.13)', 13);
+  // pranchões do píer atravessando o campo: é o chão de todas as lanes
+  for (let i = 0; i < 7; i++) {
+    tabua(g,y + 14 + i * 16 + (v % 2) * 4, 5, i % 2 ? '#5a4a30' : '#4d3f28', '#3d3018');
+  }
+  // estacas de amarração batendo na água
+  for (let i = 0; i < 12; i++) poste(g,VX + 26 + i * 88 + v * 24, y + LANE_H, 22 + (i % 3) * 6);
+  // sucata do rio: caixote, barril, rede, cano furado — um por lane
+  if (v % 3 === 0) {
+    caixote(g,VX + 210 + v * 40, y + LANE_H - 14, 46, 32);
+    barril(g,VX + 300 + v * 40, y + LANE_H - 14, 11, '#7a6a3a');
+    fio(g,VX + 360, y + 40, VX + 520, y + 44, 10);
+  } else if (v % 3 === 1) {
+    barril(g,VX + 620 + v * 30, y + LANE_H - 14, 13, '#8a5a2a');
+    caixote(g,VX + 690 + v * 30, y + LANE_H - 34, 38, 24);
+    poca(g,VX + 400 + v * 30, y + LANE_H - 8, 26, 'rgba(20,40,44,.45)');
   } else {
-    // BECO DO ZÉ — viela entre muros, escada, entulho
-    faixa(y, '#3a3a34', LANE_H);
-    for (let i = 0; i < 24; i++) {
-      ctx.fillStyle = i % 2 ? '#43423a' : '#38372f';
-      ctx.fillRect(VX + i * 46, y + 6, 44, LANE_H - 12);
-    }
-    // muros do beco, com telhado por cima
-    ctx.fillStyle = '#2a2a26';
-    ctx.fillRect(VX, y - 30, 46, 40);
-    ctx.fillRect(VX + 980, y - 30, 46, 40);
-    ctx.fillRect(VX + 160, y - 16, 210, 26);
-    // escada de incêndio subindo o muro
-    ctx.strokeStyle = '#4a4438';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 6; i++) {
-      ctx.beginPath();
-      ctx.moveTo(VX + 40 + i * 34, y - 10 + i * 5);
-      ctx.lineTo(VX + 74 + i * 34, y + 6 + i * 5);
-      ctx.stroke();
-    }
-    // lâmpada do beco + luz
-    poste(VX + 560, y + 40, 74);
-    ctx.fillStyle = '#ffd070';
-    ctx.beginPath();
-    ctx.arc(VX + 560, y - 40, 7, 0, 7);
-    ctx.fill();
-    const lum = ctx.createRadialGradient(VX + 560, y - 40, 2, VX + 560, y - 40, 70);
-    lum.addColorStop(0, 'rgba(255,210,120,.20)');
-    lum.addColorStop(1, 'rgba(255,210,120,0)');
-    ctx.fillStyle = lum;
-    ctx.fillRect(VX + 490, y - 66, 140, 104);
-    // entulho, caixote e lixo
-    ctx.fillStyle = '#4a4230';
-    ctx.beginPath();
-    ctx.moveTo(VX + 640, y + LANE_H);
-    ctx.lineTo(VX + 660, y + LANE_H - 34);
-    ctx.lineTo(VX + 740, y + LANE_H - 30);
-    ctx.lineTo(VX + 760, y + LANE_H);
-    ctx.fill();
-    caixote(VX + 240, y + LANE_H - 10, 40, 26);
-    caixote(VX + 276, y + LANE_H - 34, 32, 22);
-    for (let i = 0; i < 8; i++) {
-      ctx.fillStyle = ['#6a6a5a', '#8a8a70', '#5a5040'][i % 3];
-      ctx.fillRect(VX + 80 + i * 96, y + 90, 14, 4);
-    }
+    fio(g,VX + 120, y + 30, VX + 420, y + 26, 12);
+    caixote(g,VX + 880 + v * 24, y + LANE_H - 12, 40, 28);
+    pedra(g,VX + 520 + v * 24, y + LANE_H - 10, 14, '#4a4238');
+  }
+  // um resto de barco encalhado de tempo em tempo (prop grande)
+  if (v === 1 || v === 4) {
+    g.fillStyle = '#2a2620';
+    g.beginPath();
+    g.moveTo(VX + 700, y + LANE_H - 6);
+    g.lineTo(VX + 760, y + 30);
+    g.lineTo(VX + 940, y + 24);
+    g.lineTo(VX + 940, y + 70);
+    g.lineTo(VX + 780, y + LANE_H - 6);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#1a1612';
+    for (let i = 0; i < 5; i++) g.fillRect(VX + 790 + i * 30, y + 34 + (i % 2) * 4, 16, 22);
   }
 }
 
 // =====================================================================
-//  FAROL DO FIM — penhascos, neblina
+//  FAROL DO FIM — a costa de pedra em todas as lanes
 // =====================================================================
-function farolNova(p: Palette, l: number, y: number, t: number): void {
-  l = 3; // unificado: mesmo piso em todas as lanes de baixo
-  if (l === 3) {
-    // FAROL VELHO — a base de um farol que ninguém acende mais
-    faixa(y, '#3c4038', LANE_H);
-    ctx.fillStyle = '#33372f';
-    for (let i = 0; i < 12; i++) ctx.fillRect(VX + i * 92, y + 20 + (i % 2) * 6, 88, 16);
-    // torre rachada (prop grande)
-    ctx.fillStyle = '#2e3230';
-    ctx.beginPath();
-    ctx.moveTo(VX + 620, y + 8);
-    ctx.lineTo(VX + 700, y + 8);
-    ctx.lineTo(VX + 694, y - 46);
-    ctx.lineTo(VX + 626, y - 46);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#1c201e';
-    ctx.fillRect(VX + 626, y - 58, 68, 14);
-    ctx.strokeStyle = '#1c201e';
-    ctx.lineWidth = 2;
+function farolNova(g: CanvasRenderingContext2D, y: number, t: number, v: number): void {
+  faixa(g,y, tom(['#4a4a44', '#4d4d47', '#474741'], v), LANE_H);
+  // lages soltas da costa
+  for (let i = 0; i < 12; i++) {
+    g.fillStyle = i % 2 ? '#57574e' : '#41413a';
+    g.fillRect(VX + i * 88 + v * 16, y + 24 + (i % 3) * 8, 84 - (i % 3) * 6, LANE_H - 40 - (i % 3) * 8);
+    g.strokeStyle = '#2e2e28';
+    g.lineWidth = 1;
+    g.strokeRect(VX + i * 88 + v * 16, y + 24 + (i % 3) * 8, 84 - (i % 3) * 6, LANE_H - 40 - (i % 3) * 8);
+  }
+  // erva rala e pedras soltas na beira
+  for (let i = 0; i < 14; i++) arbusto(g,VX + 22 + i * 78 + v * 20, y + 34 + Math.sin(t + i) * 3, 6 + (i % 3), '#4a5a32');
+  for (let i = 0; i < 7; i++) pedra(g,VX + 70 + i * 158 + v * 26, y + LANE_H - 12, 16 + (i % 3) * 6, '#3a3a34');
+  //Restinga molhada no fundo
+  waterLines(VX, y + LANE_H - 16, W - VX, 14, t + v * 0.4, 'rgba(160,190,170,.12)');
+  // sucata da costa: âncora, corda, boia velha
+  if (v % 3 === 0) {
+    poste(g,VX + 300 + v * 30, y + LANE_H - 6, 30);
+    g.strokeStyle = '#5a5148';
+    g.lineWidth = 4;
+    g.beginPath();
+    g.moveTo(VX + 300 + v * 30, y + LANE_H - 42);
+    g.lineTo(VX + 300 + v * 30, y + LANE_H - 58);
+    g.stroke();
+  } else if (v % 3 === 1) {
+    g.strokeStyle = '#a09070';
+    g.lineWidth = 3;
     for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.moveTo(VX + 640, y + i * 22 - 14);
-      ctx.lineTo(VX + 672 + i * 6, y + i * 22 + 4);
-      ctx.stroke();
+      g.beginPath();
+      g.arc(VX + 500 + i * 130 + v * 24, y + 30, 9 + i, 0, Math.PI * 1.4);
+      g.stroke();
     }
-    // pedras e erva rala
-    ctx.fillStyle = '#2a2e2a';
-    for (let i = 0; i < 7; i++) {
-      ctx.beginPath();
-      ctx.ellipse(VX + 60 + i * 150, y + LANE_H - 12, 18 + (i % 3) * 6, 7, 0, 0, 7);
-      ctx.fill();
-    }
-    for (let i = 0; i < 16; i++) arbusto(VX + 20 + i * 70, y + 40 + Math.sin(t + i) * 3, 6, '#4a5a32');
-    waterLines(VX, y + LANE_H - 14, W - VX, 14, t, 'rgba(160,190,170,.12)');
-  } else if (l === 4) {
-    // TRAPICHE VELHO — pedra molhada, cordas e âncora
-    faixa(y, p.strip, LANE_H);
-    ctx.fillStyle = '#2a2e30';
-    for (let i = 0; i < 16; i++) ctx.fillRect(VX + i * 70, y + 24 + (i % 2) * 8, 66, 12);
-    waterLines(VX, y + 40, W - VX, 26, t, 'rgba(170,200,190,.16)');
-    // âncora grande (prop)
-    ctx.strokeStyle = '#5a5148';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(VX + 500, y + 90);
-    ctx.lineTo(VX + 500, y + 26);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(VX + 500, y + 24, 9, Math.PI, 0);
-    ctx.stroke();
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(VX + 470, y + 100);
-    ctx.quadraticCurveTo(VX + 500, y + 64, VX + 530, y + 100);
-    ctx.stroke();
-    // estacas e cordas enroladas
-    for (let i = 0; i < 14; i++) {
-      const h = 24 + (i % 3) * 8;
-      ctx.fillStyle = '#3a2e22';
-      ctx.fillRect(VX + 18 + i * 78, y + LANE_H - h - 10, 8, h);
-      ctx.fillStyle = '#2a2218';
-      ctx.fillRect(VX + 14 + i * 78, y + LANE_H - h - 14, 16, 6);
-    }
-    ctx.strokeStyle = '#a09070';
-    ctx.lineWidth = 4;
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.arc(VX + 240 + i * 190, y + 20, 11, 0, Math.PI * 1.4);
-      ctx.stroke();
-    }
-    fio(VX + 60, y + 10, VX + 200, y + 18, 10);
-    // pedras lisas e algas
-    for (let i = 0; i < 9; i++) arbusto(VX + 30 + i * 122, y + LANE_H - 18, 10, '#2a4a34');
   } else {
-    // ROTA DO FAROLEIRO — trilha de pedra, marcos e vento
-    faixa(y, p.ground, LANE_H);
-    ctx.fillStyle = '#5a5a50';
-    for (let i = 0; i < 14; i++) {
-      const px = VX + 20 + i * 80;
-      ctx.beginPath();
-      ctx.ellipse(px + Math.sin(i) * 6, y + 46 + (i % 3) * 12, 26 + (i % 4) * 4, 13, 0, 0, 7);
-      ctx.fill();
-    }
-    // dois marcos de pedra marcando a subida (prop)
-    for (const mx of [VX + 260, VX + 800]) {
-      ctx.fillStyle = '#4a4a42';
-      ctx.fillRect(mx, y + 6, 26, 74);
-      ctx.fillStyle = '#3a3a32';
-      ctx.fillRect(mx, y + 6, 26, 8);
-      ctx.fillStyle = '#c8c0a0';
-      ctx.fillRect(mx + 4, y - 4, 18, 12);
-    }
-    // poste com placa da rota
-    poste(VX + 540, y + 60, 96);
-    ctx.fillStyle = '#6a5a3a';
-    ctx.fillRect(VX + 500, y - 44, 80, 26);
-    ctx.fillStyle = '#3a2e1a';
-    ctx.font = '7px monospace';
-    ctx.fillText('ROTA', VX + 516, y - 26);
-    // gravetos e mato seco ao vento
-    ctx.strokeStyle = '#7a7a4a';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 14; i++) {
-      const gx = VX + 16 + i * 80;
-      const sw = Math.sin(t * 2.4 + i) * 5;
-      ctx.beginPath();
-      ctx.moveTo(gx, y + LANE_H - 8);
-      ctx.quadraticCurveTo(gx + sw, y + LANE_H - 26, gx + sw * 2, y + LANE_H - 40);
-      ctx.stroke();
-    }
+    fio(g,VX + 160, y + 34, VX + 460, y + 40, 10);
+    pedra(g,VX + 760 + v * 24, y + LANE_H - 8, 20, '#2e3230');
+  }
+  // a base do farol, uma vez a cada duas lanes (prop grande)
+  if (v % 2 === 0) {
+    g.fillStyle = '#2e3230';
+    g.beginPath();
+    g.moveTo(VX + 620 + v * 30, y + 10);
+    g.lineTo(VX + 700 + v * 30, y + 10);
+    g.lineTo(VX + 694 + v * 30, y - 46);
+    g.lineTo(VX + 626 + v * 30, y - 46);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#1c201e';
+    g.fillRect(VX + 626 + v * 30, y - 58, 68, 14);
   }
 }
 
 // =====================================================================
-//  ESTAÇÃO AFOGADA — tempestade
+//  ESTAÇÃO AFOGADA — o trilho e a plataforma em todas as lanes
 // =====================================================================
-function estacaoNova(p: Palette, l: number, y: number, t: number): void {
-  l = 3; // unificado: mesmo piso em todas as lanes de baixo
-  if (l === 3) {
-    // ARMAZÉM DE BAGAGEM — trilho de carga, engradado, malas
-    faixa(y, p.ground, LANE_H);
-    ctx.fillStyle = '#c8b45a';
-    ctx.fillRect(VX, y + 58, W - VX, 3);
-    // trilho de rolos
-    ctx.fillStyle = '#2a2e2a';
-    for (let i = 0; i < 22; i++) ctx.fillRect(VX + 20 + i * 50, y + 62, 26, 6);
-    // engradados alinhados (prop grande)
+function estacaoNova(g: CanvasRenderingContext2D, y: number, t: number, v: number): void {
+  faixa(g,y, '#3a403c', LANE_H);
+  // dormentes e trilhos atravessando o campo
+  for (let i = 0; i < 12; i++) {
+    g.fillStyle = '#4a3a20';
+    g.fillRect(VX + i * 92 + v * 14, y + 58, 84, 16);
+  }
+  g.fillStyle = '#6a6a58';
+  g.fillRect(VX, y + 52, W - VX, 4);
+  g.fillRect(VX, y + 76, W - VX, 4);
+  // trilho de rolos de carga no meio do caminho
+  g.fillStyle = '#2a2e2a';
+  for (let i = 0; i < 22; i++) g.fillRect(VX + 20 + i * 50 + v * 8, y + 62, 26, 6);
+  // plataforma de pedra nas lanes pares
+  if (v % 2 === 0) {
+    g.fillStyle = '#5a5a50';
+    for (let i = 0; i < 12; i++) g.fillRect(VX + i * 100 + v * 12, y + 20, 92, 24);
+    g.fillStyle = '#7a7a6a';
+    g.fillRect(VX, y + 18, W - VX, 3);
+  }
+  // sucata da estação: malas, engradado, palete
+  if (v % 3 === 0) {
     for (let i = 0; i < 3; i++) {
-      const cx = VX + 180 + i * 230;
-      ctx.fillStyle = '#6a5232';
-      ctx.fillRect(cx, y + 4, 96, 50);
-      ctx.fillStyle = '#4a3a20';
-      for (let k = 0; k < 3; k++) ctx.fillRect(cx, y + 4 + k * 16, 96, 3);
+      const cx = VX + 180 + i * 230 + v * 34;
+      g.fillStyle = '#6a5232';
+      g.fillRect(cx, y + 4, 96, 50);
+      g.fillStyle = '#4a3a20';
+      for (let k = 0; k < 3; k++) g.fillRect(cx, y + 4 + k * 16, 96, 3);
     }
-    // pilha de malas
-    ctx.fillStyle = '#7a5a3a';
-    ctx.fillRect(VX + 760, y + 14, 54, 40);
-    ctx.fillStyle = '#5a3a24';
-    ctx.fillRect(VX + 748, y + 52, 78, 26);
-    ctx.fillStyle = '#8a6a44';
-    ctx.fillRect(VX + 796, y + 26, 44, 30);
-    ctx.fillStyle = '#d8c8a0';
-    ctx.font = '6px monospace';
-    ctx.fillText('FRÁGIL', VX + 758, y + 30);
-    // palete solto e goteras do teto
-    ctx.fillStyle = '#4a3a20';
-    ctx.fillRect(VX + 60, y + 34, 70, 8);
-    ctx.fillRect(VX + 64, y + 42, 8, 10);
-    ctx.fillRect(VX + 118, y + 42, 8, 10);
-    for (let i = 0; i < 3; i++) {
-      ctx.fillStyle = 'rgba(180,200,210,.28)';
-      ctx.fillRect(VX + 330 + i * 320, y + 60 + ((t * 40 + i * 30) % 30), 2, 8);
-    }
-  } else if (l === 4) {
-    // DEPÓSITO — prateleiras, caixas, luminária acesa
-    faixa(y, '#3a4038', LANE_H);
-    // prateleiras com caixas
-    for (let r = 0; r < 3; r++) {
-      ctx.fillStyle = '#5a5040';
-      ctx.fillRect(VX + 30, y + 14 + r * 26, W - VX - 60, 5);
-      for (let i = 0; i < 12; i++) {
-        ctx.fillStyle = ['#7a6a44', '#8a7a54', '#6a5a3a', '#5a6a54'][(i + r) % 4];
-        ctx.fillRect(VX + 40 + i * 86, y + 8 + r * 26 - 24, 54, 24);
-        ctx.fillStyle = 'rgba(0,0,0,.25)';
-        ctx.fillRect(VX + 40 + i * 86, y + 8 + r * 26 - 6, 54, 6);
-      }
-    }
-    // luminária pendurada com halo (prop)
-    ctx.strokeStyle = '#2a2e2a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(VX + 560, y);
-    ctx.lineTo(VX + 560, y - 46);
-    ctx.stroke();
-    ctx.fillStyle = '#c8b070';
-    ctx.beginPath();
-    ctx.moveTo(VX + 548, y - 46);
-    ctx.lineTo(VX + 572, y - 46);
-    ctx.lineTo(VX + 578, y - 34);
-    ctx.lineTo(VX + 542, y - 34);
-    ctx.closePath();
-    ctx.fill();
-    const halo = ctx.createRadialGradient(VX + 560, y - 32, 2, VX + 560, y - 32, 130);
-    halo.addColorStop(0, 'rgba(230,200,140,.20)');
-    halo.addColorStop(1, 'rgba(230,200,140,0)');
-    ctx.fillStyle = halo;
-    ctx.fillRect(VX + 400, y - 120, 320, 190);
-    // serragem no chão e sacos
-    ctx.fillStyle = '#5a4a2a';
-    for (let i = 0; i < 20; i++) ctx.fillRect(VX + i * 56, y + LANE_H - 16, 22, 6);
-    ctx.fillStyle = '#8a7a54';
-    ctx.beginPath();
-    ctx.ellipse(VX + 130, y + LANE_H - 22, 26, 16, 0, 0, 7);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(VX + 158, y + LANE_H - 30, 22, 14, 0, 0, 7);
-    ctx.fill();
+  } else if (v % 3 === 1) {
+    g.fillStyle = '#7a5a3a';
+    g.fillRect(VX + 760 + v * 16, y + 14, 54, 40);
+    g.fillStyle = '#5a3a24';
+    g.fillRect(VX + 748 + v * 16, y + 52, 78, 26);
   } else {
-    // FIM DE LINHA — dormente, trilho e erva
-    faixa(y, '#33362e', LANE_H);
-    ctx.fillStyle = '#4a3a20';
-    for (let i = 0; i < 12; i++) ctx.fillRect(VX + i * 92, y + 58, 84, 16);
-    ctx.fillStyle = '#6a6a58';
-    ctx.fillRect(VX, y + 50, W - VX, 4);
-    ctx.fillRect(VX, y + 76, W - VX, 4);
-    // batente de fim de linha (prop grande)
-    ctx.fillStyle = '#5a3a22';
-    ctx.fillRect(VX + 900, y + 8, 34, 90);
-    ctx.fillStyle = '#8a2a20';
-    ctx.fillRect(VX + 896, y, 42, 12);
-    ctx.fillStyle = '#e8d8b0';
-    ctx.font = '7px monospace';
-    ctx.fillText('FIM', VX + 904, y + 8);
-    // placa na parede
-    ctx.fillStyle = '#1a201e';
-    ctx.fillRect(VX + 120, y - 18, 150, 22);
-    ctx.fillStyle = '#c8c0a0';
-    ctx.font = 'bold 9px monospace';
-    ctx.fillText('FIM DE LINHA', VX + 128, y - 4);
-    // erva e dormente solto
-    for (let i = 0; i < 14; i++) arbusto(VX + 20 + i * 80, y + 34 + Math.sin(t + i) * 2, 7, '#4a5a30');
-    ctx.fillStyle = '#3a2e1a';
-    ctx.fillRect(VX + 480, y + LANE_H - 18, 90, 12);
+    g.fillStyle = '#4a3a20';
+    g.fillRect(VX + 60 + v * 20, y + 34, 70, 8);
+    g.fillRect(VX + 64 + v * 20, y + 42, 8, 10);
+    g.fillRect(VX + 118 + v * 20, y + 42, 8, 10);
+  }
+  // goteras do teto
+  for (let i = 0; i < 3; i++) {
+    g.fillStyle = 'rgba(180,200,210,.28)';
+    g.fillRect(VX + 330 + i * 320, y + 60 + ((t * 40 + i * 30 + v * 12) % 30), 2, 8);
   }
 }
 
 // =====================================================================
-//  FEIRA DO PEIXE — calor
+//  FEIRA DO PEIXE — a calçada e as barracas em todas as lanes
 // =====================================================================
-function feiraNova(p: Palette, l: number, y: number, t: number): void {
-  l = 3; // unificado: mesmo piso em todas as lanes de baixo
-  if (l === 3) {
-    // CAMELÔ DO PEIXE — lonas, caixas, gelo derretendo
-    faixa(y, '#6a5a42', LANE_H);
-    // lona esfarrapada esticada (prop)
-    ctx.fillStyle = '#b04836';
-    ctx.beginPath();
-    ctx.moveTo(VX + 60, y + 6);
-    ctx.lineTo(VX + 380, y + 14);
-    ctx.lineTo(VX + 360, y + 32);
-    ctx.lineTo(VX + 80, y + 26);
-    ctx.closePath();
-    ctx.fill();
-    poste(VX + 70, y + 40, 96);
-    poste(VX + 372, y + 44, 96);
-    fio(VX + 74, y - 54, VX + 372, y - 50, 14);
-    // caixas de peixe com gelo
-    for (let i = 0; i < 5; i++) {
-      const cx = VX + 460 + i * 120;
-      ctx.fillStyle = '#8a8078';
-      ctx.fillRect(cx, y + 22, 92, 40);
-      ctx.fillStyle = '#d8d8d0';
-      ctx.fillRect(cx + 6, y + 26, 80, 12);
-      ctx.fillStyle = '#9aa08c';
-      ctx.fillRect(cx + 14, y + 28, 60, 6);
-      ctx.fillStyle = '#3a2a1a';
-      ctx.fillRect(cx, y + 62, 92, 4);
-    }
-    vapor(VX + 500, y + 20, t, 3, 'rgba(220,230,225,.18)');
-    // caixote e sombrinha
-    caixote(VX + 40, y + LANE_H - 8, 48, 34);
-    ctx.fillStyle = '#c8a03a';
-    ctx.beginPath();
-    ctx.arc(VX + 300, y + LANE_H - 14, 30, Math.PI, 0);
-    ctx.fill();
-    ctx.fillStyle = '#4a3a20';
-    ctx.fillRect(VX + 297, y + LANE_H - 14, 5, 24);
-    // poeira e tampa de gargalo no chão
-    ctx.fillStyle = 'rgba(60,40,20,.25)';
-    for (let i = 0; i < 12; i++) {
-      const fx = VX + ((t * 40 + i * 97) % (W - VX));
-      ctx.fillRect(fx, y + 96 + (i % 3) * 6, 8, 2);
-    }
-  } else if (l === 4) {
-    // GELO — blocos, caminhão frigorífico, água de degelo
-    faixa(y, p.strip, LANE_H);
-    waterLines(VX, y + 20, W - VX, 20, t, 'rgba(190,220,215,.20)');
-    // caminhão frigorífico (prop grande)
-    ctx.fillStyle = '#8a8a80';
-    ctx.fillRect(VX + 700, y + 12, 200, 62);
-    ctx.fillStyle = '#6a6a60';
-    ctx.fillRect(VX + 700, y + 12, 200, 10);
-    ctx.fillStyle = '#2a2e2a';
-    ctx.fillRect(VX + 900, y + 34, 44, 40);
-    ctx.fillStyle = '#7a8a8a';
-    ctx.fillRect(VX + 904, y + 38, 28, 16);
-    for (const wx of [VX + 722, VX + 830]) {
-      ctx.fillStyle = '#1a1e1e';
-      ctx.beginPath();
-      ctx.arc(wx, y + 76, 13, 0, 7);
-      ctx.fill();
-      ctx.fillStyle = '#5a5a50';
-      ctx.beginPath();
-      ctx.arc(wx, y + 76, 5, 0, 7);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#c8d8d0';
-    ctx.font = 'bold 8px monospace';
-    ctx.fillText('GELO', VX + 712, y + 50);
-    // pilha de blocos de gelo rachada
-    ctx.fillStyle = 'rgba(200,225,225,.55)';
-    for (let i = 0; i < 6; i++) {
-      const bx = VX + 300 + (i % 3) * 54;
-      const by = y + 40 + Math.floor(i / 3) * 34;
-      ctx.fillRect(bx, by, 48, 30);
-      ctx.strokeStyle = 'rgba(120,150,150,.5)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(bx, by, 48, 30);
-      ctx.beginPath();
-      ctx.moveTo(bx + 6, by);
-      ctx.lineTo(bx + 26, by + 30);
-      ctx.stroke();
-    }
-    vapor(VX + 320, y + 38, t, 3, 'rgba(210,230,225,.16)');
-    // poças de degelo e escorrimão
-    ctx.fillStyle = 'rgba(150,190,190,.22)';
-    for (let i = 0; i < 7; i++) ctx.fillRect(VX + 20 + i * 150, y + 90, 60, 6);
-  } else {
-    // CALDEIRÃO DO PEIXE — panelões, fogo e vapor
-    faixa(y, '#4a3a2a', LANE_H);
-    // panelão grande (prop)
-    ctx.fillStyle = '#2e2a24';
-    ctx.beginPath();
-    ctx.ellipse(VX + 560, y + 74, 66, 14, 0, 0, 7);
-    ctx.fill();
-    ctx.fillStyle = '#3a342c';
-    ctx.fillRect(VX + 496, y + 20, 128, 54);
-    ctx.fillStyle = '#5a5044';
-    ctx.fillRect(VX + 490, y + 14, 140, 8);
-    ctx.fillStyle = '#6a5a48';
-    ctx.beginPath();
-    ctx.ellipse(VX + 560, y + 14, 44, 10, 0, 0, Math.PI);
-    ctx.fill();
-    // fogo do fogareiro
-    for (let i = 0; i < 5; i++) {
-      const fh = 14 + Math.sin(t * 9 + i) * 8;
-      ctx.fillStyle = i % 2 ? '#e08a20' : '#ffd070';
-      ctx.beginPath();
-      ctx.moveTo(VX + 520 + i * 20, y + 88);
-      ctx.lineTo(VX + 530 + i * 20, y + 88 - fh);
-      ctx.lineTo(VX + 540 + i * 20, y + 88);
-      ctx.fill();
-    }
-    vapor(VX + 560, y + 8, t, 5, 'rgba(220,225,215,.16)');
-    // segundo panelão pequeno e tábua de cortar
-    ctx.fillStyle = '#332e26';
-    ctx.beginPath();
-    ctx.ellipse(VX + 240, y + 86, 40, 9, 0, 0, 7);
-    ctx.fill();
-    ctx.fillStyle = '#3e382e';
-    ctx.fillRect(VX + 202, y + 56, 76, 30);
-    ctx.fillStyle = '#8a7a54';
-    ctx.fillRect(VX + 900, y + 70, 120, 10);
-    ctx.fillStyle = '#c8b8a0';
-    ctx.fillRect(VX + 920, y + 58, 16, 12);
-    // balde e óleo no chão
-    ctx.fillStyle = '#5a5040';
-    ctx.fillRect(VX + 60, y + 76, 26, 26);
-    ctx.fillStyle = 'rgba(20,16,10,.4)';
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.ellipse(VX + 400 + i * 150, y + 110, 26, 5, 0, 0, 7);
-      ctx.fill();
-    }
+function feiraNova(g: CanvasRenderingContext2D, y: number, t: number, v: number): void {
+  faixa(g,y, tom(['#6a5a42', '#6d5d45', '#67573f'], v), LANE_H);
+  // calçada de pedra
+  for (let i = 0; i < 20; i++) {
+    g.fillStyle = i % 2 ? '#7a7060' : '#6a6050';
+    g.fillRect(VX + i * 54 + v * 10, y + 18 + (i % 2) * 6, 50, LANE_H - 34);
+    g.fillStyle = 'rgba(0,0,0,.18)';
+    g.fillRect(VX + i * 54 + v * 10, y + 18 + (i % 2) * 6, 50, 3);
+  }
+  // lona esfarrapada de alguma barraca por cima
+  if (v % 2 === 0) {
+    g.fillStyle = '#b04836';
+    g.beginPath();
+    g.moveTo(VX + 60 + v * 26, y + 8);
+    g.lineTo(VX + 380 + v * 26, y + 16);
+    g.lineTo(VX + 360 + v * 26, y + 34);
+    g.lineTo(VX + 80 + v * 26, y + 28);
+    g.closePath();
+    g.fill();
+    poste(g,VX + 70 + v * 26, y + 44, 92);
+    poste(g,VX + 372 + v * 26, y + 48, 92);
+  }
+  // caixas de peixe com gelo
+  for (let i = 0; i < 4; i++) {
+    const cx = VX + 460 + i * 128 + v * 30;
+    g.fillStyle = '#8a8078';
+    g.fillRect(cx, y + 22, 92, 40);
+    g.fillStyle = '#d8d8d0';
+    g.fillRect(cx + 6, y + 26, 80, 12);
+    g.fillStyle = '#3a2a1a';
+    g.fillRect(cx, y + 62, 92, 4);
+  }
+  vapor(g,VX + 500 + v * 20, y + 18, t, 3, 'rgba(220,230,225,.18)');
+  // poeira e tampa de gargalo no chão
+  g.fillStyle = 'rgba(60,40,20,.25)';
+  for (let i = 0; i < 12; i++) {
+    const fx = VX + ((t * 40 + i * 97 + v * 40) % (W - VX));
+    g.fillRect(fx, y + 96 + (i % 3) * 6, 8, 2);
+  }
+  // sombrinha do camelô numa lane sim, noutra não
+  if (v % 3 === 1) {
+    caixote(g,VX + 40 + v * 20, y + LANE_H - 8, 48, 34);
+    g.fillStyle = '#c8a03a';
+    g.beginPath();
+    g.arc(VX + 300 + v * 20, y + LANE_H - 14, 30, Math.PI, 0);
+    g.fill();
+    g.fillStyle = '#4a3a20';
+    g.fillRect(VX + 297 + v * 20, y + LANE_H - 14, 5, 24);
   }
 }
 
 // =====================================================================
-//  FÁBRICA PODRE — cinzas
+//  FÁBRICA PODRE — o piso de fábrica em todas as lanes
 // =====================================================================
-function fabricaNova(p: Palette, l: number, y: number, t: number): void {
-  l = 3; // unificado: mesmo piso em todas as lanes de baixo
-  if (l === 3) {
-    // PÁTIO DE CARGA — contêineres, empilhadeira, marcação
-    faixa(y, '#3a3a32', LANE_H);
-    ctx.fillStyle = 'rgba(0,0,0,.28)';
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.ellipse(VX + 120 + i * 210, y + 100, 52, 8, 0, 0, 7);
-      ctx.fill();
-    }
-    ctx.strokeStyle = '#c8a03a';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([22, 16]);
-    ctx.beginPath();
-    ctx.moveTo(VX, y + 60);
-    ctx.lineTo(FIELD_R, y + 60);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    // contêineres empilhados (prop grande)
+function fabricaNova(g: CanvasRenderingContext2D, y: number, t: number, v: number): void {
+  faixa(g,y, tom(['#3a3a32', '#3d3d35', '#383832'], v), LANE_H);
+  // piso de concreto com grade
+  for (let i = 0; i < 10; i++) {
+    g.fillStyle = '#4a443a';
+    g.fillRect(VX + i * 116 + v * 18, y + 40, 110, 56);
+    g.fillStyle = 'rgba(0,0,0,.25)';
+    g.fillRect(VX + i * 116 + v * 18, y + 96, 110, 4);
+  }
+  // faixa de perigo
+  g.strokeStyle = '#c8a03a';
+  g.lineWidth = 2;
+  g.setLineDash([22, 16]);
+  g.beginPath();
+  g.moveTo(VX, y + 26);
+  g.lineTo(FIELD_R, y + 26);
+  g.stroke();
+  g.setLineDash([]);
+  // manchas de óleo e poças
+  for (let i = 0; i < 5; i++) poca(g, VX + 140 + i * 212 + v * 22, y + 108, 44, 'rgba(10,14,12,.4)');
+  // contêineres empilhados (prop grande, uma vez a cada duas lanes)
+  if (v % 2 === 0) {
     const cores = ['#7a3a24', '#3a5a6a', '#6a5a24'];
     for (let i = 0; i < 3; i++) {
-      const cx = VX + 160 + i * 250;
-      ctx.fillStyle = cores[i % 3];
-      ctx.fillRect(cx, y + 10, 190, 40);
-      ctx.fillStyle = cores[i % 3];
-      ctx.fillRect(cx + 40, y - 34, 110, 44);
-      ctx.strokeStyle = 'rgba(0,0,0,.35)';
-      ctx.lineWidth = 2;
+      const cx = VX + 160 + i * 250 + v * 30;
+      g.fillStyle = cores[i % 3];
+      g.fillRect(cx, y + 10, 190, 40);
+      g.fillStyle = cores[i % 3];
+      g.fillRect(cx + 40, y - 34, 110, 44);
+      g.strokeStyle = 'rgba(0,0,0,.35)';
+      g.lineWidth = 2;
       for (let k = 0; k < 5; k++) {
-        ctx.beginPath();
-        ctx.moveTo(cx + 16 + k * 34, y + 10);
-        ctx.lineTo(cx + 16 + k * 34, y + 50);
-        ctx.stroke();
+        g.beginPath();
+        g.moveTo(cx + 16 + k * 34, y + 10);
+        g.lineTo(cx + 16 + k * 34, y + 50);
+        g.stroke();
       }
-      ctx.strokeRect(cx + 40, y - 34, 110, 44);
-      ctx.fillStyle = 'rgba(0,0,0,.2)';
-      ctx.fillRect(cx, y + 44, 190, 6);
+      g.strokeRect(cx + 40, y - 34, 110, 44);
     }
-    // empilhadeira parada
-    ctx.fillStyle = '#8a6a20';
-    ctx.fillRect(VX + 720, y + 50, 90, 30);
-    ctx.fillStyle = '#5a4a16';
-    ctx.fillRect(VX + 716, y + 44, 20, 40);
-    ctx.fillStyle = '#2a2e22';
-    for (const wx of [VX + 738, VX + 800]) {
-      ctx.beginPath();
-      ctx.arc(wx, y + 84, 11, 0, 7);
-      ctx.fill();
-      ctx.fillStyle = '#5a5a40';
-      ctx.beginPath();
-      ctx.arc(wx, y + 84, 4, 0, 7);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#c8b45a';
-    ctx.fillRect(VX + 760, y + 88, 40, 5);
-  } else if (l === 4) {
-    // CALDEIRAS — tanques grandes, tubos e vapor
-    faixa(y, '#33362c', LANE_H);
-    ctx.fillStyle = '#4a5040';
-    for (let i = 0; i < 10; i++) ctx.fillRect(VX + i * 112, y + 22, 108, 10);
-    // caldeiras (prop grande)
-    for (let i = 0; i < 2; i++) {
-      const cx = VX + 200 + i * 480;
-      ctx.fillStyle = '#4a4438';
-      rr(cx, y + 16, 190, 76, 14);
-      ctx.fill();
-      ctx.fillStyle = '#5a5246';
-      ctx.fillRect(cx, y + 16, 190, 10);
-      ctx.fillStyle = '#e05a20';
-      ctx.fillRect(cx + 30, y + 34, 34, 8);
-      ctx.fillRect(cx + 76, y + 34, 34, 8);
-      // válvula e manômetro
-      ctx.fillStyle = '#8a7a4a';
-      ctx.fillRect(cx + 150, y + 40, 8, 16);
-      ctx.strokeStyle = '#c8c0a0';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx + 154, y + 34, 8, 0, 7);
-      ctx.stroke();
-      // tubo descendo
-      ctx.strokeStyle = '#3a342c';
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.moveTo(cx + 190, y + 30);
-      ctx.lineTo(cx + 240, y + 30);
-      ctx.lineTo(cx + 240, y + 92);
-      ctx.stroke();
-      vapor(cx + 60, y + 14, t + i, 4, 'rgba(210,215,200,.15)');
-    }
-    // grade e gotas de óleo
-    ctx.fillStyle = 'rgba(0,0,0,.22)';
-    for (let i = 0; i < 8; i++) ctx.fillRect(VX + 30 + i * 140, y + 96, 60, 5);
-  } else {
-    // ESCRITÓRIO DO GERENTE — mesa, arquivo e luminária
-    faixa(y, '#3e3a30', LANE_H);
-    ctx.fillStyle = '#2e2a24';
-    for (let i = 0; i < 6; i++) ctx.fillRect(VX + i * 190, y + 26 + (i % 2) * 10, 186, 16);
-    // tapete quadrado no chão
-    ctx.fillStyle = '#5a3a2a';
-    ctx.fillRect(VX + 420, y + 84, 220, 34);
-    // mesa grande do gerente (prop)
-    ctx.fillStyle = '#6a4a2a';
-    ctx.fillRect(VX + 400, y + 48, 260, 12);
-    ctx.fillStyle = '#4a3420';
-    ctx.fillRect(VX + 410, y + 60, 10, 50);
-    ctx.fillRect(VX + 640, y + 60, 10, 50);
-    // arquivos e máquina de escrever em cima
-    ctx.fillStyle = '#8a7a54';
-    for (let i = 0; i < 4; i++) ctx.fillRect(VX + 408 + i * 16, y + 26, 14, 22);
-    ctx.fillStyle = '#2a2a26';
-    ctx.fillRect(VX + 480, y + 34, 52, 14);
-    ctx.fillStyle = '#c8c0a0';
-    ctx.fillRect(VX + 486, y + 28, 40, 7);
-    // luminária de mesa acesa
-    ctx.strokeStyle = '#3a342a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(VX + 620, y + 48);
-    ctx.lineTo(VX + 620, y + 14);
-    ctx.stroke();
-    ctx.fillStyle = '#5a5040';
-    ctx.beginPath();
-    ctx.moveTo(VX + 606, y + 14);
-    ctx.lineTo(VX + 634, y + 14);
-    ctx.lineTo(VX + 640, y + 4);
-    ctx.lineTo(VX + 600, y + 4);
-    ctx.closePath();
-    ctx.fill();
-    const luz = ctx.createRadialGradient(VX + 620, y + 6, 2, VX + 620, y + 6, 90);
-    luz.addColorStop(0, 'rgba(255,220,150,.20)');
-    luz.addColorStop(1, 'rgba(255,220,150,0)');
-    ctx.fillStyle = luz;
-    ctx.fillRect(VX + 520, y - 80, 200, 160);
-    // quadro do relógio de ponto na parede
-    ctx.fillStyle = '#2a2e28';
-    ctx.fillRect(VX + 900, y + 24, 70, 44);
-    ctx.fillStyle = '#c8b45a';
-    ctx.font = '7px monospace';
-    ctx.fillText('07:00', VX + 916, y + 50);
+  }
+  // vapor de cano e luz de alerta
+  vapor(g,VX + 300 + v * 40, y + 14, t, 3, 'rgba(210,215,200,.15)');
+  if (Math.sin(t * 4 + v) > 0.7) {
+    g.fillStyle = '#ff5030';
+    g.beginPath();
+    g.arc(VX + 980 + v * 20, y + 30, 3, 0, 7);
+    g.fill();
   }
 }
 
 // =====================================================================
-//  CEMITÉRIO DE BARCOS — vendaval
+//  CEMITÉRIO DE BARCOS — a água rasa e as carcaças em todas as lanes
 // =====================================================================
-function cemiterioNova(p: Palette, l: number, y: number, t: number): void {
-  l = 3; // unificado: mesmo piso em todas as lanes de baixo
-  if (l === 3) {
-    // CASCO ENCALHADO — navio encalhado, corrente e guindaste
-    faixa(y, '#2c3234', LANE_H);
-    waterLines(VX, y + 84, W - VX, 34, t * 1.1, 'rgba(150,180,180,.16)', 14);
-    // casco (prop grande)
-    ctx.fillStyle = '#22292c';
-    ctx.beginPath();
-    ctx.moveTo(VX + 300, y + 88);
-    ctx.lineTo(VX + 340, y + 6);
-    ctx.lineTo(VX + 640, y + 2);
-    ctx.lineTo(VX + 640, y + 62);
-    ctx.lineTo(VX + 420, y + 88);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#1a2022';
-    for (let i = 0; i < 6; i++) ctx.fillRect(VX + 360 + i * 44, y + 14 + (i % 2) * 6, 22, 30);
-    ctx.strokeStyle = '#2e3a3c';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(VX + 640, y + 60);
-    ctx.lineTo(VX + 700, y + 40);
-    ctx.lineTo(VX + 700, y + 88);
-    ctx.stroke();
-    // guindaste quebrado e corrente frouxa
-    ctx.strokeStyle = '#3a4438';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(VX + 150, y + 88);
-    ctx.lineTo(VX + 150, y + 4);
-    ctx.lineTo(VX + 96, y + 22);
-    ctx.stroke();
-    ctx.strokeStyle = '#4a4a40';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      ctx.lineTo(VX + 96 - i * 4 + Math.sin(i + t) * 6, y + 26 + i * 9);
-    }
-    ctx.stroke();
-    // pedras e erva morta na beira
-    for (let i = 0; i < 8; i++) arbusto(VX + 30 + i * 130, y + 96, 9, '#2e3428');
-  } else if (l === 4) {
-    // OSSOS DO CASCO — costelas do navio na água rasa
-    faixa(y, p.water, LANE_H);
-    waterLines(VX, y, W - VX, LANE_H, t * 1.2, 'rgba(150,180,180,.14)');
-    // costelas (prop)
-    ctx.strokeStyle = '#3a3228';
-    ctx.lineWidth = 7;
-    for (let i = 0; i < 6; i++) {
-      const rx = VX + 160 + i * 150;
-      ctx.beginPath();
-      ctx.arc(rx, y + 92, 52 + (i % 2) * 14, Math.PI, Math.PI * 1.45);
-      ctx.stroke();
-    }
-    // quilha ainda de pé
-    ctx.fillStyle = '#2a2a22';
-    ctx.fillRect(VX + 120, y + 90, 780, 10);
-    ctx.fillStyle = '#33302a';
-    ctx.fillRect(VX + 120, y + 84, 780, 6);
-    // âncora cravada na areia
-    ctx.strokeStyle = '#5a5148';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(VX + 950, y + 92);
-    ctx.lineTo(VX + 950, y + 46);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(VX + 950, y + 44, 8, Math.PI, 0);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(VX + 926, y + 92);
-    ctx.quadraticCurveTo(VX + 950, y + 58, VX + 974, y + 92);
-    ctx.stroke();
-    // tábuas soltas e lama
-    ctx.fillStyle = '#4a4238';
-    for (let i = 0; i < 10; i++) {
-      const a = Math.sin(t * 1.5 + i) * 3;
-      ctx.save();
-      ctx.translate(VX + 30 + i * 108, y + 30 + a);
-      ctx.rotate(Math.sin(t + i) * .04);
-      ctx.fillRect(0, 0, 66, 6);
-      ctx.restore();
-    }
-    ctx.fillStyle = 'rgba(10,14,12,.35)';
-    ctx.fillRect(VX, y + LANE_H - 16, W - VX, 16);
-  } else {
-    // MARGEM DO CEMITÉRIO — lápides, cruzes e maré subindo
-    faixa(y, '#262c26', LANE_H);
-    ctx.fillStyle = '#31362c';
-    for (let i = 0; i < 7; i++) ctx.fillRect(VX + i * 160, y + 60, 154, 8);
-    // lápides (prop)
-    for (let i = 0; i < 9; i++) {
-      const lx = VX + 26 + i * 122;
-      ctx.fillStyle = '#8a8a7a';
-      if (i % 3 === 0) {
-        ctx.fillRect(lx, y + 22, 8, 40);
-        ctx.fillRect(lx - 7, y + 32, 22, 8);
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(lx, y + 62);
-        ctx.lineTo(lx, y + 28);
-        ctx.arc(lx + 13, y + 28, 13, Math.PI, 0);
-        ctx.lineTo(lx + 26, y + 62);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.fillStyle = 'rgba(0,0,0,.25)';
-      ctx.fillRect(lx, y + 58, 26, 6);
-    }
-    // maré batendo na margem
-    waterLines(VX, y + 78, W - VX, 34, t, 'rgba(190,215,205,.20)', 10);
-    ctx.strokeStyle = 'rgba(200,225,210,.20)';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.arc(VX + 80 + i * 230, y + LANE_H - 6 + Math.sin(t * 2 + i) * 3, 30, Math.PI * 1.15, Math.PI * 1.85);
-      ctx.stroke();
-    }
-    // placa enferrujada e erva morta
-    ctx.fillStyle = '#5a4a32';
-    ctx.fillRect(VX + 940, y + 34, 74, 30);
-    ctx.strokeStyle = '#3a3022';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(VX + 940, y + 34, 74, 30);
-    ctx.fillStyle = '#c8b890';
-    ctx.font = '6px monospace';
-    ctx.fillText('AQUI NÃO', VX + 948, y + 52);
-    for (let i = 0; i < 12; i++) arbusto(VX + 20 + i * 92, y + 14, 5, '#3e4430');
+function cemiterioNova(g: CanvasRenderingContext2D, y: number, t: number, v: number): void {
+  faixa(g,y, tom(['#1a3034', '#1d3438', '#172d31'], v), LANE_H);
+  waterLines(VX, y + 8, W - VX, LANE_H - 16, t * 1.1 + v * 0.5, 'rgba(150,180,180,.14)', 14);
+  // fundo de areia e lama
+  g.fillStyle = 'rgba(10,14,12,.35)';
+  g.fillRect(VX, y + LANE_H - 18, W - VX, 18);
+  // quilhas e costelas encalhadas (prop grande)
+  g.strokeStyle = '#3a3228';
+  g.lineWidth = 6;
+  for (let i = 0; i < 4; i++) {
+    const rx = VX + 150 + i * 240 + v * 26;
+    g.beginPath();
+    g.arc(rx, y + 96, 46 + (i % 2) * 14, Math.PI, Math.PI * 1.45);
+    g.stroke();
+  }
+  // tábuas soltas boiando
+  g.fillStyle = '#4a4238';
+  for (let i = 0; i < 10; i++) {
+    const a = Math.sin(t * 1.5 + i + v) * 3;
+    g.save();
+    g.translate(VX + 30 + i * 108 + v * 22, y + 30 + a);
+    g.rotate(Math.sin(t + i + v) * 0.04);
+    g.fillRect(0, 0, 66, 6);
+    g.restore();
+  }
+  // erva morta e âncora cravada
+  for (let i = 0; i < 8; i++) arbusto(g,VX + 30 + i * 130 + v * 22, y + 96, 9, '#2e3428');
+  if (v % 3 === 2) {
+    g.strokeStyle = '#5a5148';
+    g.lineWidth = 4;
+    g.beginPath();
+    g.moveTo(VX + 950 + v * 12, y + LANE_H - 6);
+    g.lineTo(VX + 950 + v * 12, y + LANE_H - 50);
+    g.stroke();
   }
 }
 
-/** Piso das lanes 4, 5 e 6: cada mapa desenha as suas três. */
-export function drawLaneFloorNova(map: MapDef, p: Palette, l: number, t: number): void {
-  const y = LANE_Y0 + l * LANE_H;
-  if (map.id === 'barra') barraNova(p, l, y, t);
-  else if (map.id === 'farol') farolNova(p, l, y, t);
-  else if (map.id === 'estacao') estacaoNova(p, l, y, t);
-  else if (map.id === 'feira') feiraNova(p, l, y, t);
-  else if (map.id === 'fabrica') fabricaNova(p, l, y, t);
-  else cemiterioNova(p, l, y, t);
+// ---------- despacho ----------
+
+/** Piso das 6 lanes: cada mapa desenha o seu terreno (único). */
+export function drawLaneFloorNova(
+  map: MapDef,
+  p: Palette,
+  l: number,
+  t: number,
+  /** Contexto de destino. Omissão = ctx do jogo (caminho ao vivo/testes). */
+  g?: CanvasRenderingContext2D,
+): void {
+  // 6 lanes → variação 0–5 (ADR 013)
+  drawLaneFloorNovaEm(map, p, t, LANE_Y0 + l * LANE_H, l, g);
+}
+
+/**
+ * O mesmo terreno com Y e variação explícitos.
+ *
+ * Existe para o teste comparar a **arte** sem o deslocamento de lane: com
+ * `drawLaneFloorNova` as assinatas diferem só pelo Y, e um teste de
+ * "lanes iguais" passaria por vacuidade.
+ */
+export function drawLaneFloorNovaEm(
+  map: MapDef,
+  p: Palette,
+  t: number,
+  y: number,
+  v: number,
+  /**
+   * Contexto de destino.
+   *
+   * O cache do piso (`sprites.ts`) passa o offscreen; omissão = ctx do jogo,
+   * que é o que os testes de render assinam. **A ausência deste parâmetro foi
+   * um bug real:** o cache chamava a arte sem contexto, a arte desenhava na
+   * tela e o offscreen nascia vazio — o piso piscava a cada refresh.
+   */
+  g: CanvasRenderingContext2D = ctx,
+): void {
+  if (map.id === 'barra') barraNova(g, y, t, v);
+  else if (map.id === 'farol') farolNova(g, y, t, v);
+  else if (map.id === 'estacao') estacaoNova(g, y, t, v);
+  else if (map.id === 'feira') feiraNova(g, y, t, v);
+  else if (map.id === 'fabrica') fabricaNova(g, y, t, v);
+  else cemiterioNova(g, y, t, v);
   // Profundidade: sombra suave no topo e na base da lane dá volume ao corredor.
-  const top = ctx.createLinearGradient(0, y, 0, y + 14);
+  const top = g.createLinearGradient(0, y, 0, y + 14);
   top.addColorStop(0, 'rgba(0,0,0,.22)');
   top.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = top;
-  ctx.fillRect(VX, y, W - VX, 14);
-  const bot = ctx.createLinearGradient(0, y + LANE_H - 16, 0, y + LANE_H);
+  g.fillStyle = top;
+  g.fillRect(VX, y, W - VX, 14);
+  const bot = g.createLinearGradient(0, y + LANE_H - 16, 0, y + LANE_H);
   bot.addColorStop(0, 'rgba(0,0,0,0)');
   bot.addColorStop(1, 'rgba(0,0,0,.28)');
-  ctx.fillStyle = bot;
-  ctx.fillRect(VX, y + LANE_H - 16, W - VX, 16);
+  g.fillStyle = bot;
+  g.fillRect(VX, y + LANE_H - 16, W - VX, 16);
 }

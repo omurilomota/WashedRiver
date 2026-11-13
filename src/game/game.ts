@@ -29,16 +29,23 @@ import {
   randLane,
   rnd,
   shuffle,
+  vizinhoX,
+  vizinhoY,
 } from '../core/constants';
 import { addText, burst, canvas, stain } from '../core/canvas';
 import { G, Game, setG } from '../core/state';
-import type { Enemy, GameState, Machine, Offer, Phase, Pickup, WaveEntry } from '../core/state';
+import type { Enemy, GameState, Machine, Offer, Phase, Pickup, Structure, WaveEntry } from '../core/state';
 import type { DailyMod } from '../data/types';
 import { dayKey, hashStr, mulberry } from '../core/rng';
 import {
   BOSSES,
   DAILY_MODS,
+  DIFICULDADE,
   ECONOMIA,
+  INTROS,
+  MOLHO,
+  MOLHO_TXT,
+  VIZINHOS_NOMES,
   ENDINGS,
   ENEMY,
   LU_CLICKS,
@@ -50,6 +57,8 @@ import {
   RADIO,
   TOQ_LINES,
   UPG,
+  VIZINHOS_FALAS,
+  VIZINHOS_SEGREDO,
   ZE_FALAS,
   ZE_RARO,
 } from '../data';
@@ -83,6 +92,28 @@ function autosave(): void {
   G.savedT = 2.4;
   SaveDB.slot.lastPlayed = Date.now();
   SaveDB.save();
+}
+
+/**
+ * O usuário pediu menos movimento (`prefers-reduced-motion`).
+ *
+ * Antes só o tremor era zerado no fim do update — mas o flash de tela e os
+ * tremores por evento (fase de chefe, trem de carga, brecha, morte de chefe)
+ * continuavam disparando. Aqui a checagem é uma só e cada efeito passa por
+ * estes dois funis.
+ */
+function semMovimento(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Tremor de câmera, respeitando quem pediu menos movimento. */
+function tremer(n: number): void {
+  if (!semMovimento()) G.shake = Math.max(G.shake, n);
+}
+
+/** Flash de tela, respeitando quem pediu menos movimento. */
+function piscar(n: number): void {
+  if (!semMovimento()) G.flash = n;
 }
 
 /**
@@ -128,7 +159,7 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
   const dailyMods=(opts&&opts.mods)||[];
   const mods: Record<string, any>={};
   if(daily)for(const m of dailyMods){for(const k in m)if(k!=='id'&&k!=='nome'&&k!=='desc')mods[k]=m[k];}
-  const startRes=daily&&mods.scrap?mods.scrap:(mode==='sandbox'?999999:200+e.startScrap);
+  const startRes=daily&&mods.scrap?mods.scrap:(mode==='sandbox'?999999:ECONOMIA.startScrap+e.startScrap);
   const st: GameState={
     mode,map,mapIndex,t:0,scrap:startRes,resMult:(map.resMult||1)*(daily&&mods.res?mods.res:1),
     machines:[],enemies:[],projs:[],pickups:[],parts:[],decals:[],texts:[],winds:[],props:[],deaths:[],hazards:[],
@@ -137,7 +168,8 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     structures:map.estruturas.map(lane=>lane.map(s=>({...s,alive:true}))),
     ze:{alive:true,say:'',sayT:0,nextSay:12,anim:0,repeat:0},zeSilent:0,zeHat:false,
     luAtWindow:true,toqAlive:true,toqSay:'',toqSayT:0,toqClicks:0,zeClicks:0,toqBoost:0,
-    dogSay:0,luTalking:'',
+    dogSay:0,luTalking:'',vizinhoSay:['','',''],vizinhoT:[0,0,0],vizinhoClicks:[0,0,0],vizinhoSegredo:false,
+    intros:[],marcaPendente:null,deck:null,evento:null,micros:[],microT:20,variacao:null,
     up:{},unlockedMach:{},dmgBonus:0,shields:e.shield||0,repairBank:e.repair||0,
     boss:null,bossDeath:null,
     // "NOITE PERMANENTE": o mapa já começa no escuro.
@@ -148,6 +180,8 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
     weather:map.weather,lastSave:Date.now(),
     endingChoice:null,impostoDevido:0,savedT:0
   };
+  // BLOCO M.4: o deck escolhido antes da partida. Sandbox não escolhe.
+  if(mode!=='sandbox') st.deck=SaveDB.getDeck(mapIndex);
   st.waves=makeWaves(st,daily);
   st.phases=buildPhases(st);
   if(mode==='boss')st.scrap+=50;
@@ -157,15 +191,15 @@ function makeState(mapIndex: number, mode: GameState['mode'], opts?: { daily?: b
 /**
  * A lista de bichos que entra na onda.
  *
- * O pool é do mapa (`src/data/maps.json`): a onda 0 pega os dois
- * primeiros, a onda 1 os seis primeiros e a onda 2 o pool inteiro. É o
- * que dá identidade ao mapa — e o que faz tatu, sapo, gaivota, lata e
- * fantasma aparecerem em algum momento.
+ * A curva vem de `DIFICULDADE` (`src/data/balance.json`), não daqui: a
+ * onda 0 é tutorial disfarçado — **um** tipo só (o mais fraco do pool),
+ * poucos bichos, bem espaçados, para o jogador novo passar sem suar. A
+ * onda 2 abre o pool do mapa inteiro, e cada bicho aparece pelo menos uma
+ * vez. O mapa seguinte começa um degrau acima (`degrauPorMapa`).
  */
 function wavePool(base: string[], w: number): string[] {
-  if (w === 0) return base.slice(0, 2);
-  if (w === 1) return base.slice(0, 6);
-  return base.slice();
+  const o = DIFICULDADE.ondas[Math.min(w, DIFICULDADE.ondas.length - 1)];
+  return base.slice(0, Math.max(1, o.tipos));
 }
 
 /** Pool padrão, só se algum mapa vier sem pool (o dado sempre tem). */
@@ -173,61 +207,83 @@ const POOL_CLASSICO = ['baiacu', 'enguia', 'caranguejo', 'ova', 'polvo', 'piranh
 
 function makeWaves(st: GameState, daily: boolean): WaveEntry[][] {
   const map=st.map,speed=st.mods.speed||1;
+  const degrau=Math.max(0,st.mapIndex|0);   // mapa N+1 começa um degrau acima
   const rng=daily?mulberry(hashStr(dayKey()+map.id)):Math.random;
   // O desafio diário pode trocar o pool inteiro ("SÓ BAIACU"). Nesse
   // caso nada escapa: nem os bichos de cena, nem os extras do mapa.
   const soUm: string[]|null=Array.isArray(st.mods.pool)&&st.mods.pool.length?(st.mods.pool as string[]):null;
   const base=soUm||((map.pool&&map.pool.length)?map.pool:POOL_CLASSICO);
   const waves: WaveEntry[][]=[];
-  const counts=daily?[7,13]:[7,13,20];
   const waveCount=daily?2:3;
+  // BLOCO M.6 — variação da onda (camada 3): sorteada aqui porque o formato
+  // da onda (quantos, quando, em que corredor) nasce junto.
+  st.variacao=sortearVariacao(waveCount-1,waveCount);
   for(let w=0;w<waveCount;w++){
     const arr: WaveEntry[]=[];
-    const poolW=wavePool(base,w);
-    for(let i=0;i<counts[w];i++){
+    const o=DIFICULDADE.ondas[Math.min(w,DIFICULDADE.ondas.length-1)];
+    const d=DIFICULDADE.degrauPorMapa;
+    const count=Math.max(5,o.bichos+d.bichos*degrau);
+    const spacing=Math.max(1.8,o.espacamento-d.espacamento*degrau);
+    const v=st.variacao;
+    let poolW=wavePool(base,w);
+    // corredores: as primeiras ondas não enchem as 6 lanes de uma vez —
+    // o jogador não tem peça pra tanta lane e perdia tudo na onda 2.
+    let corredores=Math.max(1,Math.min(LANES,o.corredores+d.corredores*degrau));
+    if(v==='tema'&&w>0){poolW=[base[0]];}        // um tipo só: onda temática
+    if(v==='corredor'){corredores=1;}            // tudo num corredor só
+    for(let i=0;i<count;i++){
       const type=poolW[Math.floor(rng()*poolW.length)];
-      const lane=Math.floor(rng()*LANES);
-      const spacing=w===0?5.0:(w===1?3.0:2.6);
+      const lane=Math.min(LANES-1,Math.floor(rng()*corredores));
       const time=i*spacing+rng()*1.6;
       arr.push([time,type,lane,1+w*.12]);
     }
+    // silenciosa: 15s de nada e depois tudo junto — tensão, não injustiça
+    if(v==='silenciosa'&&w>0)for(const e of arr)e[0]+=MOLHO.variacoes.silenciosa.atraso;
     // A última onda traz o pool inteiro: cada bicho do mapa aparece
     // pelo menos uma vez, e não por acaso.
     if(w===waveCount-1){
-      for(let i=0;i<poolW.length;i++)arr.push([2+i*2.4,poolW[i],Math.floor(rng()*LANES),1+w*.12]);
+      for(let i=0;i<poolW.length;i++)arr.push([2+i*2.4,poolW[i],Math.min(LANES-1,Math.floor(rng()*corredores)),1+w*.12]);
     }
     // cenas: o polvo, o cardume e a baleia-filhote. A baleia é visita,
     // não moradora: aparece em todo mapa ("não devia estar aqui").
     const cPolvo=soUm?soUm[0]:'polvo';
     const cPiranha=soUm?soUm[0]:'piranha';
+    // Cenas (BLOCO M.2): a onda 2 era o paredão — o jogador não tinha peça
+    // nem sucata ainda e perdia 6+ estruturas nela. As cenas pesadas foram
+    // para a onda 3 (o teste); a onda 2 só introduz o polvo e um cardume
+    // curtinho.
     if(w===1){
-      arr.push([30,cPolvo,Math.floor(rng()*LANES),1.1]);
-      for(let k=0;k<4;k++)arr.push([30+rng()*2,cPiranha,Math.floor(rng()*LANES),1.1]);
-      arr.push([30,soUm?soUm[0]:'baleia',Math.floor(rng()*LANES),1]);
+      arr.push([30,cPolvo,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+      for(let k=0;k<2;k++)arr.push([30+rng()*2,cPiranha,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
     }
     if(w===2){
-      arr.push([12,cPolvo,Math.floor(rng()*LANES),1.1]);
-      arr.push([14,cPolvo,Math.floor(rng()*LANES),1.1]);
-      for(let k=0;k<5;k++)arr.push([18+rng()*4,cPiranha,Math.floor(rng()*LANES),1.1]);
-      arr.push([45,soUm?soUm[0]:'baleia',Math.floor(rng()*LANES),1]);
+      arr.push([12,cPolvo,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+      arr.push([14,cPolvo,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+      for(let k=0;k<5;k++)arr.push([18+rng()*4,cPiranha,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+      arr.push([45,soUm?soUm[0]:'baleia',Math.min(LANES-1,Math.floor(rng()*corredores)),1]);
     }
-    // exclusivo do mapa aparece na segunda onda
-    if(w>=1)for(const t of map.extra)arr.push([4+Math.floor(rng()*(counts[w]*2)),soUm?soUm[0]:t,Math.floor(rng()*LANES),1.1]);
-    if(daily&&st.mods.bossEarly&&w===1)arr.push([counts[w]*2,map.boss,1,1]);
+    // exclusivo do mapa aparece na última onda (quando dá pra segurar)
+    if(w===waveCount-1)for(const t of map.extra)arr.push([4+Math.floor(rng()*(count*2)),soUm?soUm[0]:t,Math.min(LANES-1,Math.floor(rng()*corredores)),1.1]);
+    if(daily&&st.mods.bossEarly&&w===1)arr.push([count*2,map.boss,1,1]);
     waves.push(arr.sort((a,b)=>a[0]-b[0]));
   }
   st.enemyHpMult=st.mods.enemyHp||1;st.speedMult=speed;
   return waves;
 }
-function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
+export function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
   const base=(pool&&pool.length)?pool:POOL_CLASSICO;
   const arr: WaveEntry[]=[];const dur=36+Math.min(14,n*2);
-  let count;
-  if(n===0)count=7;
-  else if(n===1)count=13;
-  else count=Math.min(22,9+Math.min(24,n*3));
+  // Curva da Noite Infinita (DIFICULDADE.noiteInfinita): a onda 1 é igual
+  // à onda 1 do normal (tutorial), a dificuldade sobe um degrau a cada
+  // `degrauACada` ondas — não a cada onda — e o chefe aparece a cada
+  // `chefeACada`. Nada de dobrar em 30 s.
+  const inf=DIFICULDADE.noiteInfinita;
+  const degrau=Math.floor(n/inf.degrauACada);
+  const count=n===0?DIFICULDADE.ondas[0].bichos:Math.min(inf.tetoBichos,DIFICULDADE.ondas[0].bichos+degrau*inf.bichosPorDegrau);
+  const spc=Math.max(inf.espacamentoMin,DIFICULDADE.ondas[0].espacamento-degrau*0.6);
+  const hp=1+Math.min(inf.tetoHp,degrau*inf.hpPorDegrau);
   const poolW=wavePool(base,n);
-  const spc=n===0?5.0:2.6; for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),1+Math.min(1,n*.09)]);
+  for(let i=0;i<count;i++)arr.push([i*spc+rnd(0,1.5),pick(poolW),randLane(),hp]);
   // integração das novas criaturas na Noite Infinita
   if(n>=1){
     arr.push([30,'polvo',randLane(),1.1]);
@@ -239,7 +295,7 @@ function makeEndlessWave(n: number, pool?: string[]): WaveEntry[] {
     for(let k=0;k<5;k++)arr.push([18+rnd(0,4),'piranha',randLane(),1.1]);
     arr.push([45,'baleia',randLane(),1]);
   }
-  if(n>=2 && n%3===2)arr.push([dur*.6,'bento',1,1+n*.07]);
+  if(n>=DIFICULDADE.noiteInfinita.chefeACada-1 && (n+1)%DIFICULDADE.noiteInfinita.chefeACada===0)arr.push([dur*.6,'bento',1,1+Math.min(1,n*.07)]);
   return arr.sort((a,b)=>a[0]-b[0]);
 }
 function buildPhases(st: GameState): Phase[] {
@@ -250,7 +306,8 @@ function buildPhases(st: GameState): Phase[] {
   if(st.daily)return[{type:'prep',dur:10,msg:'DESAFIO DO DIA'},{type:'wave',n:0},{type:'break'},{type:'wave',n:1},
     {type:'bossIntro',dur:2.6},{type:'boss'}];
   return[{type:'prep',dur:12,msg:'A MARÉ ESTÁ SUBINDO'},{type:'wave',n:0},
-    {type:'break'},{type:'wave',n:1},{type:'break'},{type:'wave',n:2},
+    // respiro de 22s antes da onda 2: o jogador cobre as lanes que faltam
+    {type:'break',dur:30},{type:'wave',n:1},{type:'break'},{type:'wave',n:2},
     {type:'break'},{type:'prep',dur:15,msg:'RESPIRO'},{type:'bossIntro',dur:2.6},{type:'boss'}];
 }
 
@@ -324,6 +381,18 @@ function currentPhase(): Phase {
 }
 function announceWave(w: number): void {
   const msg='ONDA '+(w+1);
+  // BLOCO M.6: a variação da onda é dita na cara, não descoberta no escuro
+  const v=G.variacao;
+  if(v==='tema'&&w>0){const d=ENEMY[(G.map.pool&&G.map.pool[0])||'baiacu'];
+    announce(MOLHO_TXT.variacoes.tema.replace('%s',(d&&d.nome)||'BICHO'),'story');}
+  else if(v==='silenciosa'&&w>0)announce(MOLHO_TXT.variacoes.silenciosa,'story');
+  else if(v==='corredor'&&w>0)announce(MOLHO_TXT.variacoes.corredor,'story');
+  else if(v==='bonus'&&w>0)announce(MOLHO_TXT.variacoes.bonus,'story');
+  // bônus: sucata na área, sem pedir permissão
+  if(v==='bonus'&&w>0){
+    for(let i=0;i<MOLHO.variacoes.bonus.pilhas;i++)
+      dropScrap(rnd(VX+40,W-40),plantY(randLane())-rnd(10,40),Math.round(MOLHO.variacoes.bonus.sucata/MOLHO.variacoes.bonus.pilhas),false);
+  }
   announce(msg+' — '+(G.mode==='endless'?'SEM FIM':(w===0?'ELES SENTIRAM O CHEIRO':w===1?'TEM MAIS COISA VINDO':'TUDO QUE O MAR TINHA')),'story');
   Snd.setIntensity(Math.min(4,w+1));
   const rm=RADIO.find(r=>r.map===G.mapIndex&&r.wave===w+1);
@@ -347,10 +416,125 @@ function nextPhase(): void {
     }
     announceWave(ph.n||0);
   }
-  if(ph.type==='break'){cobrarImposto();autosave();openShop();}
+  if(ph.type==='break'){cobrarImposto();autosave();abrirEvento();}
   if(ph.type==='bossIntro'){openBossIntro();}
   if(ph.type==='boss'){spawnBoss(G.map.boss,undefined,true);}
 }
+/**
+ * BLOCO M.6 — MOLHO.
+ *
+ * Três camadas de aleatoriedade, todas com a mesma regra: **divertido de
+ * ver, nunca injusto**. Nada de "perdeu sem poder fazer nada".
+ *
+ * 1. Evento entre ondas (`abrirEvento`/`escolherEvento`): pausa o jogo e
+ *    oferece escolha, como toda escolha do Zé.
+ * 2. Micro-surpresa durante a onda (`updateMicros`): mare, nevoeiro, chuva,
+ *    peixe grande, chiado de rádio, peça enferrujada — curtos e reversíveis.
+ * 3. Variação de onda (`sortearVariacao`, aplicada em `makeWaves`): tema,
+ *    silenciosa, corredor único, bônus.
+ */
+
+/** Evento entre ondas: acontece antes da loja, com escolha. */
+function abrirEvento(): void {
+  if(!chance(MOLHO.chanceEvento)){openShop();return;}
+  const ids=Object.keys(MOLHO_TXT.eventos).filter(x=>x!=='bicho_raro'&&x!=='cachorro_real'&&x!=='radio_estacao');
+  const id=pick(ids);
+  const txt=MOLHO_TXT.eventos[id];
+  G.evento={id,t:0};
+  Game.screen='evento';
+  UI.evento(id,txt.titulo,txt.texto,txt.sim,txt.nao||'');
+  Snd.setIntensity(0);
+}
+
+/** Resposta do jogador ao evento. */
+Game.escolherEvento=function(sim: boolean){
+  if(!G){Game.screen='play';return;}
+  const id=G.evento?G.evento.id:null;
+  G.evento=null;
+  if(id==='barco_pirata'){
+    if(sim){
+      G.scrap+=180;
+      const fraca=G.machines.slice().sort((a,b)=>a.hp-b.hp)[0];
+      if(fraca)damageMachine(fraca,fraca.maxhp*0.35);
+      announce('O ZÉ VOLTOU COM SUCATA E UM CORTE.','story');
+    }else announce('O ZÉ DEIXOU O CASCO. O MAR LEVA.','story');
+  }else if(id==='gaivota_ladra'){
+    // a peça já foi levada pelo mar: a escolha é tentar buscar (60 sucata)
+    if(sim){
+      if(G.scrap<60){announce('SEM GASOLINA. A GAIVOTA FICOU COM A PEÇA.','story');}
+      else if(chance(.6)){G.scrap-=60;announce('O ZÉ BUSCOU. A PEÇA VOLTOU.','story');}
+      else{G.scrap-=60;announce('O ZÉ BUSCOU. A GAIVOTA CORREU MAIS.','story');}
+    }else announce('A GAIVOTA FICOU COM A PEÇA. ELA NÃO PEDIU DESCULPA.','story');
+  }else if(id==='lu_janela'){
+    const sorte=rnd(0,1);
+    if(sorte<.45){const v=60+Math.round(rnd(0,60));G.scrap+=v;announce('DONA LÚ MANDOU '+v+' DE SUCATA. SEM RECLAMAR.','story');}
+    else if(sorte<.85){for(const m of G.machines)m.hp=m.maxhp;announce('DONA LÚ MANDOU GRAXA. PEÇAS NOVAS.','story');}
+    else{G.shields+=2;announce('DONA LÚ MANDOU DUAS TÁBUAS. NINGUÉM PERGUNTOU POR QUÊ.','story');}
+  }else if(id==='toquinho_balao'){
+    G.micros.push({tipo:'balao',t:0,dur:14});
+    announce('OS BICHOS VÃO OLHAR PRA CIMA. OBRIGADO, TOQUINHO.','story');
+  }else if(id==='bau_mar'){
+    if(sim){
+      if(chance(.6)){const v=140+Math.round(rnd(0,80));G.scrap+=v;announce('O BAÚ TINHA '+v+' DE SUCATA E UM CHEIRO.','story');}
+      else{for(let i=0;i<3;i++)spawnEnemy(pick(['baiacu','enguia','caranguejo']),randLane(),SPAWN_X,0.8);
+        announce('O BAÚ TINHA DENTE. TRÊS DENTES.','story');}
+    }else announce('BAÚ FICOU PRO MAR. O MAR AGRADECEU.','story');
+  }
+  openShop();
+};
+
+/** Micro-surpresas da onda: sorteadas no tempo, curtas e reversíveis. */
+function updateMicros(dt: number): void {
+  for(const m of G.micros)m.t+=dt;
+  G.micros=G.micros.filter(m=>m.t<m.dur);
+  if(G.micros.some(m=>m.tipo==='chiado')){
+    if(!G.micros.some(m=>m.tipo==='chiadoFeito'))G.micros.push({tipo:'chiadoFeito',t:0,dur:0.2});
+    Snd.pauseDuck(true);
+  }else if(!G.micros.some(m=>m.tipo==='mare')&&!G.micros.some(m=>m.tipo==='nevoeiro')){
+    Snd.pauseDuck(false);
+  }
+  G.microT-=dt;
+  if(G.microT>0)return;
+  G.microT=rnd(MOLHO.micro.intervalo[0],MOLHO.micro.intervalo[1]);
+  const sorte=rnd(0,1);
+  if(sorte<.2){
+    G.micros.push({tipo:'mare',t:0,dur:MOLHO.micro.mare.dur});
+    announce('A MARÉ SUBIU. ELES VÊM MAIS RÁPIDO.','story');
+  }else if(sorte<.36){
+    G.micros.push({tipo:'nevoeiro',t:0,dur:MOLHO.micro.nevoeiro.dur});
+    G.dark=true;G.darkT=MOLHO.micro.nevoeiro.dur;
+    announce('NEVOEIRO. NÃO DÁ PRA VER DE LONGE.','story');
+  }else if(sorte<.52){
+    G.micros.push({tipo:'chuva',t:0,dur:MOLHO.micro.chuva.dur});
+    announce('CHUVA. PNEU APAGA, PEÇA ENFERRUJA.','story');
+  }else if(sorte<.66){
+    G.micros.push({tipo:'peixe',t:0,dur:MOLHO.micro.peixe.dur});
+    SFX.plop();
+  }else if(sorte<.8){
+    G.micros.push({tipo:'chiado',t:0,dur:MOLHO.micro.chiado.dur});
+    announce('...TCH... O RÁDIO CHIOU.','radio');
+  }else if(sorte<.92){
+    const vitima=pick(G.machines);
+    if(vitima&&vitima.jam<=0){vitima.jam=MOLHO.micro.ferrujem.dur;announce('UMA PEÇA ENFERRUJOU.','story');}
+  }else{
+    G.ze.say=pick(MOLHO_TXT.gritos);G.ze.sayT=2.5;
+  }
+}
+
+/** Efeito prático de um micro ativo (chamado de updateEnemies/updateMachines). */
+function microAtivo(tipo: string): boolean { return G.micros.some(m=>m.tipo===tipo&&m.t<m.dur); }
+
+/** Sorteia a variação da onda que vai começar (camada 3). */
+function sortearVariacao(w: number, _total: number): string | null {
+  const v=MOLHO.variacoes;
+  if(!chance(v.chance)||w===0)return null;
+  const opcoes: string[]=[];
+  if(v.tema.ondas.includes(w))opcoes.push('tema');
+  if(w>0)opcoes.push('silenciosa');
+  opcoes.push('corredor','bonus');
+  return opcoes.length?pick(opcoes):null;
+}
+
 function advanceFromBreak(): void {
   const ph=currentPhase();
   if(ph.type==='break'){G.phaseIdx++;G.phaseT=0;G.spawnIdx=0;}
@@ -492,9 +676,38 @@ export function spawnEnemy(type: string, lane: number, x?: number, scale?: numbe
   SFX.enter(type);
   if (!SaveDB.slot.seenB[type]) {
     SaveDB.seenEnemy(type);
-    announce('NOVO: ' + d.nome + ' — ' + d.hint, 'ach');
+    apresentar(type, lane);
   }
   return e;
+}
+
+/**
+ * Como o bicho novo se apresenta (BLOCO M.3).
+ *
+ * Nada de "NOVO: BAIACU — dica". O jogador descobre: sombra passando no
+ * mar, o Zé comentando, o rádio chiando, um desenho na parede da vila, uma
+ * marca estranha no primeiro cadáver — ou nada, e ele descobre no susto.
+ */
+function apresentar(type: string, lane: number): void {
+  const it = INTROS[type];
+  if (!it || it.metodo === 'nada') return;
+  const fala = it.fala || '';
+  if (it.metodo === 'silhueta' || it.metodo === 'cartaz') {
+    G.intros.push({ type, lane, kind: it.metodo, t: 0, dur: it.metodo === 'silhueta' ? 1.6 : 14 });
+    if (fala) { G.ze.say = fala; G.ze.sayT = 4; }
+    return;
+  }
+  if (it.metodo === 'radio') {
+    // rádio no campo? Chiado e a voz distante. Sem rádio, o Zé comenta.
+    if (G.machines.some((m) => m.type === 'radio') && fala) {
+      announce('...tch ...' + fala, 'radio');
+      return;
+    }
+    if (fala) { G.ze.say = fala; G.ze.sayT = 4; }
+    return;
+  }
+  if (it.metodo === 'marca') { G.marcaPendente = type; return; }
+  if (fala) { G.ze.say = fala; G.ze.sayT = 4.5; }
 }
 function spawnBoss(id: string, lane?: number, noIntro?: boolean): void {
   const B=BOSSES[id];if(!B)return;
@@ -535,12 +748,18 @@ function spawnBoss(id: string, lane?: number, noIntro?: boolean): void {
  * `airPierce` é a resposta do Canhão de Lata e do Estilingue: projétil
  * pesado acerta voador sem precisar do holofote. Voador nunca é imune —
  * só exige a ferramenta certa (política de combate justo, AGENTS.md).
+ *
+ * A Água-Viva é a exceção declarada no bestiário ("só luz ou explosão"):
+ * intangível, nenhum projétil encosta nela enquanto não estiver acesa —
+ * `airPierce` não furaria a intangibilidade, só consumiria a bala sem dar
+ * dano. Explosão e fogo não passam por aqui: chamam `damageEnemy` direto.
  */
 export function isTargetable(e: Enemy | undefined | null, allowHidden?: boolean, airPierce?: boolean): boolean {
   if(!e||e.burrow>0)return false;
   if(e.boss)return true;
   if(ENEMY[e.type]&&ENEMY[e.type].human)return false;
   if(e.neutral)return false;
+  if(e.type==='agua'&&e.lit<=0)return false;
   if(e.air&&e.lit<=0&&e.grounded<=0&&!airPierce)return false;
   if(e.type==='enguia'&&e.dived&&e.lit<=0)return false;
   if(e.type==='fantasma'&&!e.revealed&&e.lit<=0&&!allowHidden)return false;
@@ -555,7 +774,7 @@ export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
     e.revealed=1;e.spoke=pick(['Zé?','Meu barco...','Eu não quero machucar.']);e.act=.5;
     addText(e.x,plantY(e.lane)-e.r-16,'ELE É GENTE','#f0d0a0');SFX.human();return;
   }
-  if(e.type==='agua'&&e.lit<=0&&src!=='boom'&&src!=='fire'){e.revealed=1;addText(e.x,plantY(e.lane)-e.r-10,'ATRAVESSA A BALA. SÓ LUZ.','#a8c8c8');return;}
+  if(e.type==='agua'&&e.lit<=0&&src!=='boom'&&src!=='fire'){e.revealed=1;addText(e.x,plantY(e.lane)-e.r-10,'NÃO PEGA. SÓ LUZ.','#a8c8c8');return;}
   if(e.buff)dmg*=.4;
   if(e.type==='lata'&&src==='toast'){ /* torradeira nem chega a chamar */ }
   e.hp-=dmg;e.flash=.18;e.act=.25;e.revealed=1.2;e.lit=Math.max(e.lit,.4);
@@ -564,6 +783,8 @@ export function damageEnemy(e: Enemy, dmg: number, src?: string): void {
 function killEnemy(e: Enemy, noChain?: boolean): void {
   const i=G.enemies.indexOf(e);if(i<0)return;G.enemies.splice(i,1);
   if(e.type==='mare')return;
+  // BLOCO M.5: o bestiário abre quando o bicho MORRE, não quando aparece.
+  SaveDB.mateu(e.type);
   G.kills++;if(e.type!=='baleia')G.collected+=0;
   const y=plantY(e.lane);
   const ichor=e.type==='enguia'?'#1b1b22':e.type==='ova'?'#e07a9a':e.type==='lata'?'#6a8a9a':e.type==='polvo'?'#5a3a52':'#5a1a2a';
@@ -572,6 +793,10 @@ function killEnemy(e: Enemy, noChain?: boolean): void {
   if(ENEMY[e.type].scrap>0)dropScrap(e.x,y-e.r,Math.round(ENEMY[e.type].scrap*(1+eff().luck)*(G.resMult||1)),true);
   const _swimBack = e.type==='piranha' && !G.enemies.some(o=>o!==e&&o.type==='piranha'&&o.lane===e.lane);
   G.deaths.push({type:e.type,x:e.x,y,lane:e.lane,t:0,dur:deathDur(e.type),dir:Math.random()<.5?-1:1,swimBack:_swimBack});
+  if(G.marcaPendente){G.marcaPendente=null;
+    stain(e.x,plantY(e.lane),'#3a1a2a',26);
+    addText(e.x,plantY(e.lane)-30,'TEM MAIS VINDO.','#c88');
+    announce('A MARCA NAO E DESSA.','story');}
   SFX.death(e.type);
   if(noChain)return;
   if(e.type==='ova'){for(let k=0;k<3;k++){const l=spawnEnemy('larva',e.lane,e.x+rnd(-20,20));if(l)l.kb=rnd(-70,110);}
@@ -580,7 +805,7 @@ function killEnemy(e: Enemy, noChain?: boolean): void {
   else if(e.type==='sapo'){const near=G.enemies.filter(o=>o.lane===e.lane&&Math.abs(o.x-e.x)<90)[0];
     if(near){damageEnemy(near,35,'splat');addText(e.x,y-34,'COLO DE ALGUÉM','#c8d070');}}
   else if(e.type==='caranguejo_m'){for(const o of G.enemies)if(o.type==='caranguejo'&&Math.abs(o.x-e.x)<220){o.rage=7;o.speed*=1.5;addText(o.x,plantY(o.lane)-40,'VINGANÇA','#e0a040');}}
-  else if(e.type==='baleia'){G.zeSilent=1;G.ze.say='...';G.ze.sayT=4;SaveDB.achievement('baleia');announce('O ZÉ NÃO VAI FALAR NESSA ONDA.','story');}
+  else if(e.type==='baleia'){G.zeSilent=1;G.ze.say='Pelo menos agora ela não pisa.';G.ze.sayT=4;SaveDB.achievement('baleia');announce('O ZÉ CALOU A BOCA. DEPOIS FOI CATAR SUCATA.','story');}
 }
 function steal(p: Pickup, e: Enemy): void {
   e.carry+=p.v;e.flee=true;e.act=.6;e.revealed=1;
@@ -588,7 +813,7 @@ function steal(p: Pickup, e: Enemy): void {
   SFX.steal();addText(p.x,p.y-12,'-'+p.v,'#e08080');
 }
 function explode(x: number, lane: number, dmgE: number, dmgM: number, big?: boolean): void {
-  SFX.explode();G.shake=Math.max(G.shake,big?18:10);
+  SFX.explode();tremer(big?18:10);
   burst(x,plantY(lane)-30,big?60:36,'#ffb040',big?460:360,200,rnd(4,9),.6);
   burst(x,plantY(lane)-30,big?40:26,'#333',160,-60,rnd(5,10),1.2);
   stain(x,plantY(lane),'#1a1410',big?60:46);
@@ -677,10 +902,14 @@ export function update(dt: number){
   for(const s of G.structures)for(const st of s)if(!st.alive&&Math.random()<dt*.6)G.parts.push({x:st===s[0]?58:126,y:plantY(G.structures.indexOf(s))-20,vx:rnd(-6,6),vy:rnd(-18,-8),life:rnd(1,2),max:2,color:'rgba(90,85,75,.5)',size:rnd(3,7),g:-8});
   if(G.ze.sayT>0)G.ze.sayT-=dt;
   if(G.toqSayT>0)G.toqSayT-=dt;
+  for(let i=0;i<3;i++)if(G.vizinhoT[i]>0)G.vizinhoT[i]-=dt;
+  for(const it of G.intros)it.t+=dt;G.intros=G.intros.filter(it=>it.t<it.dur);
   G.toqBoost=Math.sin(G.t*.8)*10;
-  G.shake*=Math.exp(-6*dt);if(typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)G.shake=0;G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
+  if(!semMovimento())G.shake*=Math.exp(-6*dt);else G.shake=0;G.flash=Math.max(0,G.flash-dt*1.5);G.msgT-=Math.max(0,dt);
   if(G.savedT>0)G.savedT-=dt;if(G.dogSay>0)G.dogSay-=dt;
 
+  // molho (BLOCO M.6): micro-surpresas só rolam em jogo, durante a onda
+  if(Game.screen==='play'&&!Game.paused&&currentPhase().type==='wave')updateMicros(dt);
   if(Game.screen!=='play'||Game.paused)return;
   if(Game.bossIntro&&Game.bossIntro.t<Game.bossIntro.dur){Game.bossIntro.t+=dt;if(Game.bossIntro.t>=Game.bossIntro.dur){Game.bossIntro=null;if(currentPhase().type==='bossIntro'){G.phaseIdx++;G.phaseT=0;spawnBoss(G.map.boss,undefined,true);}}return;}
   if(G.bossDeath){G.bossDeath.t+=dt;if(G.bossDeath.t>G.bossDeath.dur)completeMap();return;}
@@ -688,7 +917,8 @@ export function update(dt: number){
   updatePhase(dt);
   G.tideT-=dt;
   if(G.tideT<=0){G.tideT=G.map.weather==='rain'?3.5:6;const l=randLane();dropScrap(rnd(FIELD_R-60,FIELD_R),plantY(l)-20,Math.round(25*(G.resMult||1)),false);}
-  G.scrap += ECONOMIA.passiva * dt;
+  // sucata é inteira: a passiva acumula em segundos e o resto vira pó
+  G.scrap = Math.floor(G.scrap + ECONOMIA.passiva * dt);
   for(const k in G.cds)G.cds[k]=Math.max(0,G.cds[k]-dt);
 
   // Zé e NPCs
@@ -737,7 +967,8 @@ function updateLights(dt: number): void {
 }
 function nearMach(m: Machine, type: string): boolean {return G.machines.some(o=>o!==m&&o.lane===m.lane&&o.type===type&&Math.abs(o.x-m.x)<COLW*1.2);}
 function updateMachines(dt: number): void {
-  const slow=G.map.weather==='ash'?1.15:1;
+  // cinza atrasa a recarga; chuva do molho (BLOCO M.6) também
+  const slow=(G.map.weather==='ash'?1.15:1)*(microAtivo('chuva')?1-MOLHO.micro.chuva.lento:1);
   for(const m of G.machines){
     if(m.dead)continue;
     m.t+=dt;m.anim=Math.max(0,m.anim-dt);m.act=Math.max(0,m.act-dt);m.flash=Math.max(0,m.flash-dt);
@@ -866,7 +1097,13 @@ function updateEnemies(dt: number): void {
     if(e.type==='caranguejo')e.buff=G.enemies.some(o=>o!==e&&o.type==='caranguejo'&&o.lane===e.lane&&Math.abs(o.x-e.x)<240);
     if(e.rage>0){e.rage-=dt;}
     if(e.type==='piranha')e.school=G.enemies.filter(o=>o.type==='piranha'&&Math.abs(o.x-e.x)<200&&o.lane===e.lane).length;
-    if(e.type==='polvo'&&e.attached)continue;
+    if(e.type==='polvo'&&e.attached){
+      // O polvo desliga a peça e vai embora: antes ficava grudado pra
+      // sempre e, se a peça sobrevivesse, a onda não acabava nunca.
+      e.soltaT=(e.soltaT||5)-dt;
+      if(e.soltaT<=0){e.attached=null;e.act=.6;e.kb=-60;e.comendoT=0;}
+      continue;
+    }
     if(e.type==='tatu'){
       if(e.burrow>0){e.burrow-=dt;
         if(!e.dug&&e.burrow<.6){e.dug=true;const from=e.x;e.x-=rnd(2,3)*COLW;
@@ -901,20 +1138,27 @@ function updateEnemies(dt: number): void {
         if(e.x-e.r*.8<=m.x+22&&e.x>=m.x-8){blocked=m;break;}}
     }
     if(blocked){
-      if(e.type==='polvo'){e.attached=blocked;blocked.jam=4.5;e.act=1;SFX.metal();G.ze.say='Ele desligou a geladeira.';G.ze.sayT=3;continue;}
+      if(e.type==='polvo'){e.attached=blocked;blocked.jam=4.5;e.act=1;e.soltaT=5;SFX.metal();G.ze.say='Ele desligou a geladeira.';G.ze.sayT=3;continue;}
       if(e.type==='gaivota_r'){e.grabbed=blocked;blocked.grabbed=1.6;e.act=1;SFX.steal();G.ze.say='Tá levando a peça.';G.ze.sayT=3;continue;}
       if(blocked.type==='bujao'){destroyMachine(blocked,true);continue;}
       if(e.type==='bomba'){explode(e.x,e.lane,40,110);killEnemy(e,true);G.enemies.splice(G.enemies.indexOf(e),1);continue;}
       if(e.type==='baleia'){damageMachine(blocked,30*dt);e.eating=blocked;continue;}
       e.eating=blocked;e.biteT+=dt;e.act=.2;
-      damageMachine(blocked,e.dps*(e.buff?.7:1)*dt);
+      // Fome: quanto mais tempo comendo, mais dano. Sem isso, curar a peça
+      // a cada break (oferta do Zé) deixava o bicho mordendo pra sempre e a
+      // onda nunca acabava — medição da curva (BLOCO M.2) pegou o soft-lock.
+      const fome=1+(e.comendoT||0); // linear: cura repetida nunca vence
+      e.comendoT=(e.comendoT||0)+dt;
+      damageMachine(blocked,e.dps*fome*(e.buff?.7:1)*dt);
       if(e.biteT>.55){e.biteT=0;SFX.bite();burst(blocked.x,plantY(e.lane)-30,3,'#8a8a7a',80,400,2,.4);}
     }else{
       e.eating=null;
-      const sp=e.speed*(e.slow>0?.45:1)*(e.type==='piranha'&&e.school>=3?2.0:1)*(1+(e.rage?0:0));
+      const marAlta=microAtivo('mare')?(1+MOLHO.micro.mare.vel):1;
+      const distraido=microAtivo('balao')?.72:1;
+      const sp=e.speed*(e.slow>0?.45:1)*(e.type==='piranha'&&e.school>=3?2.0:1)*marAlta*distraido;
       e.x-=sp*dt;
-      if(e.type==='baleia'&&e.x<VX+20){G.enemies.splice(n,1);G.ze.say='Ela não sabia.';G.ze.sayT=4;
-        addText(VX+20,plantY(e.lane)-60,'ELA NÃO SABIA.','#e8d9a8');
+      if(e.type==='baleia'&&e.x<VX+20){G.enemies.splice(n,1);G.ze.say='Ela não sabia. Agora sabe.';G.ze.sayT=4;
+        addText(VX+20,plantY(e.lane)-60,'ELA NÃO SABIA. DEU PRO GASTO.','#e8d9a8');
         SaveDB.achievement('baleia_ok');announce('A BALEIA-FILHOTE PASSOU. NINGUÉM MORREU.','radio');continue;}
       if(e.x<VX+8&&e.type!=='baleia')breach(e);
     }
@@ -925,8 +1169,8 @@ function updateBossBase(e: Enemy, dt: number): void {
   e.anim+=dt;e.flash=Math.max(0,e.flash-dt);e.phaseT+=dt;e.actT-=dt;
   const frac=e.hp/e.maxhp;
   const wantPhase=e.b==='gerente'?clamp(1+Math.floor((1-frac)*7),1,7):frac>.66?1:frac>.33?2:3;
-  if(wantPhase>e.phase){e.phase=wantPhase;e.act=1;G.shake=12;SFX.enter(e.b);Snd.setIntensity(4);
-    addText(e.x,plantY(e.lane)-140,'FASE '+e.phase,'#e8c84a');G.flash=.4;}
+  if(wantPhase>e.phase){e.phase=wantPhase;e.act=1;tremer(12);SFX.enter(e.b);Snd.setIntensity(4);
+    addText(e.x,plantY(e.lane)-140,'FASE '+e.phase,'#e8c84a');piscar(.4);}
   if(e.b==='mare'){e.rise=clamp(e.phaseT/120,0,1)*100;e.hp=e.maxhp;e.actT-=dt;
     if(e.actT<=0){e.actT=rnd(2.2,3.4);const lane=randLane();const t=pick(['baiacu','enguia','piranha','polvo','agua','fantasma']);spawnEnemy(t,lane,SPAWN_X+rnd(0,80),1.2);}
     e.maeT=(e.maeT||0)+dt;if(e.maeT>120){bossDefeated(e);}return;}
@@ -1016,7 +1260,7 @@ function updateHazards(dt: number): void {
   for(let i=G.hazards.length-1;i>=0;i--){
     const h=G.hazards[i];h.t+=dt;
     if(h.t>=h.warn&&h.t<h.warn+h.dur){
-      if(!h.hit){h.hit=true;SFX.crash();G.shake=16;
+      if(!h.hit){h.hit=true;SFX.crash();tremer(16);
         for(const m of G.machines)if(m.lane===h.lane)damageMachine(m,h.dmg);
         for(const e of G.enemies)if(e.lane===h.lane&&!e.boss&&e.type!=='pescador')damageEnemy(e,h.kind==='train'?90:25,'boom');}
     }
@@ -1051,16 +1295,16 @@ function breach(e: Enemy): void {
   // jeito de perder uma parede: ele cobra pedágio em sucata e volta pro
   // mar. Rádio e Cachorro continuam sendo a resposta que rende.
   if(e.type==='pescador'||e.human||ENEMY[e.type]?.human){
-    const taxa=Math.min(Math.max(0,G.scrap),ECONOMIA.pescadorTaxa);
+    const taxa=Math.min(Math.max(0,Math.floor(G.scrap)),ECONOMIA.pescadorTaxa);
     G.scrap-=taxa;
     e.saved=true;e.taxed=true;e.flee=true;e.speed=34;e.act=1;
     addText(e.x,plantY(e.lane)-e.r-20,taxa>0?'ELE LEVOU '+taxa:'ELE NÃO LEVOU NADA','#f0d0a0');
     announce('O PESCADOR PASSOU. NÃO QUEBROU NADA; LEVOU '+taxa+' DE SUCATA.','story');
-    G.ze.say='Ele só queria o que era dele.';G.ze.sayT=3.5;
+    G.ze.say='Veio buscar o que era dele. Levou.';G.ze.sayT=3.5;
     return;
   }
   const idx=G.enemies.indexOf(e);if(idx>=0&&!e.boss)G.enemies.splice(idx,1);
-  G.shake=20;G.flash=1;SFX.crash();
+  tremer(20);piscar(1);SFX.crash();
   burst(120,plantY(e.lane)-30,40,'#6a5a4a',260,500,rnd(3,7),1);
   const lane=G.structures[e.lane];
   const s=lane.find(s=>s.alive);
@@ -1068,7 +1312,7 @@ function breach(e: Enemy): void {
   if(G.sandbox){announce('SANDBOX: nada quebrou. O ZÉ AGRADECE.','radio');if(!e.boss)G.enemies.push(e);e.x=SPAWN_X;return;}
   if(s){
     s.alive=false;G.destroyed.push(s.nome);G.ze.say=pick(['Ai.','Já era.','Não.','Levanta, Zé.']);G.ze.sayT=3;
-    if(!G.firstVillageLost){G.firstVillageLost=true;announce('A vila sentiu isso. Não deixa de novo.','story');}
+    if(!G.firstVillageLost){G.firstVillageLost=true;announce('Perdeu. Anota aí.','story');}
     announce(s.msg,'story');
   }
   // A lane abriu brecha. A partida continua: só acaba quando todas as
@@ -1097,9 +1341,11 @@ function bossDefeated(e: Enemy): void {
   if(G.boss===e)G.boss=null;
   G.enemies=G.enemies.filter(o=>o.boss?false:true);
   const bId=e.b||e.type;
+  // BLOCO M.5: a galeria de chefes abre com o chefe derrotado.
+  SaveDB.venci(bId);
   G.bossDeath={b:bId,x:Math.min(e.x,W-120),y:plantY(e.lane),lane:e.lane,t:0,dur:deathDur(bId)};
   G.deaths.push({type:bId,x:Math.min(e.x,W-120),y:plantY(e.lane),lane:e.lane,t:0,dur:deathDur(bId)});
-  SFX.death(e.b);G.shake=20;G.flash=.6;Snd.setIntensity(1);
+  SFX.death(e.b);tremer(20);piscar(.6);Snd.setIntensity(1);
   G.kills++;dropScrap(e.x,plantY(e.lane)-40,120,true);G.zeHat=(e.b==='bento');
   if(e.b==='mare'){SaveDB.achievement('maré');}
   if(e.b==='faroleiro'&&!G.machines.some(m=>m.type==='holofote'))SaveDB.achievement('sem_farol');
@@ -1164,7 +1410,7 @@ function openShop(): void {
   const chosen: Offer[]=[];for(const o of shuffle(offers)){if(!chosen.some(c=>c.kind===o.kind))chosen.push(o);if(chosen.length>=(eff().extraOffer?4:3))break;}
   Game.offers=chosen;
   Game.shopItems=[
-    {id:'reforco',nome:'REFORÇAR ESTRUTURA',desc:'Conserta uma parede caída e a deixa mais teimosa.',cost:ECONOMIA.banca.reforco},
+    {id:'reforco',nome:'REFORÇAR ESTRUTURA',desc:'Reboca uma parede caída. Se nada caiu, o Zé devolve a sucata.',cost:ECONOMIA.banca.reforco},
     {id:'reparoDuplo',nome:'REPARO DE DUAS PAREDES',desc:'Conserta duas estruturas caídas. Ficam tortas.',cost:ECONOMIA.banca.reparoDuplo},
     {id:'tabua',nome:'TÁBUA DE RESERVA ×3',desc:'Barra as três próximas invasões.',cost:ECONOMIA.banca.tabua},
     {id:'recarga',nome:'RECARGA RÁPIDA',desc:'Zera o cooldown de todas as peças.',cost:ECONOMIA.banca.recarga},
@@ -1186,11 +1432,16 @@ Game.chooseOffer=function(i){
     announce('DESBLOQUEADO: '+MACH[o.k].nome+'. Já vai aparecer na sua banca.','ach');}
   else if(o.kind==='up'&&o.k)upgradeMachine(o.k);
   else if(o.kind==='sucataVelha'){
-    if(G.scrap<ECONOMIA.sucataVelhaCusto){announce('SUCATA DE MENOS PARA CONVERTER.','story');return;}
-    G.scrap-=ECONOMIA.sucataVelhaCusto;
-    const velha=SaveDB.addScrap(1);
-    addText(60,50,'+1 SUCATA VELHA','#e8c84a');SFX.cash();
-    announce('O ZÉ GUARDOU 1 SUCATA VELHA. TOTAL: '+velha+'.','story');}
+    // Sem grana a oferta é perdida, mas a loja NÃO pode travar a partida:
+    // escolher sempre fecha o break (era return antes do advance).
+    if(G.scrap<ECONOMIA.sucataVelhaCusto){announce('SUCATA DE MENOS PARA CONVERTER. O ZÉ GUARDOU A VONTADE.','story');}
+    else{
+      G.scrap-=ECONOMIA.sucataVelhaCusto;
+      const velha=SaveDB.addScrap(1);
+      addText(60,50,'+1 SUCATA VELHA','#e8c84a');SFX.cash();
+      announce('O ZÉ GUARDOU 1 SUCATA VELHA. TOTAL: '+velha+'.','story');
+    }
+  }
   else if(o.kind==='repair'){const d=G.structures.flat().find(s=>!s.alive);if(d){d.alive=true;announce('REBOCOU '+d.nome+'. NÃO FICOU BONITO.','story');}}
   else if(o.kind==='heal'){for(const m of G.machines)m.hp=m.maxhp;G.dmgBonus+=.1;announce('GRAXA: PEÇAS NOVAS EM FOLHA. +10% DE DANO.','story');}
   SaveDB.save();advanceFromBreak();
@@ -1199,7 +1450,7 @@ Game.buyShopItem=function(id){
   const it=Game.shopItems.find(s=>s.id===id);if(!it)return;
   if(G.scrap<it.cost){announce('SUCATA DE MENOS.','story');return;}
   G.scrap-=it.cost;
-  if(id==='reforco'){const d=G.structures.flat().find(s=>!s.alive);if(d){d.alive=true;announce('REBOCOU '+d.nome+'. FICOU MAIS TEIMOSA.','story');}else{G.scrap+=it.cost;announce('NADA CAÍDO. O ZÉ DEVOLVEU A SUCATA.','story');}}
+  if(id==='reforco'){const d=G.structures.flat().find(s=>!s.alive);if(d){d.alive=true;announce('REBOCOU '+d.nome+'. TORTA, MAS DE PÉ.','story');}else{G.scrap+=it.cost;announce('NADA CAÍDO. O ZÉ DEVOLVEU A SUCATA.','story');}}
   else if(id==='reparoDuplo'){let n=0;for(const lane of G.structures)for(const s of lane)if(!s.alive&&n<2){s.alive=true;n++;}if(n===0)G.scrap+=it.cost;else announce('REBOCOU '+n+' ESTRUTURA'+(n>1?'S':'')+'. TORTAS, MAS VOLTARAM.','story');}
   else if(id==='tabua'){G.shields+=3;announce('TRÊS TÁBUAS NA MÃO. TRÊS INVASÕES MENOS.','story');}
   else if(id==='recarga'){for(const k in G.cds)G.cds[k]=0;announce('TODAS AS PEÇAS RECARREGADAS. VAI COM TUDO.','story');}
@@ -1256,6 +1507,26 @@ Game.dogClick=function(){
   if(!G)return;G.dogClicks=(G.dogClicks||0)+1;
   G.dogSay=1.4;addText(94,plantY(2)-30,pick(DOG_LINES),'#e8d9a8');
 };
+/**
+ * Vizinho das lanes de baixo (0 = Seu Antão, 1 = Dona Nice, 2 = Cabeça).
+ *
+ * Eles eram desenhados na vila sem clique nenhum — decoração muda. Agora
+ * respondem como os outros moradores (mandato: morador é gente), e os três
+ * juntos têm uma frase depois de insistirem.
+ */
+Game.vizinhoClick=function(i){
+  if(!G)return;
+  const n=Math.max(0,Math.min(2,i|0));
+  G.vizinhoClicks[n]=(G.vizinhoClicks[n]||0)+1;
+  if(G.vizinhoClicks.every(c=>c>=3)&&!G.vizinhoSegredo){
+    G.vizinhoSegredo=true;
+    for(let k=0;k<3;k++){G.vizinhoSay[k]=k===n?VIZINHOS_SEGREDO:'...';G.vizinhoT[k]=4;}
+    announce('OS TRÊS FALARAM JUNTOS. O ZÉ FINGIU NÃO OUVIR.','story');
+    return;
+  }
+  G.vizinhoSay[n]=pick(VIZINHOS_FALAS[n]||['...']);
+  G.vizinhoT[n]=3.2;
+};
 Game.bootsClick=function(){
   if(!G||!G.props.length)return;
   G.botaClicks=(G.botaClicks||0)+1;
@@ -1280,10 +1551,284 @@ Game.currentMap=()=>G?G.map:null;
 // Input
 // ---------------------------------------------------------------------
 function canvasPos(ev: MouseEvent): { x: number; y: number } {const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height};}
+/**
+ * BLOCO do menu de contexto (botão direito).
+ *
+ * O botão direito antes só cancelava a carta. Agora ele pergunta "o que tem
+ * aqui?" e oferece o que faz sentido pro alvo — com a fala do Zé em cada
+ * recusa. Quem desenha é a UI (`UI.ctxMenu`); quem decide os itens é aqui.
+ */
+
+/** Item do menu de contexto. */
+type CtxItem={label:string;act?:string;arg?:string;dis?:boolean;hint?:string;custo?:string;sep?:boolean};
+
+/** Alvo sob o clique, na ordem que o jogo já usa pro clique esquerdo. */
+export function alvoDoClique(p:{x:number;y:number}):
+  {tipo:'ze'|'lu'|'toq'|'dog'|'bota'|'vizinho'|'sucata'|'maquina'|'bicho'|'estrutura'|'vaga'|'mar'|'carta'|'nada';
+   idx?:number;bicho?:Enemy;maquina?:Machine;col?:number;lane?:number;carta?:string;estrutura?:Structure} {
+  if(Math.hypot(p.x-46,p.y-(plantY(1)-50))<30)return{tipo:'ze'};
+  if(G.toqAlive&&Math.hypot(p.x-(70+Math.sin(G.t*.6)*22),p.y-(plantY(2)-24))<26)return{tipo:'toq'};
+  if(G.luAtWindow&&Math.hypot(p.x-124,p.y-(plantY(1)-76))<32)return{tipo:'lu'};
+  if(Math.hypot(p.x-(94+Math.sin(G.t*1.3)*8),p.y-(plantY(2)+4))<26)return{tipo:'dog'};
+  if(G.props.length&&Math.hypot(p.x-G.props[0].x,p.y-plantY(G.props[0].lane))<34)return{tipo:'bota'};
+  for(let l=3;l<LANES;l++)if(Math.hypot(p.x-vizinhoX(l),p.y-vizinhoY(l))<30)return{tipo:'vizinho',idx:l-3};
+  for(const k of G.pickups)if(!k.fly&&!k.auto&&Math.hypot(k.x-p.x,k.y-p.y)<30)return{tipo:'sucata'};
+  // bicho: o mais próximo dentro do raio dele (chefe também)
+  let melhor:Enemy|null=null,melhorD=1e9;
+  for(const e of G.enemies){
+    if(e.boss)continue;
+    const d=Math.hypot(e.x-p.x,(plantY(e.lane)-e.r)-p.y);
+    if(d<Math.max(22,e.r*.9)&&d<melhorD){melhor=e;melhorD=d;}
+  }
+  if(G.boss&&!G.bossDeath){const d=Math.hypot(G.boss.x-p.x,(plantY(G.boss.lane)-G.boss.r)-p.y);
+    if(d<Math.max(30,G.boss.r*.9))return{tipo:'bicho',bicho:G.boss};}
+  if(melhor)return{tipo:'bicho',bicho:melhor};
+  // vila: estrutura
+  if(p.x<VX){
+    const l=Math.floor((p.y-LANE_Y0)/LANE_H);
+    for(const st of G.structures[l]||[]){
+      const sx=st===G.structures[l][0]?58:126;
+      if(Math.hypot(p.x-sx,p.y-plantY(l))<44)return{tipo:'estrutura',estrutura:st,lane:l};
+    }
+    return{tipo:'carta',idx:-1}; // vila: sem menu específico
+  }
+  // campo
+  if(p.x>=FIELD_R)return{tipo:'mar'};
+  const c=Math.floor((p.x-VX)/COLW),l=Math.floor((p.y-LANE_Y0)/LANE_H);
+  if(c<0||c>=COLS||l<0||l>=LANES)return{tipo:'nada'};
+  const m=machineAt(l,c);
+  if(m)return{tipo:'maquina',maquina:m,col:c,lane:l};
+  if(p.y<86){const k=UI.cardAt(p.x,p.y);if(k)return{tipo:'carta',carta:k};}
+  return{tipo:'vaga',col:c,lane:l};
+}
+
+/** O Zé comenta uma recusa. Sempre com deboche, nunca com pena. */
+function zeRecusa(fala:string):void{G.ze.say=fala;G.ze.sayT=2.6;}
+
+/** Monta os itens do menu para o alvo. */
+export function itensDoAlvo(a:ReturnType<typeof alvoDoClique>):{titulo:string,itens:CtxItem[]}{
+  const itens:CtxItem[]=[];
+  switch(a.tipo){
+    case 'ze':
+      return{titulo:'O ZÉ',itens:[
+        {label:'Cutucar',act:'ctx_ze'},
+        {label:'Perguntar do irmão',act:'ctx_ze_irmao',hint:'ele não gosta'},
+        {label:'Pedir conselho',act:'ctx_ze_dica'},
+        {label:'',sep:true},
+        {label:'Deixar o homem trabalhar',act:'nada'},
+      ]};
+    case 'lu':
+      return{titulo:'DONA LÚ',itens:[
+        {label:'Cobrar atenção',act:'ctx_lu'},
+        {label:'Perguntar do imposto',act:'ctx_lu_imposto',hint:'a conta do round'},
+        {label:'',sep:true},
+        {label:'Recuar',act:'nada'},
+      ]};
+    case 'toq':
+      return{titulo:'TOQUINHO',itens:[
+        {label:'Falar com ele',act:'ctx_toq'},
+        {label:'Perguntar o que ele viu',act:'ctx_toq_viu',hint:'ele viu tudo'},
+        {label:'',sep:true},
+        {label:'Sair de fininho',act:'nada'},
+      ]};
+    case 'dog':
+      return{titulo:'O CACHORRO',itens:[
+        {label:'Chamar',act:'ctx_dog'},
+        {label:'Oferecer sucata',act:'ctx_dog_sucata',dis:G.scrap<20,custo:'20'},
+        {label:'',sep:true},
+        {label:'Ele foi',act:'nada'},
+      ]};
+    case 'bota':
+      return{titulo:'AS BOTAS',itens:[
+        {label:'Cumprimentar',act:'ctx_bota'},
+        {label:'Chutar',act:'ctx_bota_chutar'},
+        {label:'',sep:true},
+        {label:'Ignorar',act:'nada'},
+      ]};
+    case 'vizinho':
+      return{titulo:(VIZINHOS_NOMES[a.idx||0]||'VIZINHO'),itens:[
+        {label:'Bater papo',act:'ctx_vizinho',arg:String(a.idx)},
+        {label:'Reclamar da maré',act:'ctx_vizinho_mare',arg:String(a.idx)},
+        {label:'',sep:true},
+        {label:'Voltar pro corredor',act:'nada'},
+      ]};
+    case 'sucata':
+      return{titulo:'SUCATA NA ÁGUA',itens:[
+        {label:'Catar agora',act:'ctx_catar'},
+        {label:'Deixar o ímã trabalhar',act:'ctx_mima',hint:'se tiver ímã por perto'},
+        {label:'',sep:true},
+        {label:'Deixar boiando',act:'nada'},
+      ]};
+    case 'maquina':{
+      const m=a.maquina!;
+      const nivel=(G.up[m.type]||0)+1;
+      const lista: string[]|undefined=UPG[m.type];
+      const preco=lista&&lista[nivel-1]!==undefined?Number(lista[nivel-1]):null;
+      const podeMelhorar=preco!==null&&G.scrap>=preco?preco:0;
+      const venda=Math.round(machCost(m.type)*.25);
+      const dano=m.maxhp?Math.round((1-m.hp/m.maxhp)*100):0;
+      itens.push({label:'Melhorar pra nível '+Math.min(3,nivel),act:'ctx_melhora',arg:m.type,
+        dis:!podeMelhorar,custo:podeMelhorar?String(podeMelhorar):'sem sucata',hint:nivel>3?'já tá no teto':undefined});
+      itens.push({label:'Arrancar',act:'ctx_vender',arg:m.type,custo:'+'+venda,hint:'devolve 25%'});
+      itens.push({label:'Ficha da peça',act:'ctx_ficha',arg:m.type,hint:'vida '+m.maxhp+' · dano '+dano+'%'});
+      itens.push({label:'',sep:true});
+      itens.push({label:'Deixar quieta',act:'nada'});
+      return{titulo:(MACH[m.type]?MACH[m.type].nome:'PEÇA'),itens};
+    }
+    case 'bicho':{
+      const e=a.bicho!;
+      const matei=!!SaveDB.slot.mateiB[e.type];
+      const nome=e.boss?(BOSSES[e.b||e.type]?BOSSES[e.b||e.type].nome:'CHEFE'):(ENEMY[e.type]?ENEMY[e.type].nome:'???');
+      itens.push({label:matei?'Como resolver: '+ENEMY[e.type].hint:'Ainda não sei o que é isso',act:'nada',dis:!matei});
+      itens.push({label:'HP: '+Math.max(1,Math.round(e.hp))+'/'+Math.round(e.maxhp),act:'nada',dis:true});
+      if(!matei)itens.push({label:'Descobrir (matar o primeiro)',act:'nada'});
+      itens.push({label:'',sep:true});
+      itens.push({label:'Vou me preparar',act:'nada'});
+      return{titulo:matei?nome:'DESCONHECIDO',itens};
+    }
+    case 'estrutura':{
+      const st=a.estrutura!;
+      const custoReforco=ECONOMIA.banca.reforco;
+      if(!st.alive){
+        return{titulo:st.nome,itens:[
+          {label:'Rebocar agora',act:'ctx_reboque',custo:String(custoReforco),dis:G.scrap<custoReforco,hint:'volta torta, mas volta'},
+          {label:'Deixar caída',act:'nada'},
+        ]};
+      }
+      return{titulo:st.nome,itens:[
+        {label:'Rebocar (antecipado)',act:'ctx_reboque_pre',custo:String(custoReforco),dis:G.scrap<custoReforco,hint:'gasta sucata pra nada quebrar tão cedo'},
+        {label:'',sep:true},
+        {label:'Tá de pé. Deixa.',act:'nada'},
+      ]};
+    }
+    case 'vaga':{
+      const sel=G.selected;
+      if(sel&&sel!=='remover'){
+        const custo=machCost(sel);
+        return{titulo:'VAGA LIVRE',itens:[
+          {label:'Plantar '+(MACH[sel]?MACH[sel].nome:sel),act:'ctx_plantar',arg:String(a.col)+','+String(a.lane),
+            dis:G.scrap<custo,custo:String(custo)},
+          {label:'Escolher outra peça',act:'ctx_escolher',arg:String(a.col)+','+String(a.lane)},
+          {label:'',sep:true},
+          {label:'Cancelar',act:'nada'},
+        ]};
+      }
+      // sem carta: oferece o deck
+      const deck=(G.deck&&G.deck.length?G.deck.filter(k=>availableMachines().includes(k)):availableMachines());
+      for(const k of deck){
+        const custo=machCost(k);
+        itens.push({label:'Plantar '+(MACH[k]?MACH[k].nome:k),act:'ctx_plantar_deck',arg:String(a.col)+','+String(a.lane)+','+k,
+          dis:G.scrap<custo||!!machineAt(a.lane!,a.col!),custo:String(custo)});
+      }
+      if(!itens.length)itens.push({label:'Nada pra plantar',act:'nada',dis:true});
+      itens.push({label:'',sep:true});
+      itens.push({label:'Ficar olindo',act:'ctx_olhando',hint:'o Zé aprova a prudência'});
+      return{titulo:'VAGA LIVRE',itens};
+    }
+    case 'mar':
+      return{titulo:'O MAR',itens:[
+        {label:'Olhar o horizonte',act:'ctx_mar'},
+        {label:'Gritar pro mar',act:'ctx_gritar'},
+        {label:'',sep:true},
+        {label:'Melhor não',act:'nada'},
+      ]};
+    case 'carta':
+      return{titulo:'BANCA',itens:[
+        {label:'Escolher carta',act:'nada',hint:'clique esquerdo na carta'},
+        {label:'Fechar',act:'nada'},
+      ]};
+    default:
+      return{titulo:'NADA AQUI',itens:[{label:'O Zé deu de ombros',act:'nada'}]};
+  }
+}
+
+/** Abre o menu de contexto no lugar do clique. */
+function abrirMenuContexto(p:{x:number;y:number}): void {
+  const a=alvoDoClique(p);
+  const {titulo,itens}=itensDoAlvo(a);
+  // p é lógico do canvas (0..1280); o menu mora no #stage e fala em pixels.
+  const st=document.getElementById('stage');
+  const cv=document.getElementById('cv');
+  let px=p.x, py=p.y;
+  if(st&&cv){
+    const sr=st.getBoundingClientRect(),cr=cv.getBoundingClientRect();
+    const esq=cr.left-sr.left, topo=cr.top-sr.top;
+    px=esq+(p.x/W)*cr.width;
+    py=topo+(p.y/H)*cr.height;
+  }
+  UI.ctxMenu(titulo,itens,px,py);
+}
+
+/** Executa a ação escolhida no menu. */
+Game.ctxExecutar=function(act: string){
+  if(!G)return;
+  const [cmd,arg]=act.split(':');
+  switch(cmd){
+    case 'ctx_ze':zeRecusa(pick(['Que é?','Tô ocupado.','Fala.']));break;
+    case 'ctx_ze_irmao':zeRecusa('Meu irmão? Voltou o boné. Eu uso até hoje.');break;
+    case 'ctx_ze_dica':zeRecusa(pick(['Bujão na frente.','Holofote revela.','Não enche de geladeira não.']));break;
+    case 'ctx_lu':Game.luClick();break;
+    case 'ctx_lu_imposto':announce('IMPOSTO DO PRÓXIMO ROUND: '+impostoDoRound(G.machines.length,G.survived)+'. ELA ANOTOU.','story');break;
+    case 'ctx_toq':Game.toqClick();break;
+    case 'ctx_toq_viu':zeRecusa('Ele viu tudo. Não conta. É o acordo.');break;
+    case 'ctx_dog':Game.dogClick();break;
+    case 'ctx_dog_sucata':if(G.scrap>=20){G.scrap-=20;G.dogSay=1.4;addText(94,plantY(2)-30,'au.','#e8d9a8');SFX.lata();}break;
+    case 'ctx_bota':Game.bootsClick();break;
+    case 'ctx_bota_chutar':zeRecusa(pick(['AI.','ISSO FOI A DORNAS COSTAS.','Ela devolveu.']));break;
+    case 'ctx_vizinho':case 'ctx_vizinho_mare':Game.vizinhoClick(Number(arg||0));break;
+    case 'ctx_catar':{const k=G.pickups.find(p=>!p.fly&&!p.auto);if(k)collect(k);break;}
+    case 'ctx_mima':announce(G.machines.some(m=>m.type==='ima')?'O ÍMÃ TÁ DE OLHO.':'NÃO TEM ÍMÃ NO CAMPO.','story');break;
+    case 'ctx_melhora':upgradeMachine(String(arg||''));break;
+    case 'ctx_vender':{
+      // remove a primeira peça do tipo escolhido
+      const m=G.machines.find(x=>x.type===arg);
+      if(m){const v=Math.round(machCost(m.type)*.25);destroyMachine(m,false);G.scrap+=v;
+        addText(m.x,plantY(m.lane)-60,'+'+v,'#9ab');SFX.metal();}
+      break;
+    }
+    case 'ctx_ficha':{
+      const m=MACH[String(arg||'')];
+      if(m)announce(m.nome+': vida '+m.hp+' · recarga '+m.cd+'s · '+m.desc,'story');
+      break;
+    }
+    case 'ctx_reboque':{
+      if(G.scrap>=ECONOMIA.banca.reforco){
+        G.scrap-=ECONOMIA.banca.reforco;
+        const dead=G.structures.flat().find(s=>!s.alive);
+        if(dead){dead.alive=true;announce('REBOCOU '+dead.nome+'. TORTO, MAS DE PÉ.','story');SFX.place();}
+        else{G.scrap+=ECONOMIA.banca.reforco;announce('NADA CAÍDO. O ZÉ DEVOLVEU A SUCATA.','story');}
+      }
+      break;
+    }
+    case 'ctx_reboque_pre':
+      if(G.scrap>=ECONOMIA.banca.reforco){G.scrap-=ECONOMIA.banca.reforco;G.shields++;announce('TÁBUA NA MÃO. UMA INVASÃO MENOS.','story');}
+      break;
+    case 'ctx_plantar':{
+      const [c,l]=String(arg||'0,0').split(',');
+      placeMachine(G.selected||'',Number(l),Number(c));
+      break;
+    }
+    case 'ctx_plantar_deck':{
+      const [c,l,k]=String(arg||'0,0,boia').split(',');
+      if(isMachUnlocked(k||''))placeMachine(k||'',Number(l),Number(c));
+      break;
+    }
+    case 'ctx_escolher':G.selected=null;zeRecusa('Escolhe outra. Sem pressa.');break;
+    case 'ctx_olhando':zeRecusa('Bom. Olhar primeira.');break;
+    case 'ctx_mar':zeRecusa(pick(['Ele continua podre.','Não vem nada hoje.','Vem.']));break;
+    case 'ctx_gritar':zeRecusa('O MAR NÃO RESPONDE. A MARÉ RESPONDE.');break;
+    default:break;
+  }
+};
+
 function onCanvasDown(ev: MouseEvent): void {
   if(Game.screen!=='play'||Game.paused||!G||G.over)return;
   const p=canvasPos(ev);
-  if(ev.button===2){G.selected=null;return;}
+  if(ev.button===2){
+    // menu de contexto: itens dependem do alvo. Clique fora/ESC fecham.
+    abrirMenuContexto(p);
+    return;
+  }
   // segredos: Zé, Toquinho, botas, cão
   if(Math.hypot(p.x-46,p.y-(plantY(1)-50))<30){Game.zeClick();return;}
   if(G.toqAlive&&Math.hypot(p.x-(70+Math.sin(G.t*.6)*22),p.y-(plantY(2)-24))<26){Game.toqClick();return;}
@@ -1293,6 +1838,10 @@ function onCanvasDown(ev: MouseEvent): void {
   if(Math.hypot(p.x-(94+Math.sin(G.t*1.3)*8),p.y-(plantY(2)+4))<26){Game.dogClick();return;}
   // sucata primeiro
   for(const k of G.pickups){if(!k.fly&&!k.auto&&Math.hypot(k.x-p.x,k.y-p.y)<30){collect(k);return;}}
+  // vizinhos das lanes de baixo: falam quando clicados
+  for(let l=3;l<LANES;l++){
+    if(Math.hypot(p.x-vizinhoX(l),p.y-vizinhoY(l))<30){Game.vizinhoClick(l-3);return;}
+  }
   // cartas
   if(p.y<86){const k=UI.cardAt(p.x,p.y);if(k){
     if(!isMachUnlocked(k)){announce('O ZÉ AINDA NÃO TROUXE ISSO.','story');return;}
@@ -1335,6 +1884,8 @@ canvas.addEventListener('mousemove',ev=>{const p=canvasPos(ev);Game.mouse=p;canv
 /** O ponteiro está sobre algo que responde ao clique? */
 function hoverTarget(p:{x:number;y:number}):boolean{
   if(!G||Game.screen!=='play'||Game.paused)return false;
+  // vizinhos das lanes de baixo
+  for(let l=3;l<LANES;l++){if(Math.hypot(p.x-vizinhoX(l),p.y-vizinhoY(l))<30)return true;}
   if(Math.hypot(p.x-46,p.y-(plantY(1)-50))<30)return true;
   if(G.toqAlive&&Math.hypot(p.x-(70+Math.sin(G.t*.6)*22),p.y-(plantY(2)-24))<26)return true;
   if(G.luAtWindow&&Math.hypot(p.x-124,p.y-(plantY(1)-76))<32)return true;

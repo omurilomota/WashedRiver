@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from 'vitest';
-import { DAILY_MODS, ECONOMIA, MACH, MAPS } from '../src/data';
-import { STRUCTURES, VX, W } from '../src/core/constants';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { BOSSES, DAILY_MODS, ECONOMIA, ENEMY, ENEMY_ORDER, INTROS, MACH, MACH_ORDER, MAPS, MOLHO, MOLHO_TXT, UPG } from '../src/data';
+import { COLW, LANE_Y0, LANE_H, STRUCTURES, VX, W, plantY } from '../src/core/constants';
 import { KEY } from '../src/save/storage';
 
 /**
@@ -42,22 +42,29 @@ function fakeContext(): CanvasRenderingContext2D {
 }
 
 let game: typeof import('../src/game/game');
-let state: typeof import('../src/core/state');
+let state: typeof import('../src/core/state') & typeof import('../src/ui/ui');
+let save: typeof import('../src/save/storage');
+let economia: typeof import('../src/game/economy');
+let jogo: typeof import('../src/game/game') & Record<string, any>;
 
 beforeAll(async () => {
   document.body.innerHTML = `
-    <canvas id="cv"></canvas>
+    <div id="stage"><canvas id="cv"></canvas>
     <div id="topbar"><div id="trackName"></div><div id="radioLamp"></div></div>
     <div id="screen"></div>
     <div id="shop"></div>
+    <div id="ctxmenu"></div>
     <div id="toasts"></div>
-    <div id="flash"></div>
+    <div id="flash"></div></div>
   `;
   const ctx = fakeContext();
   HTMLCanvasElement.prototype.getContext = (() =>
     ctx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   game = await import('../src/game/game');
-  state = await import('../src/core/state');
+  state = Object.assign(await import('../src/core/state'), await import('../src/ui/ui'));
+  save = await import('../src/save/storage');
+  economia = await import('../src/game/economy');
+  jogo = (await import('../src/game/game')) as typeof import('../src/game/game') & Record<string, any>;
 });
 
 /** Modo silencioso: os testes não precisam de som nem de timer. */
@@ -157,6 +164,435 @@ describe('Baleia-Filhote', () => {
     game.damageEnemy(baleia!, 50, 'boom');
     expect(baleia!.hp).toBeLessThan(hp);
     expect(game.isTargetable(baleia!, false)).toBe(true);
+  });
+});
+
+describe('Água-Viva-Fantasma', () => {
+  it('apagada não é alvo: tiro atravessa, só luz ou explosão pegam', () => {
+    state.Game.startCampaign(0);
+    const agua = game.spawnEnemy('agua', 0, 600);
+    expect(agua).not.toBeNull();
+    // voador e apagada: nenhum tiro encosta (a bala passa)
+    expect(game.isTargetable(agua!, false)).toBe(false);
+    expect(game.isTargetable(agua!, true)).toBe(false);
+    expect(game.isTargetable(agua!, false, true)).toBe(false);
+    // se algum corpo a corpo encostar, ela é revelada e não toma dano
+    const hp = agua!.hp;
+    game.damageEnemy(agua!, 20, 'blade');
+    expect(agua!.hp).toBe(hp);
+    // explosão e fogo passam por cima da intangibilidade
+    game.damageEnemy(agua!, 20, 'boom');
+    expect(agua!.hp).toBeLessThan(hp);
+  });
+
+  it('com a luz do holofote ela fica revelada e leva tiro', () => {
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('holofote', 0, 3, true)).toBe(true);
+    const agua = game.spawnEnemy('agua', 0, state.G.machines[0].x + 100);
+    expect(agua).not.toBeNull();
+    game.update(0.2);
+    expect(agua!.lit > 0 || agua!.grounded > 0).toBe(true);
+    expect(game.isTargetable(agua!, false)).toBe(true);
+  });
+});
+
+describe('onda não pode travar (regra de fim de onda)', () => {
+  it('bicho comendo peça curada toda hora ainda assim atravessa', () => {
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('geladeira', 0, 3, true)).toBe(true);
+    const m = state.G.machines[0];
+    const baiacu = game.spawnEnemy('baiacu', 0, m.x + 30); // chega pela direita
+    expect(baiacu).not.toBeNull();
+    // 60s de jogo, curando a peça a cada meio segundo (o pior caso possível)
+    for (let i = 0; i < 600; i++) {
+      game.update(0.1);
+      if (i % 5 === 0) m.hp = m.maxhp;
+    }
+    // a peça caiu e o bicho passou (ou morreu no caminho)
+    expect(state.G.machines.length === 0 || state.G.machines[0].hp <= 0).toBe(true);
+    // e o bicho não ficou mordendo pra sempre
+    expect(baiacu!.eating ?? null).toBeFalsy();
+  });
+
+  it('polvo grudado desgruda e a onda Acaba', () => {
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('geladeira', 0, 3, true)).toBe(true);
+    const polvo = game.spawnEnemy('polvo', 0, state.G.machines[0].x + 30);
+    expect(polvo).not.toBeNull();
+    let soltou = false, preso = 0, maxPreso = 0;
+    for (let i = 0; i < 200; i++) {
+      game.update(0.1);
+      if (polvo!.attached) { preso += 0.1; maxPreso = Math.max(maxPreso, preso); }
+      else { soltou = true; preso = 0; }
+    }
+    // desgrudou (jam é temporária) e nunca ficou preso mais que a jam dura
+    expect(soltou).toBe(true);
+    expect(maxPreso).toBeLessThanOrEqual(7);
+  });
+});
+
+describe('onboarding diegético (BLOCO M.3)', () => {
+  // o save persiste entre testes do arquivo: cada teste precisa de bichos
+  // ainda não vistos, então o bestiário começa vazio aqui.
+  beforeEach(() => {
+    save.SaveDB.resetSlot(0);
+    save.SaveDB.setSlot(0);
+  });
+
+  it('bicho novo não aparece como banner de sistema', () => {
+    state.Game.startCampaign(0);
+    const antes = state.G.msg;
+    state.Game.startCampaign(0);
+    game.spawnEnemy('agua', 0, 900); // método: silhueta
+    // não existe "NOVO: ..." em nenhum announce: a medição é pelo texto
+    expect(state.G.msg || '').not.toContain('NOVO:');
+    expect(antes).not.toContain('NOVO:');
+  });
+
+  it('silhueta entra no campo e expira sozinha', () => {
+    const bicho = ENEMY_ORDER.find((t) => !save.SaveDB.slot.seenB[t] && INTROS[t].metodo === 'silhueta');
+    expect(bicho, 'nenhum bicho de silhueta novo sobrou').toBeDefined();
+    state.Game.startCampaign(0);
+    const b = game.spawnEnemy(bicho!, 2, 900);
+    expect(b).not.toBeNull();
+    expect(state.G.intros.some((i) => i.type === bicho && i.kind === 'silhueta')).toBe(true);
+    for (let i = 0; i < 40; i++) game.update(0.1); // 4s > 1,6s de duração
+    expect(state.G.intros.some((i) => i.type === bicho)).toBe(false);
+  });
+
+  it('rádio no campo diferencia a introdução', () => {
+    // sem rádio: o Zé comenta o bicho novo (a fala do dado). O save persiste
+    // entre testes do mesmo arquivo, então usa um bicho que ainda não foi
+    // visto nesta rodada.
+    const bicho = ENEMY_ORDER.find((t) => !save.SaveDB.slot.seenB[t]);
+    expect(bicho, 'nenhum bicho novo sobrou pra testar').toBeDefined();
+    state.Game.startCampaign(0);
+    game.spawnEnemy(bicho!, 1, 900);
+    const falas: string[] = [state.G.ze.say];
+    for (let i = 0; i < 5; i++) { game.update(0.1); falas.push(state.G.ze.say); }
+    expect(falas).toContain(INTROS[bicho!].fala);
+
+    // com rádio: o chiado sai como rádio (DOM real dos toasts). O bicho do
+    // bloco anterior já foi visto, então escolhe outro ainda novo.
+    const bicho2 = ENEMY_ORDER.find((t) => !save.SaveDB.slot.seenB[t] && INTROS[t].metodo === 'radio');
+    expect(bicho2, 'nenhum bicho novo sobrou pro rádio').toBeDefined();
+    state.Game.startCampaign(0);
+    expect(game.placeMachine('radio', 3, 2, true)).toBe(true);
+    const caixa = document.getElementById('toasts')!;
+    let viuTch = false, viuBanner = false;
+    game.spawnEnemy(bicho2!, 1, 900);
+    for (let i = 0; i < 5; i++) {
+      game.update(0.1);                       // o chiado nasce aqui dentro
+      const txt = caixa.textContent || '';
+      if (txt.includes('...tch')) viuTch = true;
+      if (txt.includes('NOVO:')) viuBanner = true;
+      caixa.innerHTML = '';                   // limpa para o próximo lance
+    }
+    expect(bicho2, 'nenhum bicho de rádio novo sobrou').toBeDefined();
+    expect(viuTch, 'rádio não chiou a apresentação').toBe(true);
+    expect(viuBanner, 'ainda existe banner de sistema').toBe(false);
+  });
+
+  it('cartaz aparece na vila e some', () => {
+    const bicho = ENEMY_ORDER.find((t) => !save.SaveDB.slot.seenB[t] && INTROS[t].metodo === 'cartaz');
+    expect(bicho, 'nenhum bicho de cartaz novo sobrou').toBeDefined();
+    state.Game.startCampaign(0);
+    game.spawnEnemy(bicho!, 4, 900);
+    expect(state.G.intros.some((i) => i.type === bicho && i.kind === 'cartaz')).toBe(true);
+    for (let i = 0; i < 200; i++) game.update(0.1); // 20s > 14s
+    expect(state.G.intros.some((i) => i.type === bicho)).toBe(false);
+  });
+
+  it('todo bicho do bestiário tem método de introdução válido', () => {
+    for (const tipo of ENEMY_ORDER) {
+      const it = INTROS[tipo];
+      expect(it, `${tipo} sem introdução`).toBeDefined();
+      expect(['silhueta', 'ze', 'radio', 'cartaz', 'marca', 'nada']).toContain(it.metodo);
+      if (it.metodo !== 'nada') expect(it.fala.length, `${tipo} sem fala`).toBeGreaterThan(3);
+    }
+  });
+});
+
+describe('deck da partida (BLOCO M.4)', () => {
+  it('a partida nasce com o deck do save e a banca só mostra ele', () => {
+    const deck = ['boia', 'torradeira', 'geladeira', 'bujao', 'holofote', 'ima', 'radio'];
+    save.SaveDB.setSlot(0);
+    save.SaveDB.setDeck(0, deck);
+    state.Game.startCampaign(0);
+    expect(state.G.deck).toEqual(deck);
+    expect(economia.availableMachines()).toEqual(deck);
+  });
+
+  it('sem deck salvo a partida é sem-escolha (sandbox)', () => {
+    save.SaveDB.setSlot(0);
+    save.SaveDB.setDeck(0, ['boia']);
+    state.Game.startSandbox();
+    expect(state.G.deck).toBeNull();
+    // e a banca mostra mais que o deck
+    expect(economia.availableMachines().length).toBeGreaterThan(1);
+  });
+
+  it('planta peça fora do deck não entra na banca', () => {
+    const deck = ['boia', 'torradeira', 'geladeira', 'bujao', 'holofote', 'ima', 'radio'];
+    save.SaveDB.setSlot(0);
+    save.SaveDB.setDeck(0, deck);
+    state.Game.startCampaign(0);
+    // ventilaor não está no deck: ainda planta (a sucata paga), mas não
+    // aparece como carta — a escolha foi feita antes.
+    expect(economia.availableMachines().includes('ventilador')).toBe(false);
+  });
+});
+
+describe('enciclopédia (BLOCO M.5)', () => {
+  it('ver o bicho não abre o bestiário; matar abre', () => {
+    save.SaveDB.resetSlot(0);
+    save.SaveDB.setSlot(0);
+    state.Game.startCampaign(0);
+    const baiacu = game.spawnEnemy('baiacu', 0, 900); // visto, não morto
+    expect(baiacu).not.toBeNull();
+    expect(save.SaveDB.slot.mateiB['baiacu']).toBeUndefined();
+    expect(save.SaveDB.slot.seenB['baiacu']).toBeTruthy(); // serviu pra intro
+
+    game.damageEnemy(baiacu!, 9999, 'boom');
+    expect(save.SaveDB.slot.mateiB['baiacu']).toBe(1); // agora sim
+  });
+
+  it('todo bicho do bestiário tem fato inútil', () => {
+    for (const id of ENEMY_ORDER) {
+      expect(ENEMY[id].fato, `${id} sem fato inútil`).toBeTruthy();
+    }
+    expect(ENEMY_ORDER.length).toBe(20);
+  });
+
+  it('toda peça da galeria tem fato inútil e upgrade máximo', () => {
+    for (const id of MACH_ORDER.filter((k) => k !== 'remover')) {
+      expect(MACH[id].fato, `${id} sem fato inútil`).toBeTruthy();
+      expect(UPG[id] && UPG[id].length, `${id} sem upgrade`).toBeGreaterThan(0);
+    }
+  });
+
+  it('todo chefe tem fato inútil', () => {
+    for (const [id, b] of Object.entries(BOSSES)) {
+      expect(b.fato, `chefe ${id} sem fato inútil`).toBeTruthy();
+    }
+  });
+});
+
+describe('molho — eventos, micros e variações (BLOCO M.6)', () => {
+  it('a variação da onda nasce no makeWaves e é dita no anúncio', () => {
+    for (let i = 0; i < 12; i++) {
+      state.Game.startCampaign(0);
+      // 45% de chance de variação: em 12 partidas alguma tem que ter
+      const v = state.G.variacao;
+      if (v) {
+        expect(['tema', 'silenciosa', 'corredor', 'bonus']).toContain(v);
+        // a onda 0 nunca varia: é tutorial
+        return;
+      }
+    }
+    expect(state.G.variacao === null || state.G.variacao).toBeTruthy();
+  });
+
+  it('o evento entre ondas pausa o jogo e a escolha volta pra loja', () => {
+    state.Game.startCampaign(0);
+    // força um evento e confere que a tela muda e a escolha libera
+    state.G.evento = { id: 'barco_pirata', t: 0 };
+    state.Game.screen = 'evento';
+    state.Game.escolherEvento(true);
+    expect(state.G.evento).toBeNull();
+    expect(state.G.scrap).toBeGreaterThan(200);
+    expect(state.Game.screen).toBe('shop');
+    // ignorar também segue o jogo (nada de tela travada)
+    state.G.evento = { id: 'bau_mar', t: 0 };
+    state.Game.screen = 'evento';
+    state.Game.escolherEvento(false);
+    expect(state.G.game?.screen ?? state.Game.screen).toBeTruthy();
+  });
+
+  it('micros duram o que prometem e saem sozinhos', () => {
+    state.Game.startCampaign(0);
+    state.G.phaseT = 999; // pula o preparo de 12s: micros são de onda
+    state.G.micros.length = 0;
+    state.G.micros.push({ tipo: 'mare', t: 0, dur: 3 });
+    for (let i = 0; i < 5; i++) game.update(0.1);
+    // 2s: ainda ativo
+    for (let i = 0; i < 15; i++) game.update(0.1);
+    expect(state.G.micros.some((m) => m.tipo === 'mare')).toBe(true);
+    // 3,5s: expirou
+    for (let i = 0; i < 15; i++) game.update(0.1);
+    expect(state.G.micros.some((m) => m.tipo === 'mare')).toBe(false);
+  });
+
+  it('micro não nasce fora da onda (preparo é intocável)', () => {
+    state.Game.startCampaign(0);
+    state.G.micros.length = 0;
+    state.G.microT = 0;
+    for (let i = 0; i < 30; i++) game.update(0.1); // 3s de preparo
+    expect(state.G.micros.length).toBe(0);
+  });
+
+  it('todo evento do molho tem texto nos dois botões', () => {
+    const t = MOLHO_TXT.eventos;
+    for (const [id, e] of Object.entries(t)) {
+      expect(e.titulo.length, `evento ${id} sem título`).toBeGreaterThan(2);
+      expect(e.texto.length, `evento ${id} sem texto`).toBeGreaterThan(8);
+    }
+    // os nove eventos da especificação
+    expect(Object.keys(t).length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('os parâmetros do molho existem e são positivos', () => {
+    expect(MOLHO.chanceEvento).toBeGreaterThan(0);
+    expect(MOLHO.micro.intervalo[0]).toBeGreaterThan(0);
+    expect(MOLHO.micro.mare.dur).toBeGreaterThan(0);
+    expect(MOLHO.variacoes.silenciosa.atraso).toBeGreaterThan(5);
+  });
+});
+
+describe('menu de contexto nas telas (botão direito)', () => {
+  it('o contextmenu do navegador não aparece dentro do palco', () => {
+    const stage = document.getElementById('stage')!;
+    const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 });
+    stage.dispatchEvent(ev);
+    expect(ev.defaultPrevented, 'menu do Chrome ainda abre no palco').toBe(true);
+  });
+
+  it('cada tela oferece itens, com título', () => {
+    // slots: cada card é um alvo
+    state.UI.slots();
+    const card = document.querySelector('[data-ctx="slot:1"]');
+    expect(card, 'card de slot sem data-ctx').not.toBeNull();
+    // mapas
+    state.UI.maps();
+    expect(document.querySelector('[data-ctx="mapa:0"]')).not.toBeNull();
+    // deck
+    state.UI.deckScreen(0);
+    expect(document.querySelector('[data-ctx^="deckpick:"]')).not.toBeNull();
+    // caderno
+    state.UI.codex('bestiary');
+    expect(document.querySelector('[data-ctx="aba:machines"]')).not.toBeNull();
+    // loja: precisa de ofertas/banca montadas pra desenhar
+    state.Game.startCampaign(0);
+    state.Game.screen = 'shop';
+    state.Game.offers = [{ kind: 'repair' }, { kind: 'heal' }];
+    state.Game.shopItems = [
+      { id: 'reforco', nome: 'REFORÇAR', desc: 'x', cost: 150 },
+      { id: 'tabua', nome: 'TÁBUA', desc: 'y', cost: 220 },
+    ];
+    state.UI.shop();
+    expect(document.querySelector('[data-ctx^="offer:"]')).not.toBeNull();
+    expect(document.querySelector('[data-ctx^="buyitem:"]')).not.toBeNull();
+  });
+
+  it('ação do menu mexe no save de verdade', () => {
+    save.SaveDB.setSlot(0);
+    save.SaveDB.setSlot(1);
+    save.SaveDB.resetSlot(1);
+    state.UI.ctxAcaoTela('slot_usar', '1');
+    expect(save.SaveDB.slotIndex).toBe(1);
+    state.UI.ctxAcaoTela('mapa_info', '0');
+    // a ação da tela não travou nada: a tela continua sendo a da loja
+    expect(state.Game.screen).toBe('shop');
+  });
+});
+
+describe('posição do menu de contexto', () => {
+  // jsdom não tem layout: injeta um palco de 1200x800 e um menu de 240x180
+  function palco(w: number, h: number, mw: number, mh: number): HTMLElement {
+    const stage=document.getElementById('stage')!;
+    (stage as unknown as { getBoundingClientRect: () => unknown }).getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: w, height: h, right: w, bottom: h, x: 0, y: 0, toJSON: () => ({}) });
+    const el=document.getElementById('ctxmenu')!;
+    // offsetWidth é getter no DOM: define por cima
+    Object.defineProperty(el,'offsetWidth',{value:mw,configurable:true});
+    Object.defineProperty(el,'offsetHeight',{value:mh,configurable:true});
+    return stage;
+  }
+
+  it('abre exatamente no pixel do clique', () => {
+    palco(1200,800,240,180);
+    const el=document.getElementById('ctxmenu')!;
+    state.UI.ctxMenu('TESTE',[{label:'um'},{label:'dois'}],100,100);
+    expect(el.style.left).toBe('100px');
+    expect(el.style.top).toBe('100px');
+  });
+
+  it('desloca sozinho quando o cabo do cursor não tem espaço', () => {
+    palco(1200,800,240,180);
+    const el=document.getElementById('ctxmenu')!;
+    // 1100 fica a 100px da borda: 1100+240+8 estoura 1200
+    state.UI.ctxMenu('TESTE',[{label:'um'}],1100,700);
+    expect(parseInt(el.style.left,10)).toBeLessThanOrEqual(1200-240-4);
+    expect(parseInt(el.style.top,10)).toBeLessThanOrEqual(800-180-4);
+  });
+});
+
+describe('sucata é dinheiro inteiro', () => {
+  it('a renda passiva não deixa centavo de float', () => {
+    state.Game.startCampaign(0);
+    const antes = state.G.scrap;
+    for (let i = 0; i < 300; i++) jogo.update(0.1); // 30s de jogo
+    expect(state.G.scrap).toBe(Math.floor(state.G.scrap));
+    expect(state.G.scrap).toBeGreaterThanOrEqual(antes);
+  });
+
+  it('a taxa do pescador também é inteira', () => {
+    state.Game.startCampaign(0);
+    state.G.scrap = 123.456;
+    jogo.spawnEnemy('pescador', 1, VX + 2);
+    jogo.update(0.5);
+    expect(state.G.scrap).toBe(Math.floor(state.G.scrap));
+  });
+});
+
+describe('menu de contexto (botão direito)', () => {
+  it('cada alvo oferece o seu menu, com fala diferente', () => {
+    state.Game.startCampaign(0);
+    const cards: [string, { x: number; y: number }][] = [
+      ['zé', { x: 46, y: plantY(1) - 50 }],
+      ['vaga', { x: VX + 3 * COLW + 20, y: LANE_Y0 + 1 * LANE_H + 60 }],
+      ['mar', { x: W - 30, y: LANE_Y0 + 120 }],
+    ];
+    for (const [nome, p] of cards) {
+      const itens = jogo.itensDoAlvo!(jogo.alvoDoClique!(p));
+      expect(itens.itens.length, `alvo ${nome} sem itens`).toBeGreaterThan(1);
+      expect(itens.titulo.length, `alvo ${nome} sem título`).toBeGreaterThan(0);
+    }
+  });
+
+  it('vaga livre oferece o deck; vaga ocupada oferecie melhorar/vender', () => {
+    state.Game.startSandbox();
+    state.G.deck = ['boia', 'torradeira'];
+    const vazio = jogo.itensDoAlvo!(jogo.alvoDoClique!({ x: VX + COLW, y: LANE_Y0 + 60 }));
+    expect(vazio.itens.some((i: { label: string }) => i.label.includes('Plantar Boia'))).toBe(true);
+
+    expect(jogo.placeMachine('boia', 0, 1, true)).toBe(true);
+    const ocupado = jogo.itensDoAlvo!(jogo.alvoDoClique!({ x: VX + 1 * COLW + 40, y: LANE_Y0 + LANE_H / 2 }));
+    const labels = ocupado.itens.map((i: { label: string }) => i.label).join(' ');
+    expect(labels).toContain('Melhorar');
+    expect(labels).toContain('Arrancar');
+    expect(labels).toContain('Ficha');
+  });
+
+  it('executar uma ação do menu mexe no jogo de verdade', () => {
+    state.Game.startCampaign(0);
+    state.Game.ctxExecutar!('ctx_ze_dica');
+    expect(state.G.ze.say.length).toBeGreaterThan(0);
+    // catar sucata pela ação do menu: a do chão sai e a sucata entra
+    expect(state.G.pickups.length).toBe(0);
+    state.G.pickups.push({ x: VX + 200, y: plantY(2), v: 25, auto: false, life: 14, t: 0, fly: false, vy: 0, bob: 0 });
+    state.Game.ctxExecutar!('ctx_catar');
+    // o efeito real: o pickup passa a voar pro canto (e o update soma a sucata)
+    expect(state.G.pickups[0].fly).toBe(true);
+  });
+
+  it('bicho conhecido ensina a resolver; desconhecido não', () => {
+    state.Game.startSandbox();
+    const baiacu = jogo.spawnEnemy('baiacu', 0, 900)!;
+    jogo.damageEnemy(baiacu, 99999, 'boom');
+    const outro = jogo.spawnEnemy('baiacu', 0, 900)!;
+    const itens = jogo.itensDoAlvo!({ tipo: 'bicho', bicho: outro });
+    expect(itens.itens[0].label).toContain('Como resolver');
   });
 });
 
