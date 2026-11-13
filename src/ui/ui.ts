@@ -62,13 +62,16 @@ export const UI=(function(){
         it.label+custo+(it.hint?'<br><span class="ctxhint">'+it.hint+'</span>':'')+'</button>';
     }
     ctxEl.innerHTML=html;
-    // posição: o canvas é escalado pelo CSS, então converte pelo retângulo
-    const cv=document.getElementById('cv') as HTMLCanvasElement;
-    const r=cv.getBoundingClientRect(),st=document.getElementById('stage')!.getBoundingClientRect();
-    const x=r.left-st.left+(px/1280)*r.width, y=r.top-st.top+(py/846)*r.height;
-    ctxEl.style.left=Math.max(4,Math.min(x,st.width-300))+'px';
-    ctxEl.style.top=Math.max(4,Math.min(y,st.height-260))+'px';
+    // px/py são PIXELS relativos ao #stage (é lá que o menu mora). Torna
+    // visível antes de medir — display:none não tem tamanho.
     ctxEl.classList.remove('hidden');ctxEl.classList.add('on');ctxAberto=true;
+    const st=document.getElementById('stage')!.getBoundingClientRect();
+    const w=ctxEl.offsetWidth||240, h=ctxEl.offsetHeight||200;
+    // cabe pra direita/baixo? se não couber, espelha pro outro lado do cursor
+    const x=px+w+8<=st.width?px:Math.max(4,px-w);
+    const y=py+h+8<=st.height?py:Math.max(4,py-h);
+    ctxEl.style.left=Math.round(Math.max(4,Math.min(x,st.width-w-4)))+'px';
+    ctxEl.style.top=Math.round(Math.max(4,Math.min(y,st.height-h-4)))+'px';
     const primeiro=ctxEl.querySelector('.ctxitem:not(.dis)') as HTMLButtonElement|null;
     if(primeiro)primeiro.focus();
   }

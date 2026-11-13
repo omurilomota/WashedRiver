@@ -1746,7 +1746,17 @@ export function itensDoAlvo(a:ReturnType<typeof alvoDoClique>):{titulo:string,it
 function abrirMenuContexto(p:{x:number;y:number}): void {
   const a=alvoDoClique(p);
   const {titulo,itens}=itensDoAlvo(a);
-  UI.ctxMenu(titulo,itens,p.x,p.y);
+  // p é lógico do canvas (0..1280); o menu mora no #stage e fala em pixels.
+  const st=document.getElementById('stage');
+  const cv=document.getElementById('cv');
+  let px=p.x, py=p.y;
+  if(st&&cv){
+    const sr=st.getBoundingClientRect(),cr=cv.getBoundingClientRect();
+    const esq=cr.left-sr.left, topo=cr.top-sr.top;
+    px=esq+(p.x/W)*cr.width;
+    py=topo+(p.y/H)*cr.height;
+  }
+  UI.ctxMenu(titulo,itens,px,py);
 }
 
 /** Executa a ação escolhida no menu. */

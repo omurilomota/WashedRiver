@@ -496,6 +496,37 @@ describe('menu de contexto nas telas (botão direito)', () => {
   });
 });
 
+describe('posição do menu de contexto', () => {
+  // jsdom não tem layout: injeta um palco de 1200x800 e um menu de 240x180
+  function palco(w: number, h: number, mw: number, mh: number): HTMLElement {
+    const stage=document.getElementById('stage')!;
+    (stage as unknown as { getBoundingClientRect: () => unknown }).getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: w, height: h, right: w, bottom: h, x: 0, y: 0, toJSON: () => ({}) });
+    const el=document.getElementById('ctxmenu')!;
+    // offsetWidth é getter no DOM: define por cima
+    Object.defineProperty(el,'offsetWidth',{value:mw,configurable:true});
+    Object.defineProperty(el,'offsetHeight',{value:mh,configurable:true});
+    return stage;
+  }
+
+  it('abre exatamente no pixel do clique', () => {
+    palco(1200,800,240,180);
+    const el=document.getElementById('ctxmenu')!;
+    state.UI.ctxMenu('TESTE',[{label:'um'},{label:'dois'}],100,100);
+    expect(el.style.left).toBe('100px');
+    expect(el.style.top).toBe('100px');
+  });
+
+  it('desloca sozinho quando o cabo do cursor não tem espaço', () => {
+    palco(1200,800,240,180);
+    const el=document.getElementById('ctxmenu')!;
+    // 1100 fica a 100px da borda: 1100+240+8 estoura 1200
+    state.UI.ctxMenu('TESTE',[{label:'um'}],1100,700);
+    expect(parseInt(el.style.left,10)).toBeLessThanOrEqual(1200-240-4);
+    expect(parseInt(el.style.top,10)).toBeLessThanOrEqual(800-180-4);
+  });
+});
+
 describe('sucata é dinheiro inteiro', () => {
   it('a renda passiva não deixa centavo de float', () => {
     state.Game.startCampaign(0);
