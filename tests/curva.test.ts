@@ -46,6 +46,7 @@ beforeAll(async () => {
     <div id="topbar"><div id="trackName"></div><div id="radioLamp"></div></div>
     <div id="screen"></div>
     <div id="shop"></div>
+    <div id="ctxmenu"></div>
     <div id="toasts"></div>
     <div id="flash"></div>
   `;

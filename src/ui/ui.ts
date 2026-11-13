@@ -40,7 +40,49 @@ export const UI=(function(){
     if(!el)throw new Error('elemento #'+id+' não encontrado no documento');
     return el;
   };
-  const scr=must('screen'),shopEl=must('shop'),top=must('topbar');
+  const scr=must('screen'),shopEl=must('shop'),top=must('topbar'),ctxEl=must('ctxmenu');
+
+  /**
+   * Menu de contexto (botão direito).
+   *
+   * O jogo desenha em canvas, então o menu é um painel DOM posicionado por
+   * cima: herda foco, teclado e a escala de fonte das opções. Quem decide os
+   * itens é `game.ts` (`abrirMenuContexto`) — a UI só desenha e despacha.
+   */
+  type CtxItem={label:string;act?:string;arg?:string;dis?:boolean;hint?:string;custo?:string;sep?:boolean};
+  let ctxAberto=false;
+  function hideCtx(){ctxEl.classList.remove('on');ctxAberto=false;}
+  function ctxMenu(titulo:string,itens:CtxItem[],px:number,py:number){
+    let html='<div class="ctxhead">'+titulo+'</div>';
+    for(const it of itens){
+      if(it.sep){html+='<div class="ctxsep"></div>';continue;}
+      const custo=it.custo?' <span class="'+(it.dis?'dis-custo':'custo')+'">'+it.custo+'</span>':'';
+      html+='<button class="ctxitem'+(it.dis?' dis':'')+'" data-act="'+(it.act||'nada')+'"'+
+        (it.arg!==undefined?' data-arg="'+it.arg+'"':'')+(it.dis?' disabled':'')+'>'+
+        it.label+custo+(it.hint?'<br><span class="ctxhint">'+it.hint+'</span>':'')+'</button>';
+    }
+    ctxEl.innerHTML=html;
+    // posição: o canvas é escalado pelo CSS, então converte pelo retângulo
+    const cv=document.getElementById('cv') as HTMLCanvasElement;
+    const r=cv.getBoundingClientRect(),st=document.getElementById('stage')!.getBoundingClientRect();
+    const x=r.left-st.left+(px/1280)*r.width, y=r.top-st.top+(py/846)*r.height;
+    ctxEl.style.left=Math.max(4,Math.min(x,st.width-300))+'px';
+    ctxEl.style.top=Math.max(4,Math.min(y,st.height-260))+'px';
+    ctxEl.classList.add('on');ctxAberto=true;
+    const primeiro=ctxEl.querySelector('.ctxitem:not(.dis)') as HTMLButtonElement|null;
+    if(primeiro)primeiro.focus();
+  }
+  function ctxEstaAberto(){return ctxAberto;}
+
+  function fechaCtxNoCliqueFora(ev: MouseEvent): void {
+    if(!ctxAberto)return;
+    const alvo=ev.target as HTMLElement|null;
+    if(alvo&&ctxEl.contains(alvo))return;
+    hideCtx();
+  }
+  document.addEventListener('mousedown',fechaCtxNoCliqueFora,true);
+  window.addEventListener('blur',hideCtx);
+  document.addEventListener('keydown',(e)=>{if(e.key==='Escape'&&ctxAberto){hideCtx();e.stopPropagation();}},true);
 
   // ---------- utilidades ----------
   function stars(n: number){return '<span class="stars">'+'★'.repeat(n)+'☆'.repeat(3-n)+'</span>';}
@@ -625,6 +667,7 @@ export const UI=(function(){
         }
         case 'deck':api.deckModo='campaign';UI.deckScreen(Number(arg));break;
         case 'eventook':Game.escolherEvento(arg==='1');break;
+        case 'ctxacao':UI.hideCtx();Game.ctxExecutar(String(arg));break;
         case 'map':Game.startFromOpts({kind:'campaign',map:Number(arg)});break;
         case 'resetmapa':{
           const i=Number(arg);
@@ -689,7 +732,7 @@ export const UI=(function(){
   }
   bind();
 
-  const api={title,evento,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
+  const api={title,evento,ctxMenu,hideCtx,ctxEstaAberto,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
     hideOverlays:hide,updateTopbar,toast,cardAt,drawHUD,drawScene};
   return api;
 })();

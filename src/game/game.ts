@@ -34,7 +34,7 @@ import {
 } from '../core/constants';
 import { addText, burst, canvas, stain } from '../core/canvas';
 import { G, Game, setG } from '../core/state';
-import type { Enemy, GameState, Machine, Offer, Phase, Pickup, WaveEntry } from '../core/state';
+import type { Enemy, GameState, Machine, Offer, Phase, Pickup, Structure, WaveEntry } from '../core/state';
 import type { DailyMod } from '../data/types';
 import { dayKey, hashStr, mulberry } from '../core/rng';
 import {
@@ -45,6 +45,7 @@ import {
   INTROS,
   MOLHO,
   MOLHO_TXT,
+  VIZINHOS_NOMES,
   ENDINGS,
   ENEMY,
   LU_CLICKS,
@@ -1549,10 +1550,274 @@ Game.currentMap=()=>G?G.map:null;
 // Input
 // ---------------------------------------------------------------------
 function canvasPos(ev: MouseEvent): { x: number; y: number } {const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height};}
+/**
+ * BLOCO do menu de contexto (botão direito).
+ *
+ * O botão direito antes só cancelava a carta. Agora ele pergunta "o que tem
+ * aqui?" e oferece o que faz sentido pro alvo — com a fala do Zé em cada
+ * recusa. Quem desenha é a UI (`UI.ctxMenu`); quem decide os itens é aqui.
+ */
+
+/** Item do menu de contexto. */
+type CtxItem={label:string;act?:string;arg?:string;dis?:boolean;hint?:string;custo?:string;sep?:boolean};
+
+/** Alvo sob o clique, na ordem que o jogo já usa pro clique esquerdo. */
+export function alvoDoClique(p:{x:number;y:number}):
+  {tipo:'ze'|'lu'|'toq'|'dog'|'bota'|'vizinho'|'sucata'|'maquina'|'bicho'|'estrutura'|'vaga'|'mar'|'carta'|'nada';
+   idx?:number;bicho?:Enemy;maquina?:Machine;col?:number;lane?:number;carta?:string;estrutura?:Structure} {
+  if(Math.hypot(p.x-46,p.y-(plantY(1)-50))<30)return{tipo:'ze'};
+  if(G.toqAlive&&Math.hypot(p.x-(70+Math.sin(G.t*.6)*22),p.y-(plantY(2)-24))<26)return{tipo:'toq'};
+  if(G.luAtWindow&&Math.hypot(p.x-124,p.y-(plantY(1)-76))<32)return{tipo:'lu'};
+  if(Math.hypot(p.x-(94+Math.sin(G.t*1.3)*8),p.y-(plantY(2)+4))<26)return{tipo:'dog'};
+  if(G.props.length&&Math.hypot(p.x-G.props[0].x,p.y-plantY(G.props[0].lane))<34)return{tipo:'bota'};
+  for(let l=3;l<LANES;l++)if(Math.hypot(p.x-vizinhoX(l),p.y-vizinhoY(l))<30)return{tipo:'vizinho',idx:l-3};
+  for(const k of G.pickups)if(!k.fly&&!k.auto&&Math.hypot(k.x-p.x,k.y-p.y)<30)return{tipo:'sucata'};
+  // bicho: o mais próximo dentro do raio dele (chefe também)
+  let melhor:Enemy|null=null,melhorD=1e9;
+  for(const e of G.enemies){
+    if(e.boss)continue;
+    const d=Math.hypot(e.x-p.x,(plantY(e.lane)-e.r)-p.y);
+    if(d<Math.max(22,e.r*.9)&&d<melhorD){melhor=e;melhorD=d;}
+  }
+  if(G.boss&&!G.bossDeath){const d=Math.hypot(G.boss.x-p.x,(plantY(G.boss.lane)-G.boss.r)-p.y);
+    if(d<Math.max(30,G.boss.r*.9))return{tipo:'bicho',bicho:G.boss};}
+  if(melhor)return{tipo:'bicho',bicho:melhor};
+  // vila: estrutura
+  if(p.x<VX){
+    const l=Math.floor((p.y-LANE_Y0)/LANE_H);
+    for(const st of G.structures[l]||[]){
+      const sx=st===G.structures[l][0]?58:126;
+      if(Math.hypot(p.x-sx,p.y-plantY(l))<44)return{tipo:'estrutura',estrutura:st,lane:l};
+    }
+    return{tipo:'carta',idx:-1}; // vila: sem menu específico
+  }
+  // campo
+  if(p.x>=FIELD_R)return{tipo:'mar'};
+  const c=Math.floor((p.x-VX)/COLW),l=Math.floor((p.y-LANE_Y0)/LANE_H);
+  if(c<0||c>=COLS||l<0||l>=LANES)return{tipo:'nada'};
+  const m=machineAt(l,c);
+  if(m)return{tipo:'maquina',maquina:m,col:c,lane:l};
+  if(p.y<86){const k=UI.cardAt(p.x,p.y);if(k)return{tipo:'carta',carta:k};}
+  return{tipo:'vaga',col:c,lane:l};
+}
+
+/** O Zé comenta uma recusa. Sempre com deboche, nunca com pena. */
+function zeRecusa(fala:string):void{G.ze.say=fala;G.ze.sayT=2.6;}
+
+/** Monta os itens do menu para o alvo. */
+export function itensDoAlvo(a:ReturnType<typeof alvoDoClique>):{titulo:string,itens:CtxItem[]}{
+  const itens:CtxItem[]=[];
+  switch(a.tipo){
+    case 'ze':
+      return{titulo:'O ZÉ',itens:[
+        {label:'Cutucar',act:'ctx_ze'},
+        {label:'Perguntar do irmão',act:'ctx_ze_irmao',hint:'ele não gosta'},
+        {label:'Pedir conselho',act:'ctx_ze_dica'},
+        {label:'',sep:true},
+        {label:'Deixar o homem trabalhar',act:'nada'},
+      ]};
+    case 'lu':
+      return{titulo:'DONA LÚ',itens:[
+        {label:'Cobrar atenção',act:'ctx_lu'},
+        {label:'Perguntar do imposto',act:'ctx_lu_imposto',hint:'a conta do round'},
+        {label:'',sep:true},
+        {label:'Recuar',act:'nada'},
+      ]};
+    case 'toq':
+      return{titulo:'TOQUINHO',itens:[
+        {label:'Falar com ele',act:'ctx_toq'},
+        {label:'Perguntar o que ele viu',act:'ctx_toq_viu',hint:'ele viu tudo'},
+        {label:'',sep:true},
+        {label:'Sair de fininho',act:'nada'},
+      ]};
+    case 'dog':
+      return{titulo:'O CACHORRO',itens:[
+        {label:'Chamar',act:'ctx_dog'},
+        {label:'Oferecer sucata',act:'ctx_dog_sucata',dis:G.scrap<20,custo:'20'},
+        {label:'',sep:true},
+        {label:'Ele foi',act:'nada'},
+      ]};
+    case 'bota':
+      return{titulo:'AS BOTAS',itens:[
+        {label:'Cumprimentar',act:'ctx_bota'},
+        {label:'Chutar',act:'ctx_bota_chutar'},
+        {label:'',sep:true},
+        {label:'Ignorar',act:'nada'},
+      ]};
+    case 'vizinho':
+      return{titulo:(VIZINHOS_NOMES[a.idx||0]||'VIZINHO'),itens:[
+        {label:'Bater papo',act:'ctx_vizinho',arg:String(a.idx)},
+        {label:'Reclamar da maré',act:'ctx_vizinho_mare',arg:String(a.idx)},
+        {label:'',sep:true},
+        {label:'Voltar pro corredor',act:'nada'},
+      ]};
+    case 'sucata':
+      return{titulo:'SUCATA NA ÁGUA',itens:[
+        {label:'Catar agora',act:'ctx_catar'},
+        {label:'Deixar o ímã trabalhar',act:'ctx_mima',hint:'se tiver ímã por perto'},
+        {label:'',sep:true},
+        {label:'Deixar boiando',act:'nada'},
+      ]};
+    case 'maquina':{
+      const m=a.maquina!;
+      const nivel=(G.up[m.type]||0)+1;
+      const lista: string[]|undefined=UPG[m.type];
+      const preco=lista&&lista[nivel-1]!==undefined?Number(lista[nivel-1]):null;
+      const podeMelhorar=preco!==null&&G.scrap>=preco?preco:0;
+      const venda=Math.round(machCost(m.type)*.25);
+      const dano=m.maxhp?Math.round((1-m.hp/m.maxhp)*100):0;
+      itens.push({label:'Melhorar pra nível '+Math.min(3,nivel),act:'ctx_melhora',arg:m.type,
+        dis:!podeMelhorar,custo:podeMelhorar?String(podeMelhorar):'sem sucata',hint:nivel>3?'já tá no teto':undefined});
+      itens.push({label:'Arrancar',act:'ctx_vender',arg:m.type,custo:'+'+venda,hint:'devolve 25%'});
+      itens.push({label:'Ficha da peça',act:'ctx_ficha',arg:m.type,hint:'vida '+m.maxhp+' · dano '+dano+'%'});
+      itens.push({label:'',sep:true});
+      itens.push({label:'Deixar quieta',act:'nada'});
+      return{titulo:(MACH[m.type]?MACH[m.type].nome:'PEÇA'),itens};
+    }
+    case 'bicho':{
+      const e=a.bicho!;
+      const matei=!!SaveDB.slot.mateiB[e.type];
+      const nome=e.boss?(BOSSES[e.b||e.type]?BOSSES[e.b||e.type].nome:'CHEFE'):(ENEMY[e.type]?ENEMY[e.type].nome:'???');
+      itens.push({label:matei?'Como resolver: '+ENEMY[e.type].hint:'Ainda não sei o que é isso',act:'nada',dis:!matei});
+      itens.push({label:'HP: '+Math.max(1,Math.round(e.hp))+'/'+Math.round(e.maxhp),act:'nada',dis:true});
+      if(!matei)itens.push({label:'Descobrir (matar o primeiro)',act:'nada'});
+      itens.push({label:'',sep:true});
+      itens.push({label:'Vou me preparar',act:'nada'});
+      return{titulo:matei?nome:'DESCONHECIDO',itens};
+    }
+    case 'estrutura':{
+      const st=a.estrutura!;
+      const custoReforco=ECONOMIA.banca.reforco;
+      if(!st.alive){
+        return{titulo:st.nome,itens:[
+          {label:'Rebocar agora',act:'ctx_reboque',custo:String(custoReforco),dis:G.scrap<custoReforco,hint:'volta torta, mas volta'},
+          {label:'Deixar caída',act:'nada'},
+        ]};
+      }
+      return{titulo:st.nome,itens:[
+        {label:'Rebocar (antecipado)',act:'ctx_reboque_pre',custo:String(custoReforco),dis:G.scrap<custoReforco,hint:'gasta sucata pra nada quebrar tão cedo'},
+        {label:'',sep:true},
+        {label:'Tá de pé. Deixa.',act:'nada'},
+      ]};
+    }
+    case 'vaga':{
+      const sel=G.selected;
+      if(sel&&sel!=='remover'){
+        const custo=machCost(sel);
+        return{titulo:'VAGA LIVRE',itens:[
+          {label:'Plantar '+(MACH[sel]?MACH[sel].nome:sel),act:'ctx_plantar',arg:String(a.col)+','+String(a.lane),
+            dis:G.scrap<custo,custo:String(custo)},
+          {label:'Escolher outra peça',act:'ctx_escolher',arg:String(a.col)+','+String(a.lane)},
+          {label:'',sep:true},
+          {label:'Cancelar',act:'nada'},
+        ]};
+      }
+      // sem carta: oferece o deck
+      const deck=(G.deck&&G.deck.length?G.deck.filter(k=>availableMachines().includes(k)):availableMachines());
+      for(const k of deck){
+        const custo=machCost(k);
+        itens.push({label:'Plantar '+(MACH[k]?MACH[k].nome:k),act:'ctx_plantar_deck',arg:String(a.col)+','+String(a.lane)+','+k,
+          dis:G.scrap<custo||!!machineAt(a.lane!,a.col!),custo:String(custo)});
+      }
+      if(!itens.length)itens.push({label:'Nada pra plantar',act:'nada',dis:true});
+      itens.push({label:'',sep:true});
+      itens.push({label:'Ficar olindo',act:'ctx_olhando',hint:'o Zé aprova a prudência'});
+      return{titulo:'VAGA LIVRE',itens};
+    }
+    case 'mar':
+      return{titulo:'O MAR',itens:[
+        {label:'Olhar o horizonte',act:'ctx_mar'},
+        {label:'Gritar pro mar',act:'ctx_gritar'},
+        {label:'',sep:true},
+        {label:'Melhor não',act:'nada'},
+      ]};
+    case 'carta':
+      return{titulo:'BANCA',itens:[
+        {label:'Escolher carta',act:'nada',hint:'clique esquerdo na carta'},
+        {label:'Fechar',act:'nada'},
+      ]};
+    default:
+      return{titulo:'NADA AQUI',itens:[{label:'O Zé deu de ombros',act:'nada'}]};
+  }
+}
+
+/** Abre o menu de contexto no lugar do clique. */
+function abrirMenuContexto(p:{x:number;y:number}): void {
+  const a=alvoDoClique(p);
+  const {titulo,itens}=itensDoAlvo(a);
+  UI.ctxMenu(titulo,itens,p.x,p.y);
+}
+
+/** Executa a ação escolhida no menu. */
+Game.ctxExecutar=function(act: string){
+  if(!G)return;
+  const [cmd,arg]=act.split(':');
+  switch(cmd){
+    case 'ctx_ze':zeRecusa(pick(['Que é?','Tô ocupado.','Fala.']));break;
+    case 'ctx_ze_irmao':zeRecusa('Meu irmão? Voltou o boné. Eu uso até hoje.');break;
+    case 'ctx_ze_dica':zeRecusa(pick(['Bujão na frente.','Holofote revela.','Não enche de geladeira não.']));break;
+    case 'ctx_lu':Game.luClick();break;
+    case 'ctx_lu_imposto':announce('IMPOSTO DO PRÓXIMO ROUND: '+impostoDoRound(G.machines.length,G.survived)+'. ELA ANOTOU.','story');break;
+    case 'ctx_toq':Game.toqClick();break;
+    case 'ctx_toq_viu':zeRecusa('Ele viu tudo. Não conta. É o acordo.');break;
+    case 'ctx_dog':Game.dogClick();break;
+    case 'ctx_dog_sucata':if(G.scrap>=20){G.scrap-=20;G.dogSay=1.4;addText(94,plantY(2)-30,'au.','#e8d9a8');SFX.lata();}break;
+    case 'ctx_bota':Game.bootsClick();break;
+    case 'ctx_bota_chutar':zeRecusa(pick(['AI.','ISSO FOI A DORNAS COSTAS.','Ela devolveu.']));break;
+    case 'ctx_vizinho':case 'ctx_vizinho_mare':Game.vizinhoClick(Number(arg||0));break;
+    case 'ctx_catar':{const k=G.pickups.find(p=>!p.fly&&!p.auto);if(k)collect(k);break;}
+    case 'ctx_mima':announce(G.machines.some(m=>m.type==='ima')?'O ÍMÃ TÁ DE OLHO.':'NÃO TEM ÍMÃ NO CAMPO.','story');break;
+    case 'ctx_melhora':upgradeMachine(String(arg||''));break;
+    case 'ctx_vender':{
+      // remove a primeira peça do tipo escolhido
+      const m=G.machines.find(x=>x.type===arg);
+      if(m){const v=Math.round(machCost(m.type)*.25);destroyMachine(m,false);G.scrap+=v;
+        addText(m.x,plantY(m.lane)-60,'+'+v,'#9ab');SFX.metal();}
+      break;
+    }
+    case 'ctx_ficha':{
+      const m=MACH[String(arg||'')];
+      if(m)announce(m.nome+': vida '+m.hp+' · recarga '+m.cd+'s · '+m.desc,'story');
+      break;
+    }
+    case 'ctx_reboque':{
+      if(G.scrap>=ECONOMIA.banca.reforco){
+        G.scrap-=ECONOMIA.banca.reforco;
+        const dead=G.structures.flat().find(s=>!s.alive);
+        if(dead){dead.alive=true;announce('REBOCOU '+dead.nome+'. TORTO, MAS DE PÉ.','story');SFX.place();}
+        else{G.scrap+=ECONOMIA.banca.reforco;announce('NADA CAÍDO. O ZÉ DEVOLVEU A SUCATA.','story');}
+      }
+      break;
+    }
+    case 'ctx_reboque_pre':
+      if(G.scrap>=ECONOMIA.banca.reforco){G.scrap-=ECONOMIA.banca.reforco;G.shields++;announce('TÁBUA NA MÃO. UMA INVASÃO MENOS.','story');}
+      break;
+    case 'ctx_plantar':{
+      const [c,l]=String(arg||'0,0').split(',');
+      placeMachine(G.selected||'',Number(l),Number(c));
+      break;
+    }
+    case 'ctx_plantar_deck':{
+      const [c,l,k]=String(arg||'0,0,boia').split(',');
+      if(isMachUnlocked(k||''))placeMachine(k||'',Number(l),Number(c));
+      break;
+    }
+    case 'ctx_escolher':G.selected=null;zeRecusa('Escolhe outra. Sem pressa.');break;
+    case 'ctx_olhando':zeRecusa('Bom. Olhar primeira.');break;
+    case 'ctx_mar':zeRecusa(pick(['Ele continua podre.','Não vem nada hoje.','Vem.']));break;
+    case 'ctx_gritar':zeRecusa('O MAR NÃO RESPONDE. A MARÉ RESPONDE.');break;
+    default:break;
+  }
+};
+
 function onCanvasDown(ev: MouseEvent): void {
   if(Game.screen!=='play'||Game.paused||!G||G.over)return;
   const p=canvasPos(ev);
-  if(ev.button===2){G.selected=null;return;}
+  if(ev.button===2){
+    // menu de contexto: itens dependem do alvo. Clique fora/ESC fecham.
+    abrirMenuContexto(p);
+    return;
+  }
   // segredos: Zé, Toquinho, botas, cão
   if(Math.hypot(p.x-46,p.y-(plantY(1)-50))<30){Game.zeClick();return;}
   if(G.toqAlive&&Math.hypot(p.x-(70+Math.sin(G.t*.6)*22),p.y-(plantY(2)-24))<26){Game.toqClick();return;}

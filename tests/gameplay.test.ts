@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { BOSSES, DAILY_MODS, ECONOMIA, ENEMY, ENEMY_ORDER, INTROS, MACH, MACH_ORDER, MAPS, MOLHO, MOLHO_TXT, UPG } from '../src/data';
-import { STRUCTURES, VX, W } from '../src/core/constants';
+import { COLW, LANE_Y0, LANE_H, STRUCTURES, VX, W, plantY } from '../src/core/constants';
 import { KEY } from '../src/save/storage';
 
 /**
@@ -45,6 +45,7 @@ let game: typeof import('../src/game/game');
 let state: typeof import('../src/core/state');
 let save: typeof import('../src/save/storage');
 let economia: typeof import('../src/game/economy');
+let jogo: typeof import('../src/game/game') & Record<string, any>;
 
 beforeAll(async () => {
   document.body.innerHTML = `
@@ -52,6 +53,7 @@ beforeAll(async () => {
     <div id="topbar"><div id="trackName"></div><div id="radioLamp"></div></div>
     <div id="screen"></div>
     <div id="shop"></div>
+    <div id="ctxmenu"></div>
     <div id="toasts"></div>
     <div id="flash"></div>
   `;
@@ -62,6 +64,7 @@ beforeAll(async () => {
   state = await import('../src/core/state');
   save = await import('../src/save/storage');
   economia = await import('../src/game/economy');
+  jogo = (await import('../src/game/game')) as typeof import('../src/game/game') & Record<string, any>;
 });
 
 /** Modo silencioso: os testes não precisam de som nem de timer. */
@@ -443,6 +446,57 @@ describe('molho — eventos, micros e variações (BLOCO M.6)', () => {
     expect(MOLHO.micro.intervalo[0]).toBeGreaterThan(0);
     expect(MOLHO.micro.mare.dur).toBeGreaterThan(0);
     expect(MOLHO.variacoes.silenciosa.atraso).toBeGreaterThan(5);
+  });
+});
+
+describe('menu de contexto (botão direito)', () => {
+  it('cada alvo oferece o seu menu, com fala diferente', () => {
+    state.Game.startCampaign(0);
+    const cards: [string, { x: number; y: number }][] = [
+      ['zé', { x: 46, y: plantY(1) - 50 }],
+      ['vaga', { x: VX + 3 * COLW + 20, y: LANE_Y0 + 1 * LANE_H + 60 }],
+      ['mar', { x: W - 30, y: LANE_Y0 + 120 }],
+    ];
+    for (const [nome, p] of cards) {
+      const itens = jogo.itensDoAlvo!(jogo.alvoDoClique!(p));
+      expect(itens.itens.length, `alvo ${nome} sem itens`).toBeGreaterThan(1);
+      expect(itens.titulo.length, `alvo ${nome} sem título`).toBeGreaterThan(0);
+    }
+  });
+
+  it('vaga livre oferece o deck; vaga ocupada oferecie melhorar/vender', () => {
+    state.Game.startSandbox();
+    state.G.deck = ['boia', 'torradeira'];
+    const vazio = jogo.itensDoAlvo!(jogo.alvoDoClique!({ x: VX + COLW, y: LANE_Y0 + 60 }));
+    expect(vazio.itens.some((i: { label: string }) => i.label.includes('Plantar Boia'))).toBe(true);
+
+    expect(jogo.placeMachine('boia', 0, 1, true)).toBe(true);
+    const ocupado = jogo.itensDoAlvo!(jogo.alvoDoClique!({ x: VX + 1 * COLW + 40, y: LANE_Y0 + LANE_H / 2 }));
+    const labels = ocupado.itens.map((i: { label: string }) => i.label).join(' ');
+    expect(labels).toContain('Melhorar');
+    expect(labels).toContain('Arrancar');
+    expect(labels).toContain('Ficha');
+  });
+
+  it('executar uma ação do menu mexe no jogo de verdade', () => {
+    state.Game.startCampaign(0);
+    state.Game.ctxExecutar!('ctx_ze_dica');
+    expect(state.G.ze.say.length).toBeGreaterThan(0);
+    // catar sucata pela ação do menu: a do chão sai e a sucata entra
+    expect(state.G.pickups.length).toBe(0);
+    state.G.pickups.push({ x: VX + 200, y: plantY(2), v: 25, auto: false, life: 14, t: 0, fly: false, vy: 0, bob: 0 });
+    state.Game.ctxExecutar!('ctx_catar');
+    // o efeito real: o pickup passa a voar pro canto (e o update soma a sucata)
+    expect(state.G.pickups[0].fly).toBe(true);
+  });
+
+  it('bicho conhecido ensina a resolver; desconhecido não', () => {
+    state.Game.startSandbox();
+    const baiacu = jogo.spawnEnemy('baiacu', 0, 900)!;
+    jogo.damageEnemy(baiacu, 99999, 'boom');
+    const outro = jogo.spawnEnemy('baiacu', 0, 900)!;
+    const itens = jogo.itensDoAlvo!({ tipo: 'bicho', bicho: outro });
+    expect(itens.itens[0].label).toContain('Como resolver');
   });
 });
 
