@@ -51,7 +51,7 @@ export const UI=(function(){
    */
   type CtxItem={label:string;act?:string;arg?:string;dis?:boolean;hint?:string;custo?:string;sep?:boolean};
   let ctxAberto=false;
-  function hideCtx(){ctxEl.classList.remove('on');ctxAberto=false;}
+  function hideCtx(){ctxEl.classList.remove('on');ctxEl.classList.add('hidden');ctxAberto=false;}
   function ctxMenu(titulo:string,itens:CtxItem[],px:number,py:number){
     let html='<div class="ctxhead">'+titulo+'</div>';
     for(const it of itens){
@@ -68,7 +68,7 @@ export const UI=(function(){
     const x=r.left-st.left+(px/1280)*r.width, y=r.top-st.top+(py/846)*r.height;
     ctxEl.style.left=Math.max(4,Math.min(x,st.width-300))+'px';
     ctxEl.style.top=Math.max(4,Math.min(y,st.height-260))+'px';
-    ctxEl.classList.add('on');ctxAberto=true;
+    ctxEl.classList.remove('hidden');ctxEl.classList.add('on');ctxAberto=true;
     const primeiro=ctxEl.querySelector('.ctxitem:not(.dis)') as HTMLButtonElement|null;
     if(primeiro)primeiro.focus();
   }
@@ -278,7 +278,7 @@ export const UI=(function(){
   function pause(){
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:34px;color:var(--bone)">PAUSA</h2>'+
       '<p class="muted">'+G.map.nome+' · '+String(G.map.resShort)+' · onda '+(G.survived+1)+' · '+Math.round(G.t)+'s<br>'+
-      'peças: '+G.machines.length+' · bichos mortos: '+G.kills+' · sucata: '+G.scrap+'</p>'+
+      'peças: '+G.machines.length+' · bichos mortos: '+G.kills+' · sucata: '+fmt(G.scrap)+'</p>'+
       '<div class="menu">'+btn('RETOMAR','resume','','primary')+btn('OPÇÕES','options','')+btn('BESTIÁRIO','codex','')+
       btn('REINICIAR','retry','','danger')+btn('SALVAR','save','','small')+btn('SAIR PRO TÍTULO','title','','small')+'</div>'+
       '<div class="bottomline">Salva automaticamente a cada onda e ao pausar. ESC ou P pausa, M silencia, 1–9 escolhe peça.<br>Legenda: 🟩 estrutura de pé · 🟥 destruída · ícones da vila = vidas.</div>');
@@ -413,7 +413,7 @@ export const UI=(function(){
       '<div class="row">'+(Game.shopItems||[]).map(it=>'<button class="btn tiny" data-act="buyitem" data-arg="'+it.id+'" title="'+it.desc+'" '+(G.scrap>=it.cost?'':'disabled')+'>'+
         it.nome+' · '+it.cost+'</button>').join('')+'</div>'+
       '<p class="muted" style="margin-top:6px;font-size:12px">'+(Game.shopItems||[]).map(it=>'<b>'+it.nome+':</b> '+it.desc).join(' · ')+'</p>'+
-      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+G.scrap+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+' · imposto do próximo round: <b>'+impostoDoRound(G.machines.length,G.survived)+'</b></p>'+
+      '<p class="muted" style="margin-top:8px">Sucata: <b class="gold">'+fmt(G.scrap)+'</b> · estruturas de pé: <b>'+structuresAlive()+'/'+STRUCTURES+'</b> · peças: '+G.machines.length+' · imposto do próximo round: <b>'+impostoDoRound(G.machines.length,G.survived)+'</b></p>'+
       '<div class="bottomline">"+ reconstruir uma parede" pode salvar a partida. "Um ímã" também. O Zé não dá garantia.</div>'+
       '</div></div>';
     shopEl.classList.remove('hidden');scr.classList.add('hidden');top.classList.add('hidden');
@@ -572,15 +572,18 @@ export const UI=(function(){
   function drawCardTip(r: {k: string;x: number;y: number;w: number;h: number}){
     const m=MACH[r.k],w=300,h=Math.round(108*(SaveDB.options.font||1.15));
     const x=clamp(r.x-40,8,W-w-8),y=72,f=(SaveDB.options.font||1.15);
+    // largura da caixa em caracteres, escala-dependente: sem isso a fonte
+    // grande estoura os 300px do tooltip.
+    const col=Math.max(24,Math.round(46/f));
     ctx.fillStyle='rgba(8,12,10,.95)';rr(x,y,w,h,4);ctx.fill();
     ctx.strokeStyle='#5a6248';ctx.lineWidth=1;ctx.stroke();
     ctx.fillStyle='#e8d9a8';ctx.font=fmono(13,true);ctx.fillText(m.nome,x+9,y+Math.round(17*f));
     ctx.fillStyle='#9aa08a';ctx.font=fmono(10);
     ctx.fillText('custo '+machCost(r.k)+' · vida '+m.hp+' · recarga '+m.cd+'s',x+9,y+Math.round(31*f));
     ctx.fillStyle='#d8d0b0';ctx.font=fmono(10);
-    wrap(m.desc,46).slice(0,3).forEach((l,i)=>ctx.fillText(l,x+9,y+Math.round((47+i*12)*f)));
+    wrap(m.desc,col).slice(0,3).forEach((l,i)=>ctx.fillText(l,x+9,y+Math.round((47+i*12)*f)));
     ctx.fillStyle='#b8a060';ctx.font=fmono(9);
-    wrap(m.sin,54).slice(0,2).forEach((l,i)=>ctx.fillText(l,x+9,y+Math.round((88+i*11)*f)));
+    wrap(m.sin,Math.round(col*1.2)).slice(0,2).forEach((l,i)=>ctx.fillText(l,x+9,y+Math.round((88+i*11)*f)));
   }
   function drawScene(g){
     // intro de chefe

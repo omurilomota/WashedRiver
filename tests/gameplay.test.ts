@@ -449,6 +449,24 @@ describe('molho — eventos, micros e variações (BLOCO M.6)', () => {
   });
 });
 
+describe('sucata é dinheiro inteiro', () => {
+  it('a renda passiva não deixa centavo de float', () => {
+    state.Game.startCampaign(0);
+    const antes = state.G.scrap;
+    for (let i = 0; i < 300; i++) jogo.update(0.1); // 30s de jogo
+    expect(state.G.scrap).toBe(Math.floor(state.G.scrap));
+    expect(state.G.scrap).toBeGreaterThanOrEqual(antes);
+  });
+
+  it('a taxa do pescador também é inteira', () => {
+    state.Game.startCampaign(0);
+    state.G.scrap = 123.456;
+    jogo.spawnEnemy('pescador', 1, VX + 2);
+    jogo.update(0.5);
+    expect(state.G.scrap).toBe(Math.floor(state.G.scrap));
+  });
+});
+
 describe('menu de contexto (botão direito)', () => {
   it('cada alvo oferece o seu menu, com fala diferente', () => {
     state.Game.startCampaign(0);

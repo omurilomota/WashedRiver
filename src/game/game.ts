@@ -917,7 +917,8 @@ export function update(dt: number){
   updatePhase(dt);
   G.tideT-=dt;
   if(G.tideT<=0){G.tideT=G.map.weather==='rain'?3.5:6;const l=randLane();dropScrap(rnd(FIELD_R-60,FIELD_R),plantY(l)-20,Math.round(25*(G.resMult||1)),false);}
-  G.scrap += ECONOMIA.passiva * dt;
+  // sucata é inteira: a passiva acumula em segundos e o resto vira pó
+  G.scrap = Math.floor(G.scrap + ECONOMIA.passiva * dt);
   for(const k in G.cds)G.cds[k]=Math.max(0,G.cds[k]-dt);
 
   // Zé e NPCs
@@ -1294,7 +1295,7 @@ function breach(e: Enemy): void {
   // jeito de perder uma parede: ele cobra pedágio em sucata e volta pro
   // mar. Rádio e Cachorro continuam sendo a resposta que rende.
   if(e.type==='pescador'||e.human||ENEMY[e.type]?.human){
-    const taxa=Math.min(Math.max(0,G.scrap),ECONOMIA.pescadorTaxa);
+    const taxa=Math.min(Math.max(0,Math.floor(G.scrap)),ECONOMIA.pescadorTaxa);
     G.scrap-=taxa;
     e.saved=true;e.taxed=true;e.flee=true;e.speed=34;e.act=1;
     addText(e.x,plantY(e.lane)-e.r-20,taxa>0?'ELE LEVOU '+taxa:'ELE NÃO LEVOU NADA','#f0d0a0');
