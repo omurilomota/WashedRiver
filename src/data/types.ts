@@ -287,6 +287,13 @@ export interface RadioLine {
   txt: string;
 }
 
+export interface ChronicleDef {
+  /** Mapa que libera a página (0 = primeira). */
+  map: number;
+  titulo: string;
+  txt: string;
+}
+
 export interface Ending {
   id: string;
   titulo: string;

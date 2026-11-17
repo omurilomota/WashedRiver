@@ -1024,6 +1024,38 @@
       "dark": true
     }
   ],
+  "cronicas": [
+    {
+      "map": 0,
+      "titulo": "O PRIMEIRO PREGO",
+      "txt": "Antes do píer apodrecer, a Barra era o lugar onde todo mundo consertava o que o mar quebrava. Meu pai dizia que prego era confissão: você sabe onde bateu e não conta pra ninguém. Eu era pequeno e achava que a vila ia durar mais que o mar. O mar não discutiu. Só esperou."
+    },
+    {
+      "map": 1,
+      "titulo": "A TORRE QUE NINGUÉM APAGOU",
+      "txt": "O Faroleiro acendia a luz de quatro em quatro horas, mesmo quando não tinha barco nenhum no horizonte. Diziam que era teimosia. Eu acho que ele esperava alguém. Quando a luz apagou de vez, ninguém foi lá ver. A gente já tinha aprendido a andar no escuro."
+    },
+    {
+      "map": 2,
+      "titulo": "O ÚLTIMO TREM",
+      "txt": "Toquinho queria ser maquinista. Eu levei ele na estação uma vez, no dia em que o trem atrasou três horas e chegou sem condutor. O menino contou os vagões em voz alta, um por um. Até hoje ele conta. Eu nunca disse que o último vagão não tinha ninguém dentro."
+    },
+    {
+      "map": 3,
+      "titulo": "O GELO QUE NÃO DERRETE",
+      "txt": "Dona Lú vendia gelo na feira e dizia que o peixe era fresco. Ninguém perguntava de onde vinha, porque a resposta custava mais que o peixe. Quando a maré subiu, ela fechou a bancada e nunca mais abriu. O gelo continuou lá. Continua."
+    },
+    {
+      "map": 4,
+      "titulo": "HORA EXTRA",
+      "txt": "A fábrica pagava por hora extra e dava um boné no fim do mês. O Gerente usava o mesmo boné há vinte anos. Eu trabalhei um verão lá dentro e aprendi duas coisas: cano não volta, e gente que manda embora nunca vai embora de verdade. Ele ainda abre o portão às seis."
+    },
+    {
+      "map": 5,
+      "titulo": "O BONÉ DO MEU IRMÃO",
+      "txt": "Meu irmão saiu no barco numa terça e voltou na quinta, sem o barco e sem explicar. Deixou o boné na cadeira e foi comprar cigarro. Eu usei o boné por onze anos. Quando a maré chegou no cemitério, eu entendi que ele não tinha ido embora. Ele só tinha chegado antes."
+    }
+  ],
   "molho": {
     "eventos": {
       "barco_pirata": {
@@ -1076,7 +1108,7 @@
       },
       "cachorro_real": {
         "titulo": "UM CACHORRO DE VERDADE",
-        "texto": "Apareceu, latiu, e os bichos pequenos deram meia volta. Se você tem o balde, os dois vão se encontrar.",
+        "texto": "Apareceu, latiu, e os bichos pequenos deram meia volta. Se você tem o cachorro, os dois vão se encontrar.",
         "sim": "OK",
         "nao": ""
       }

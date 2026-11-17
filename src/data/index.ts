@@ -14,6 +14,7 @@ import type {
   IntroDef,
   BossDef,
   Cartazes,
+  ChronicleDef,
   DailyMod,
   EconomiaDef,
   Ending,
@@ -63,12 +64,14 @@ export const MOLHO_TXT = mapsJson.molho as { eventos: Record<string, { titulo: s
 export const VOZ_LINES = mapsJson.vozLines as string[];
 export const CARTAZES = mapsJson.cartazes as Cartazes;
 export const ENDINGS = mapsJson.endings as Ending[];
+export const CRONICAS = mapsJson.cronicas as ChronicleDef[];
 export const DAILY_MODS = mapsJson.dailyMods as DailyMod[];
 
 export type {
   Achievement,
   BossDef,
   Cartazes,
+  ChronicleDef,
   DailyMod,
   Ending,
   EnemyDef,
