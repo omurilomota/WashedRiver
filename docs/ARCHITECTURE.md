@@ -45,6 +45,7 @@ emite um evento.
 | `src/data/` | tabelas de conteúdo e balanço (`*.json` + `types.ts`) | ter lógica |
 | `src/game/` | simulação: ondas, inimigos, peças, projéteis, economia, progressão | desenhar ou tocar DOM |
 | `src/render/` | desenho em canvas: cenário, lanes, estruturas, criaturas, efeitos, HUD | alterar regra |
+| `src/render/atmosphere.ts` | atmosfera, planos, foco e clima com a paleta do mapa (ADR 015) | decidir gameplay |
 | `src/ui/` | telas em DOM: título, mapas, slots, opções, bestiário, árvore, loja, pausa, fim, epílogo | decidir gameplay |
 | `src/audio/` | música, ambiência e efeitos sintetizados em WebAudio | tocar DOM |
 | `src/save/` | persistência em localStorage + migração de versão | ler `src/data/` sem passar por `src/data/index.ts` |

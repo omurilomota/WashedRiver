@@ -28,6 +28,18 @@ barco que era do irmão do Zé, uma escolha no final que ninguém vai achar boa.
 4. **Consequência** — toda onda deixa marca. A vila perde estrutura, e a
    estrutura que cai tem nome.
 
+### Leitura visual (ADR 015)
+
+O campo tem **três planos**: fundo cacheado, campo jogável e primeiro plano
+(estacas escuras nas bordas). A luz é global, topo-esquerda, e o clima usa a
+paleta do mapa — névoa no Farol/tempestade/vendaval, poeira na Feira, cinza na
+Fábrica. O primeiro plano emoldura sem cobrir corredor ou hitbox.
+
+A camada de atmosfera (`src/render/atmosphere.ts`) é desenhada **depois do
+clima e antes dos avisos**. O HUD ganha faixa de topo, halo de seleção, custo
+legível e atalho contrastado. O resultado é legibilidade com profundidade, não
+um filtro que apaga a cena.
+
 ## O campo
 
 - **6 lanes** (índices 0–5) × **7 colunas** = **42 slots** de plantio.
@@ -184,6 +196,8 @@ O codex virou enciclopédia de verdade: cada entrada é piada, não ficha.
 - **Engenhocas (18):** abre quando o jogador **planta** a primeira. Custo,
   vida, recarga, nível máximo, sinergia e fato inútil.
 - **Chefes (6):** abre quando **derrotados**, com HP, fases e o fato inútil.
+- **História (6):** uma crônica por mapa, liberada conforme a campanha abre.
+  É o Zé contando a costa antes da maré; nenhuma página reescreve os finais.
 - **Acesso:** menu principal e pausa. Nunca no meio da ação.
 - **Descoberta é permanente:** fica no save (`mateiB`, `seenM`, `venciB`).
   Save novo começa vazio — descobrir de novo faz parte.
@@ -307,8 +321,9 @@ recorrente. Ver ADR 008.
   Todos os 8 **fazem o que o texto promete**: ban tiram engenhoca do baralho,
   Peças de Vidro multiplica a vida da peça, Noite Permanente começa o mapa no
   escuro, Só Baiacu troca o pool inteiro.
-- **Chefe** — um mapa, um chefe, sem campanha.
-- **Noite Infinita** — sobreviva às ondas; conquista na onda 10.
+- **Chefe** — um mapa, um chefe, sem campanha; melhor tempo por mapa.
+- **Noite Infinita** — mapa e dificuldade escolhidos de verdade; sobreviva às
+  ondas, com recorde separado por dificuldade; conquista na onda 10.
 - **Sandbox** — 50 engenhocas na areia, sem julgamento.
 
 ## Conquistas (12)

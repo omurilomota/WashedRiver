@@ -54,7 +54,7 @@
 - Áudio WebAudio: trilha por mapa, rádio, efeitos; morte única por criatura,
   cena de morte de cada chefe
 - Save v3 em localStorage com migração, autosave e export/import
-- 109 testes verdes (vizinhos falantes + reset por mapa) (`npm run check`: typecheck + lint + test + build + smoke)
+- 164 testes verdes (auditoria + M.6 + crônicas + atmosfera) (`npm run check`: typecheck + lint + test + build + smoke)
 
 ## O que está quebrado ou pendente
 ### Parte 1 — padronizar lanes (concluída: ADR 011 + ADR 013)
@@ -145,7 +145,19 @@
   (`mateiB`), galeria por construção (`seenM`), chefes por vitória (`venciB`).
   Cada entrada tem **fato inútil** (dado novo em balance.json) e contador vivo.
   Acesso pelo menu principal e pela pausa; descoberta persiste no save.
-- **M.6:** molho (eventos aleatórios entre ondas, micro-surpresas na onda, ondas temáticas).
+- **M.6 (feito):** molho completo. Eventos liberados (bicho raro, cachorro de
+  verdade, estação pirata), Gaivota-Ladra leva uma peça de verdade e pode
+  devolvê-la por 60 de sucata; micros e variações continuam. A banca respeita
+  a peça desbloqueada pelo Zé na mesma partida.
+- **Crônicas da Costa (feito):** seis páginas no Caderno do Zé, uma por mapa,
+  liberadas pelo progresso. Texto em `maps.json`; o rumo dos três finais não
+  mudou.
+- **Atmosfera e leitura (feito — ADR 015):** `src/render/atmosphere.ts`,
+  planos, luz global, clima por paleta, foco, HUD/cartas e sombra única dos
+  bichos. Testes em `tests/visual.test.ts`.
+- **Recordes (feito):** campanha grava tempo real, Modo Chefe grava melhor
+  tempo por mapa e Noite Infinita grava por dificuldade; mapa/dificuldade
+  escolhidos na tela de deck são os usados na partida.
 
 ## Próximos passos planejados (não fazer agora, só contexto)
 - As Partes 1/2/3 são **independentes** (podem ser feitas em qualquer ordem),
@@ -165,12 +177,17 @@
   `105d7c7` (daltonismo no posicionamento), `99bd04a` (cache DPR 2, `spooked`
   tipado, `shade` morto, docs), mais o dist no commit final
 - Último commit verde: `99bd04a` (verde: typecheck + lint + 106 testes)
+- **Sessão atual:** 164 testes verdes, sem commit/push (auditoria, M.6,
+  crônicas, atmosfera/visual e correções de modo/save). `dist/` é artefato de
+  build, não editado à mão.
 - `dist/index.html` atual: reflete `src/` até o último commit de build deste
   ciclo (ver `git log -1 --format=%h` após o `📦 build(build)`)
 - PRs abertas: nenhuma — `develop` está defasada (parada em `9340a0a`,
   antes do release 0.4.0); o destino do PR precisa ser decidido
   (`main → develop` para sincronizar, depois PR desta branch)
-- Trabalho não commitado: não (exceto `dist/` até o commit de build)
+- Trabalho não commitado: sim — código, testes, docs, `IDEIAS.MD`, ADR 015 e
+  `dist/index.html` gerado pelo build desta sessão. Nada foi commitado ou
+  publicado.
 
 ## Changelog
 - v0.1 — base: 3 corredores, 7 criaturas, 8 máquinas, menu do Zé, dois modos
