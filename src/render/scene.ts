@@ -20,6 +20,7 @@ import {
   drawWeather,
 } from './sprites';
 import { drawBossDeath, drawDeath, drawEnemy } from './creatures';
+import { drawAtmosphere } from './atmosphere';
 import { machCost, machineAt } from '../game/economy';
 
 export function drawField(){
@@ -88,11 +89,16 @@ export function drawField(){
   for(const p of G.pickups)drawPickup(p,G);
   drawParticles(G);
   drawWeather(G,G.t);
+  // Plano de atmosfera: haze, clima, primeiro plano e foco. Desenhado depois
+  // do clima para unificar a cena, mas antes dos avisos (que precisam ler).
+  drawAtmosphere(G.map,G.t);
   if(G.baleiaWarn){const bw=G.baleiaWarn; if(Math.sin(G.t*12)>0){ctx.save();ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=4;ctx.fillStyle='#e8d9a8';ctx.font='bold 16px "Consolas","Menlo","Monaco",monospace';ctx.textAlign='center';ctx.fillText('🐋 BALEIA',colX(2),LANE_Y0+bw.lane*LANE_H+40);ctx.restore();ctx.textAlign='left';}}
   if(G.dark&&G.darkT>0){ctx.fillStyle='rgba(2,4,8,.55)';ctx.fillRect(0,0,W,H);}
   ctx.restore();
-  const grd=ctx.createRadialGradient(W/2,H/2,H*.42,W/2,H/2,H*.98);
-  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(8,6,3,.72)');
+  // Vinheta final mais curta e ancorada no campo: profundidade sem apagar
+  // a vila nem o canto onde ficam os avisos.
+  const grd=ctx.createRadialGradient(W/2,H*.48,H*.46,W/2,H*.5,H*1.05);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(.72,'rgba(4,6,5,.16)');grd.addColorStop(1,'rgba(4,6,5,.78)');
   ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
 }
 export function drawHazard(h){

@@ -13,6 +13,7 @@ import { dayKey, hashStr, mulberry } from '../core/rng';
 import {
   ACHIEVEMENTS,
   BOSSES,
+  CRONICAS,
   DAILY_MODS,
   ECONOMIA,
   ENDINGS,
@@ -91,13 +92,14 @@ export const UI=(function(){
       case 'slot_apagar':if(confirm('APAGAR o slot '+String(Number(arg)+1)+'? Árvore, campanha e bestiário vão junto.')){SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();}break;
       case 'slot_sucata':toast('ach','SUCATA VELHA: '+SaveDB.slotInfo(Number(arg)).oldScrap+'. NÃO VIAJA ENTRE SLOTS.');break;
       case 'mapa_jogar':api.deckModo='campaign';deckScreen(Number(arg));break;
-      case 'mapa_endless':api.deckModo='endless';deckScreen(clamp(SaveDB.slot.campaign,0,MAPS.length-1));break;
+      case 'mapa_endless':api.deckModo='endless';api.deckNivel=1;deckScreen(Number(arg));break;
       case 'mapa_boss':api.deckModo='boss';deckScreen(Number(arg));break;
       case 'mapa_reset':if(confirm('Apagar o progresso deste mapa?')){SaveDB.resetMapa(Number(arg));toast('story','PROGRESSO APAGADO. O ZÉ NÃO VIU NADA.');maps();}break;
       case 'mapa_info':{const m=MAPS[Number(arg)];toast('story',m.nome+': '+m.bio);break;}
       case 'deck_pick':{const k=String(arg);toast('story',(MACH[k]?MACH[k].nome:k)+': '+(MACH[k]?MACH[k].desc:''));break;}
       case 'codex_aba':codex(String(arg));break;
       case 'pause_acao':{const a=String(arg);if(a==='resume')Game.resume();else if(a==='options')options();else if(a==='codex')codex();else if(a==='retry')Game.restart();else if(a==='title')Game.quitToTitle();else if(a==='save')SaveDB.save();break;}
+      case 'offer':Game.chooseOffer(Number(arg));break;
       default:UI.hideCtx();break;
     }
     UI.hideCtx();
@@ -152,7 +154,7 @@ export const UI=(function(){
           {label:'Como resolver bichos',act:'codex_aba',arg:'bestiary'},
           {label:'Fechar',act:'nada'}]}),
     shop:(alvo)=>alvo.startsWith('offer:')
-      ? {titulo:'OFERTA DO ZÉ',itens:[{label:'Pegar essa',act:'eventook',arg:'1'},{label:'Recusar',act:'eventook',arg:'0'}]}
+      ? {titulo:'OFERTA DO ZÉ',itens:[{label:'Pegar essa',act:'offer',arg:alvo.split(':')[1]||'0'},{label:'Fechar',act:'nada'}]}
       : {titulo:'BANCA DO ZÉ',itens:[
           {label:'Ver o caderno',act:'codex_aba',arg:'machines'},
           {label:'Fechar',act:'nada'}]},
@@ -165,7 +167,7 @@ export const UI=(function(){
       {label:'Salvar',act:'pause_acao',arg:'save'},
       {label:'Sair pro título',act:'pause_acao',arg:'title'}]}),
     codex:(alvo)=>({titulo:'CADERNO DO ZÉ',itens:[
-      ...['bestiary','machines','chefes','radio','ach'].map(t=>({label:'Aba: '+t,act:'codex_aba',arg:t,dis:alvo==='aba:'+t})),
+      ...['bestiary','machines','chefes','historia','radio','ach'].map(t=>({label:'Aba: '+t,act:'codex_aba',arg:t,dis:alvo==='aba:'+t})),
       {sep:true,label:''},
       {label:'Fechar o caderno',act:'geral_voltar'}]}),
     options:()=>({titulo:'OPÇÕES',itens:[
@@ -205,7 +207,7 @@ export const UI=(function(){
     const slotHTML=[0,1,2].map(i=>{const sl=SaveDB.slotInfo(i);
       return '<div class="slot '+(i===SaveDB.slotIndex?'on':'')+'" data-act="slot" data-arg="'+i+'" tabindex="0">'+
         '<b>'+sl.name+'</b><small>'+(sl.oldScrap||0)+' sucata velha · '+Object.keys(sl.ach||{}).length+' selos</small>'+
-        '<small>Mapa '+(sl.campaign+1)+'/6'+(sl.lastPlayed?' · jogado':' · novo')+'</small></div>';}).join('');
+        '<small>Mapa '+(sl.campaign+1)+'/'+MAPS.length+(sl.lastPlayed?' · jogado':' · novo')+'</small></div>';}).join('');
     setScreen(
       '<div class="logo">MARÉ<br><em>PODRE</em></div>'+
       '<div class="logo-sub">A COSTA NÃO PERDOA · CAPÍTULO FINAL</div>'+
@@ -238,7 +240,7 @@ export const UI=(function(){
         '<div class="kv">sucata velha: <b>'+s.oldScrap+'</b><br>campanha: <b>'+Math.min(MAPS.length,s.campaign+1)+'/'+MAPS.length+'</b><br>partidas: <b>'+(s.runs||0)+'</b> · selos: <b>'+Object.keys(s.ach||{}).length+'/'+ACHIEVEMENTS.length+'</b><br>'+
         'último jogo: '+(s.lastPlayed?new Date(s.lastPlayed).toLocaleDateString('pt-BR'):'nunca')+'</div>'+
         '<div class="row" style="justify-content:flex-start">'+btn('USAR','slot',i,'small')+
-        '<button class="btn dark" data-act="newslot" data-arg="'+i+'">APAGAR</button></div></div>';}).join('');
+        '<button class="btn dark" data-act="newslot" data-arg="'+i+'" data-ctx="slot:'+i+'">APAGAR</button></div></div>';}).join('');
     setScreen('<h2 style="font-family:Impact;font-weight:400;color:var(--bone);font-size:30px;margin:0">SLOTS</h2>'+
       '<p class="muted">Cada slot tem sua própria árvore, campanha e bestiário. A sucata velha não viaja.</p>'+
       '<div class="slots">'+cards+'</div>'+
@@ -256,9 +258,10 @@ export const UI=(function(){
    */
   let deckSel: string[] = [];
   function deckScreen(map: number){
-    deckSel = (SaveDB.getDeck(map) || []).slice(0, 7);
-    api.deckMapa = map;
-    drawDeck(map);
+    const m = clamp(Number(map) || 0, 0, MAPS.length - 1);
+    deckSel = (SaveDB.getDeck(m) || []).slice(0, 7);
+    api.deckMapa = m;
+    drawDeck(m);
   }
   function drawDeck(map: number){
     // Pé de Cabra é ferramenta, não peça: não entra no deck
@@ -338,13 +341,14 @@ export const UI=(function(){
 
   // ---------- MODOS ----------
   function endlessMenu(){
-    const map=clamp(SaveDB.slot.campaign,0,5);
+    const map=clamp(SaveDB.slot.campaign,0,MAPS.length-1);
+    const best=[0,1,2].map(i=>['DEVAGAR','COMO SEMPRE','SEM DÓ'][i]+': '+(SaveDB.slot.endlessBest[i]||0)+' ondas').join(' · ');
     setScreen('<h2 style="font-family:Impact;font-weight:400;font-size:32px;color:var(--bone)">NOITE INFINITA</h2>'+
-      '<p class="muted">Sem chefe marcado, sem amanhã. A cada três ondas vem um Seu Bento de encomenda. Melhor marca: '+JSON.stringify(SaveDB.slot.endlessBest)+'.</p>'+
+      '<p class="muted">Sem chefe marcado, sem amanhã. A cada cinco ondas vem um Seu Bento de encomenda. Melhor marca: '+best+'.</p>'+
       '<div class="mapgrid" style="grid-template-columns:repeat(3,1fr)">'+
       [['DEVAGAR','costa calma, maré mansa',0],['COMO SEMPRE','do jeito que o mar gosta',1],['SEM DÓ','eles comeram o almoço',2]].map(d=>
         '<div class="mapcard" data-act="deckendless" data-arg="'+d[2]+'"><div class="art" style="background:linear-gradient(180deg,#1a2a2e,#0a1418)"><div class="no">∞</div></div>'+
-        '<h3>'+d[0]+'</h3><p>'+d[1]+'</p><div class="tags">'+tag('MAPA: '+MAPS[map].nome)+'</div></div>').join('')+
+        '<h3>'+d[0]+'</h3><p>'+d[1]+'</p><div class="tags">'+tag('MAPA: '+MAPS[map].nome)+tag('NÍVEL '+d[2])+'</div></div>').join('')+
       '</div><div class="space"></div>'+btn('VOLTAR','title','','small'));
   }
   function bossMenu(){
@@ -360,7 +364,7 @@ export const UI=(function(){
   function dailyPreview(){
     const seed=hashStr(dayKey()+(SaveDB.slotIndex+1)),rng=mulberry(seed);
     const mods=shuffle(DAILY_MODS.slice()).filter(()=>rng()<.4).slice(0,2);
-    const mapIndex=Math.floor(rng()*Math.min(6,SaveDB.slot.campaign+1));
+    const mapIndex=Math.floor(rng()*Math.min(MAPS.length,SaveDB.slot.campaign+1));
     return{mods:mods.length?mods:[DAILY_MODS[0]],map:mapIndex};
   }
   function dailyMenu(){
@@ -414,8 +418,8 @@ export const UI=(function(){
     // BLOCO M.5: o bestiário abre por MORTE (mateiB), a galeria por construção
     // (seenM) e os chefes por vitória (venciB). Save novo: tudo vazio.
     const mates=Object.keys(s.mateiB||{}).length,plantadas=Object.keys(s.seenM||{}).length;
-    const tabs=['bestiary','machines','chefes','radio','ach'];
-    const nomeTab: Record<string,string>={bestiary:'BICHOS',machines:'ENGENHOCAS',chefes:'CHEFES',radio:'RÁDIO',ach:'SELOS'};
+    const tabs=['bestiary','machines','chefes','historia','radio','ach'];
+    const nomeTab: Record<string,string>={bestiary:'BICHOS',machines:'ENGENHOCAS',chefes:'CHEFES',historia:'HISTÓRIA',radio:'RÁDIO',ach:'SELOS'};
     let body='';
     if(codexTab==='bestiary'){
       body='<div class="codexGrid">'+ENEMY_ORDER.map(id=>{
@@ -436,6 +440,11 @@ export const UI=(function(){
           '<p>'+(vencido?b.desc:'Ninguém derrotou esse ainda. O Zé não comenta.')+'</p>'+
           '<div class="kill">'+(vencido?'FASES: 3+ · HP '+b.hp+'<br><span class="muted">FATO INÚTIL: '+(b.fato||'—')+'</span> · ZÉ: "Sobreviveu. Não pergunte como."':'')+'</div></div>';}).join('')+'</div>'+
         '<p class="muted" style="margin-top:8px">'+Object.keys(s.venciB||{}).length+'/6 chefes no caderno. Cada um é um mapa, e cada mapa é uma história.</p>';
+    }else if(codexTab==='historia'){
+      body='<div class="scroll"><div class="panel">'+CRONICAS.map(c=>{
+        const aberta=c.map<=s.campaign;
+        return '<p style="margin-bottom:12px">'+(aberta?'<b class="gold">'+c.titulo+'</b><br>'+c.txt:'<span class="muted">PÁGINA EM BRANCO. O ZÉ AINDA NÃO CONTOU ESSA.</span>')+'</p>';
+      }).join('')+'</div></div><p class="muted">Seis páginas, uma por mapa. O Zé conta conforme a costa abre.</p>';
     }else if(codexTab==='radio'){
       body='<div class="scroll"><div class="panel">'+
         RADIO.map(r=>'<p style="margin-bottom:7px">'+(r.map<=s.campaign?'<span class="acid">['+MAPS[r.map].nome+']</span> '+r.txt:'<span class="muted">[frequência morta]</span>')+'</p>').join('')+
@@ -525,7 +534,7 @@ export const UI=(function(){
     let title,text;
     const who=(summary.mapName||'A VILA');
     if(summary.win){
-      title=summary.mode==='endless'?'A NOITE CANSou':'A VILA AGUENTOU';
+      title=summary.mode==='endless'?'A NOITE CANSOU':'A VILA AGUENTOU';
       text=lost.length?'Perdemos '+list(lost)+'. O mar continuou podre, do jeito que ele gosta. '+who+' continua de pé, do jeito que dá.'
         :'Nada caiu hoje. '+who+' continua de pé. O mar continuou podre. Amanhã tem mais bicho.';
     }else if(summary.mode==='endless'){
@@ -541,7 +550,7 @@ export const UI=(function(){
       '<div class="panel" style="max-width:560px;margin:12px auto"><div class="kv">'+
       'BICHOS MORTOS: <b>'+summary.kills+'</b> · TEMPO: <b>'+Math.round(summary.time)+'s</b> · ONDAS: <b>'+summary.survived+'</b><br>'+
       'SUCATA VELHA GANHA: <b class="gold">+'+summary.meta+'</b> · TOTAL: '+SaveDB.slot.oldScrap+'<br>'+
-      'CADERNO: '+Object.keys(SaveDB.slot.mateiB||{}).length+'/'+ENEMY_ORDER.length+' bichos · '+Object.keys(SaveDB.slot.seenM||{}).length+'/18 peças · ESTRUTURAS: '+structuresAlive()+'/'+STRUCTURES+
+      'CADERNO: '+Object.keys(SaveDB.slot.mateiB||{}).length+'/'+ENEMY_ORDER.length+' bichos · '+Object.keys(SaveDB.slot.seenM||{}).length+'/'+MACH_ORDER.filter(k=>k!=='remover').length+' peças · ESTRUTURAS: '+structuresAlive()+'/'+STRUCTURES+
       '</div></div>'+
       '<div class="menu">'+
       (next?btn('PRÓXIMO MAPA','nextmap','','primary'):'')+
@@ -611,8 +620,13 @@ export const UI=(function(){
   function drawHUD(g){
     const p=g.map;
     const painelH=Math.round(64*(SaveDB.options.font||1.15));
+    // Faixa de topo: separa HUD do campo e dá contraste às cartas.
+    const topo=ctx.createLinearGradient(0,0,0,painelH+10);
+    topo.addColorStop(0,'rgba(4,8,7,.76)');topo.addColorStop(.72,'rgba(4,8,7,.30)');topo.addColorStop(1,'rgba(4,8,7,0)');
+    ctx.fillStyle=topo;ctx.fillRect(0,0,W,painelH+10);
     // recurso
     ctx.fillStyle='rgba(8,12,10,.62)';rr(10,6,116,painelH,4);ctx.fill();
+    ctx.strokeStyle='rgba(200,190,150,.14)';ctx.lineWidth=1;ctx.stroke();
     ctx.fillStyle='#c0503a';rr(20,18,20,12,2);ctx.fill();ctx.fillStyle='#9aa8a0';ctx.fillRect(20,18,20,3);
     ctx.fillStyle='#f0e4bd';ctx.font=fmono(26,true);ctx.fillText(fmt(g.scrap),46,Math.round(32*(SaveDB.options.font||1.15)));
     ctx.fillStyle='#9aa08a';ctx.font=fmono(13);ctx.fillText(p.resShort,46,Math.round(44*(SaveDB.options.font||1.15)));
@@ -623,16 +637,20 @@ export const UI=(function(){
       const m=MACH[r.k],cost=machCost(r.k),cool=g.cds&&g.cds[r.k]||0,up=(g.up&&g.up[r.k])||0;
       const can=g.scrap>=cost&&cool<=0&&g.selected!==r.k;
       const cb=!!SaveDB.options.cb;
+      ctx.save();
+      if(g.selected===r.k){ctx.shadowColor='rgba(232,200,74,.5)';ctx.shadowBlur=8;}
       ctx.fillStyle=g.selected===r.k?'rgba(90,70,30,.92)':'rgba(14,18,16,.78)';rr(r.x,r.y,r.w,r.h,3);ctx.fill();
       // carta disponível vs indisponível: em modo daltonismo a indisponível
       // ganha tracejado, para a informação não depender só de matiz.
       if(cb&&!can){ctx.setLineDash([3,2]);}
-      ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([]);
+      ctx.strokeStyle=g.selected===r.k?'#e8c84a':can?'#4a5242':'#333a30';ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      if(g.selected===r.k){ctx.fillStyle='#e8c84a';ctx.fillRect(r.x+2,r.y+r.h-2,r.w-4,2);}
       ctx.save();ctx.translate(r.x+r.w/2,r.y+r.h-19);ctx.scale(.36,.36);ctx.globalAlpha=can||g.selected===r.k?1:.45;
       drawMachine({type:r.k,x:0,lane:0,t:g.t,hp:1,maxhp:1,anim:0,act:0,flash:0,_icon:true});ctx.restore();
-      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#777c6c';ctx.font=fmono(13,true);ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
+      ctx.fillStyle=can||g.selected===r.k?'#e8d9a8':'#b06a4a';ctx.font=fmono(13,true);ctx.fillText(String(r.k==='remover'?'—':cost),r.x+3,r.y+53);
       const short=m.nome.split(' ')[0].toUpperCase().slice(0,7);
       ctx.fillStyle='#a8aa94';ctx.font=fmono(9);ctx.fillText(short,r.x+3,r.y+9);
+      ctx.fillStyle='rgba(8,12,10,.78)';rr(r.x+r.w-14,r.y+2,12,11,2);ctx.fill();
       if(up){for(let j=0;j<3;j++){ctx.fillStyle=j<up?'#e8c84a':'#39402f';ctx.fillRect(r.x+r.w-8+j*2.4,r.y+3,2,4);}}
       if(cool>0){ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(r.x,r.y,r.w,r.h*(cool/m.cd));}
       // número do teclado que seleciona esta carta (em cima)
@@ -734,7 +752,7 @@ export const UI=(function(){
         case 'continue':Game.continueCampaign();break;
         case 'slot':SaveDB.setSlot(Number(arg));title();break;
         case 'slots':slots();break;
-        case 'newslot':if(arg===null)break;SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();break;
+        case 'newslot':if(arg===null)break;if(!confirm('APAGAR o slot '+String(Number(arg)+1)+'? Árvore, campanha e bestiário vão junto.'))break;SaveDB.resetSlot(Number(arg));toast('story','SLOT APAGADO. O ZÉ NÃO PERGUNTOU NADA.');slots();break;
         case 'deckpick':{
           const k=String(arg);
           if(deckSel.includes(k))deckSel=deckSel.filter(x=>x!==k);
@@ -743,17 +761,24 @@ export const UI=(function(){
           drawDeck(api.deckMapa);
           break;
         }
-        case 'deckendless':case 'deckboss':{
-          // a escolha de deck vale pra Noite Infinita e pro Modo Chefe também
-          api.deckModo=String(arg)==='deckendless'?'endless':'boss';
-          UI.deckScreen(clamp(SaveDB.slot.campaign,0,5));
+        case 'deckendless':{
+          // arg é a dificuldade (0/1/2), não o mapa. O mapa é o da campanha.
+          api.deckModo='endless';
+          api.deckNivel=Number(arg)||0;
+          UI.deckScreen(clamp(SaveDB.slot.campaign,0,MAPS.length-1));
+          break;
+        }
+        case 'deckboss':{
+          // arg é o mapa escolhido no card do chefe.
+          api.deckModo='boss';
+          UI.deckScreen(clamp(Number(arg)||0,0,MAPS.length-1));
           break;
         }
         case 'deckgo':{
           const i=Number(arg);
           if(deckSel.length!==7){toast('story','SETE PEÇAS. NEM MAIS, NEM MENOS.');break;}
           SaveDB.setDeck(i,deckSel);
-          if(api.deckModo==='endless')Game.startFromOpts({kind:'endless',level:0,map:i});
+          if(api.deckModo==='endless')Game.startFromOpts({kind:'endless',level:api.deckNivel,map:i});
           else if(api.deckModo==='boss')Game.startFromOpts({kind:'boss',map:i});
           else Game.startFromOpts({kind:'campaign',map:i});
           break;
@@ -784,7 +809,7 @@ export const UI=(function(){
         }
         case 'nextmap':Game.startCampaign(clamp(G.mapIndex+1,0,MAPS.length-1));break;
         case 'endlessmenu':endlessMenu();break;
-        case 'endless':Game.startFromOpts({kind:'endless',level:Number(arg),map:clamp(SaveDB.slot.campaign,0,5)});break;
+        case 'endless':Game.startFromOpts({kind:'endless',level:Number(arg),map:clamp(SaveDB.slot.campaign,0,MAPS.length-1)});break;
         case 'bossmenu':bossMenu();break;
         case 'boss':Game.startFromOpts({kind:'boss',map:Number(arg)});break;
         case 'dailymenu':dailyMenu();break;
@@ -835,7 +860,7 @@ export const UI=(function(){
   }
   bind();
 
-  const api={title,evento,ctxMenu,hideCtx,ctxEstaAberto,ctxAcaoTela,deckScreen,deckMapa:0,deckModo:'campaign',maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
+  const api={title,evento,ctxMenu,hideCtx,ctxEstaAberto,ctxAcaoTela,deckScreen,deckMapa:0,deckModo:'campaign',deckNivel:0,maps,slots,pause,options,codex,tree,help,shop,end,epilogue,ending,
     hideOverlays:hide,updateTopbar,toast,cardAt,drawHUD,drawScene};
   return api;
 })();
