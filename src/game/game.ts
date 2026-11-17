@@ -330,6 +330,8 @@ Game.startEndless=function(diff){
   Game.runOpts={kind:'endless',map:mapIndex,level};
   setG(makeState(mapIndex,'endless'));
   G.endlessDiff=level;
+  // record() lê esta flag; sem ela todo recorde caía na dificuldade 0.
+  SaveDB.slot.flags.endlessDiff=level;SaveDB.save();
   G.speedMult=1+G.endlessDiff*.15;G.enemyHpMult=1+G.endlessDiff*.2;
   G.waves=[makeEndlessWave(0,MAPS[mapIndex].pool),makeEndlessWave(1,MAPS[mapIndex].pool)];
   Game.beginRun();
@@ -404,7 +406,17 @@ function announceWave(w: number): void {
 }
 function nextPhase(): void {
   G.phaseIdx++;G.phaseT=0;G.spawnIdx=0;
-  const ph=currentPhase();if(!ph){G.phaseIdx--;return;}
+  // currentPhase() devolve {type:'idle'} como fallback; aqui olhamos a
+  // lista crua para saber se o índice passou do fim. Noite Infinita e
+  // Sandbox não têm número fixo de ondas: emendam break + nova onda.
+  let ph=G.phases[G.phaseIdx];
+  if(!ph&&(G.mode==='endless'||G.mode==='sandbox')){
+    const n=G.waves.length;
+    G.waves.push(makeEndlessWave(n,G.map.pool));
+    G.phases.push({type:'break'},{type:'wave',n});
+    ph=G.phases[G.phaseIdx];
+  }
+  if(!ph){G.phaseIdx--;return;}
   if(ph.type==='wave'){
     if((ph.n||0)>=G.waves.length){
       if(G.mode==='campaign'){G.phases.splice(G.phaseIdx,1,{type:'bossIntro',dur:2.6},{type:'boss'});nextPhase();return;}
@@ -437,10 +449,17 @@ function nextPhase(): void {
 /** Evento entre ondas: acontece antes da loja, com escolha. */
 function abrirEvento(): void {
   if(!chance(MOLHO.chanceEvento)){openShop();return;}
-  const ids=Object.keys(MOLHO_TXT.eventos).filter(x=>x!=='bicho_raro'&&x!=='cachorro_real'&&x!=='radio_estacao');
+  // Todos os eventos do JSON são jogáveis. Gaivota só entra se houver peça
+  // para levar (o texto promete uma peça, não um susto).
+  const ids=Object.keys(MOLHO_TXT.eventos).filter(id=>id!=='gaivota_ladra'||G.machines.some(m=>!m.dead));
   const id=pick(ids);
   const txt=MOLHO_TXT.eventos[id];
-  G.evento={id,t:0};
+  let peca: Machine|null=null;
+  if(id==='gaivota_ladra'){
+    const vivas=G.machines.filter(m=>!m.dead);
+    if(vivas.length){peca=pick(vivas);const i=G.machines.indexOf(peca);if(i>=0)G.machines.splice(i,1);}
+  }
+  G.evento={id,t:0,peca};
   Game.screen='evento';
   UI.evento(id,txt.titulo,txt.texto,txt.sim,txt.nao||'');
   Snd.setIntensity(0);
@@ -449,7 +468,9 @@ function abrirEvento(): void {
 /** Resposta do jogador ao evento. */
 Game.escolherEvento=function(sim: boolean){
   if(!G){Game.screen='play';return;}
-  const id=G.evento?G.evento.id:null;
+  const evento=G.evento;
+  const id=evento?evento.id:null;
+  const peca=evento&&evento.peca?evento.peca:null;
   G.evento=null;
   if(id==='barco_pirata'){
     if(sim){
@@ -459,10 +480,14 @@ Game.escolherEvento=function(sim: boolean){
       announce('O ZÉ VOLTOU COM SUCATA E UM CORTE.','story');
     }else announce('O ZÉ DEIXOU O CASCO. O MAR LEVA.','story');
   }else if(id==='gaivota_ladra'){
-    // a peça já foi levada pelo mar: a escolha é tentar buscar (60 sucata)
+    // A peça saiu do campo em abrirEvento. Só volta se o Zé pagar e ganhar.
     if(sim){
       if(G.scrap<60){announce('SEM GASOLINA. A GAIVOTA FICOU COM A PEÇA.','story');}
-      else if(chance(.6)){G.scrap-=60;announce('O ZÉ BUSCOU. A PEÇA VOLTOU.','story');}
+      else if(chance(.6)){
+        G.scrap-=60;
+        if(peca&&!machineAt(peca.lane,peca.col)){G.machines.push(peca);burst(peca.x,plantY(peca.lane)-20,12,'#d8e8e0',100,260,3,.5);announce('O ZÉ BUSCOU. A PEÇA VOLTOU. TORTA.','story');}
+        else announce('O ZÉ BUSCOU. O LUGAR ESTAVA OCUPADO. A GAIVOTA FICOU COM A PEÇA.','story');
+      }
       else{G.scrap-=60;announce('O ZÉ BUSCOU. A GAIVOTA CORREU MAIS.','story');}
     }else announce('A GAIVOTA FICOU COM A PEÇA. ELA NÃO PEDIU DESCULPA.','story');
   }else if(id==='lu_janela'){
@@ -479,6 +504,24 @@ Game.escolherEvento=function(sim: boolean){
       else{for(let i=0;i<3;i++)spawnEnemy(pick(['baiacu','enguia','caranguejo']),randLane(),SPAWN_X,0.8);
         announce('O BAÚ TINHA DENTE. TRÊS DENTES.','story');}
     }else announce('BAÚ FICOU PRO MAR. O MAR AGRADECEU.','story');
+  }else if(id==='bicho_raro'){
+    const tipo=pick(['lata','polvo','baleia']);
+    spawnEnemy(tipo,randLane(),SPAWN_X,1.15);
+    G.ze.say='Isso não veio com a onda.';G.ze.sayT=3;
+    announce('BICHO RARO: NÃO É DA ONDA. MATA ELE.','story');
+  }else if(id==='radio_estacao'){
+    G.pirate=true;Snd.pirate=true;
+    announce('ESTAÇÃO PIRATA NO AR. TOCA ATÉ O FIM.','radio');
+  }else if(id==='cachorro_real'){
+    const temCachorro=G.machines.some(m=>m.type==='cachorro');
+    if(temCachorro){
+      for(const e of G.enemies)if(!e.boss&&e.type!=='baleia'&&e.type!=='pescador'&&(ENEMY[e.type]?.hp||999)<150){e.kb+=90;e.slow=2;}
+      G.dogSay=3;
+      announce('O CACHORRO DE VERDADE LATIU. OS PEQUENOS RECUARAM.','story');
+    }else{
+      G.dogSay=2;
+      announce('UM CACHORRO DE VERDADE. ELE OLHOU PRO ZÉ E FOI EMBORA.','story');
+    }
   }
   openShop();
 };
@@ -736,7 +779,7 @@ function spawnBoss(id: string, lane?: number, noIntro?: boolean): void {
   e.inflate=false;
   e.inflT=0;
   e.maeT=0;
-  G.enemies.push(e);G.boss=e;G.dark=false;
+  G.enemies.push(e);G.boss=e;G.dark=false;G.darkT=0;
   SFX.enter(id);Snd.setIntensity(4);
   if(!noIntro)Game.bossIntro={b:id,t:0,dur:2.8,total:B};
   announce((B.nome)+' — '+B.hint,'story');
@@ -871,6 +914,7 @@ function destroyMachine(m: Machine, violent?: boolean): void {
 }
 export function upgradeMachine(k: string): boolean {
   if(!UPG[k])return false;
+  if((G.up[k]||0)>=3)return false;
   const nivel=(G.up[k]||0)+1;
   const custo=ECONOMIA.upgradeCusto[nivel-1];
   if(G.scrap<custo){announce('SUCATA DE MENOS PARA MELHORAR.','story');return false;}
@@ -911,6 +955,9 @@ export function update(dt: number){
   // molho (BLOCO M.6): micro-surpresas só rolam em jogo, durante a onda
   if(Game.screen==='play'&&!Game.paused&&currentPhase().type==='wave')updateMicros(dt);
   if(Game.screen!=='play'||Game.paused)return;
+  // O escuro é tempo de jogo, não de chefe: nevoeiro e Faroleiro precisam
+  // apagar sozinhos mesmo quando não há G.boss no campo.
+  if(G.dark){G.darkT=Math.max(0,G.darkT-dt);if(G.darkT<=0)G.dark=false;}
   if(Game.bossIntro&&Game.bossIntro.t<Game.bossIntro.dur){Game.bossIntro.t+=dt;if(Game.bossIntro.t>=Game.bossIntro.dur){Game.bossIntro=null;if(currentPhase().type==='bossIntro'){G.phaseIdx++;G.phaseT=0;spawnBoss(G.map.boss,undefined,true);}}return;}
   if(G.bossDeath){G.bossDeath.t+=dt;if(G.bossDeath.t>G.bossDeath.dur)completeMap();return;}
 
@@ -982,7 +1029,8 @@ function updateMachines(dt: number): void {
       if(m.timer>every){m.timer=0;m.act=.6;m.anim=.5;dropScrap(m.x+rnd(-24,24),plantY(m.lane)-50,25+10*up,false);
         if(m.type==='coisa_ze')dropScrap(m.x,plantY(m.lane)-60,30,false);SFX.pop();}
     }else if(kind==='torradeira'){
-      const reach=G.map.id==='fog'?W:W;
+      // Nevoa encurta a torrada (o clima e 'fog', o id do mapa e 'farol').
+      const reach=G.map.weather==='fog'?W*.82:W;
       const tgt=G.enemies.some(e=>e.lane===m.lane&&e.x>m.x+10&&e.x<reach+10&&isTargetable(e));
       const rate=(1.4-.14*up)*(m.type==='coisa_ze'?1.1:1);
       if(tgt&&m.timer>rate){m.timer=0;m.anim=.3;m.act=.35;SFX.shoot();
@@ -1141,7 +1189,7 @@ function updateEnemies(dt: number): void {
       if(e.type==='polvo'){e.attached=blocked;blocked.jam=4.5;e.act=1;e.soltaT=5;SFX.metal();G.ze.say='Ele desligou a geladeira.';G.ze.sayT=3;continue;}
       if(e.type==='gaivota_r'){e.grabbed=blocked;blocked.grabbed=1.6;e.act=1;SFX.steal();G.ze.say='Tá levando a peça.';G.ze.sayT=3;continue;}
       if(blocked.type==='bujao'){destroyMachine(blocked,true);continue;}
-      if(e.type==='bomba'){explode(e.x,e.lane,40,110);killEnemy(e,true);G.enemies.splice(G.enemies.indexOf(e),1);continue;}
+      if(e.type==='bomba'){explode(e.x,e.lane,40,110);killEnemy(e,true);continue;}
       if(e.type==='baleia'){damageMachine(blocked,30*dt);e.eating=blocked;continue;}
       e.eating=blocked;e.biteT+=dt;e.act=.2;
       // Fome: quanto mais tempo comendo, mais dano. Sem isso, curar a peça
@@ -1196,11 +1244,9 @@ function updateBossSpecials(dt: number): void {
     if(e.darkCd<=0&&e.phase>=1){e.darkCd=e.phase>=3?8:12;
       G.dark=!G.dark;G.darkT=G.dark?4:0;Snd.bell(220,Snd.ctx?Snd.ctx.currentTime:0,.08,2);
       announce(G.dark?'A LUZ APAGOU. HOLOFOTE AINDA ACENDE.':'A LUZ VOLTOU.','story');
-      if(e.phase>=3){G.darkT=6;G.dark=true;setTimeout(()=>{if(G)G.dark=false;},6000);}
+      if(e.phase>=3){G.darkT=6;G.dark=true;}
       for(const m of G.machines)if(m.type==='holofote'||(m.type==='coisa_ze'&&m.variant==='holofote'))G.up.holofote=Math.max(G.up.holofote,0);
     }
-    if(G.dark)G.darkT=Math.max(0,G.darkT-dt);
-    if(G.darkT<=0&&G.dark&&e.phase<3)G.dark=false;
     if(e.actT<=0){e.actT=e.phase>=2?4:6;SFX.enter('mariposa');
       spawnEnemy(pick(['mariposa','agua','gaivota']),randLane(),SPAWN_X,1);
       // Ele troca de lane e fica parado na fase 2+. O destino precisa
@@ -1233,11 +1279,9 @@ function updateProjectiles(dt: number): void {
   for(let i=G.projs.length-1;i>=0;i--){
     const p=G.projs[i];p.x+=p.vx*dt;p.rot=(p.rot||0)+dt*10;
     if(p.x>W+30||p.x<VX-40){G.projs.splice(i,1);continue;}
-    if(p.enemy||p.kind==='mirror'){
-      if(p.enemy){
-        const m=G.machines.filter(o=>o.lane===p.lane&&Math.abs(o.x-p.x)<22).sort((a,b)=>b.x-a.x)[0];
-        if(m){G.projs.splice(i,1);damageMachine(m,20);SFX.hit();burst(p.x,p.y,5,'#d8a85a',120,400,2,.3);}
-      }
+    if(p.enemy){
+      const m=G.machines.filter(o=>o.lane===p.lane&&Math.abs(o.x-p.x)<22).sort((a,b)=>b.x-a.x)[0];
+      if(m){G.projs.splice(i,1);damageMachine(m,20);SFX.hit();burst(p.x,p.y,5,'#d8a85a',120,400,2,.3);}
       continue;
     }
     const hit=G.enemies.find(e=>e.lane===p.lane&&Math.abs(e.x-p.x)<e.r*.95&&isTargetable(e,p.silent,!!p.airPierce));
@@ -1308,7 +1352,7 @@ function breach(e: Enemy): void {
   burst(120,plantY(e.lane)-30,40,'#6a5a4a',260,500,rnd(3,7),1);
   const lane=G.structures[e.lane];
   const s=lane.find(s=>s.alive);
-  if(G.shields>0&&!e.boss){G.shields--;announce('A TÁBUA DE RESERVA SEGUROU. UMA.','story');addText(150,plantY(e.lane)-60,'TÁBUA','#e8c84a');if(e.x<W)G.enemies.push(e);return;}
+  if(G.shields>0&&!e.boss){G.shields--;announce('A TÁBUA DE RESERVA SEGUROU. UMA.','story');addText(150,plantY(e.lane)-60,'TÁBUA','#e8c84a');e.x=SPAWN_X;e.kb=0;e.eating=null;G.enemies.push(e);return;}
   if(G.sandbox){announce('SANDBOX: nada quebrou. O ZÉ AGRADECE.','radio');if(!e.boss)G.enemies.push(e);e.x=SPAWN_X;return;}
   if(s){
     s.alive=false;G.destroyed.push(s.nome);G.ze.say=pick(['Ai.','Já era.','Não.','Levanta, Zé.']);G.ze.sayT=3;
@@ -1364,12 +1408,15 @@ function completeMap(): void {
   const meta=G.mode==='sandbox'?0:metaReward(stars);
   if(meta)SaveDB.addScrap(meta);
   if(G.mode==='campaign'){
-    SaveDB.setStars(G.mapIndex,99,stars);
+    SaveDB.setStars(G.mapIndex,Math.round(G.t),stars);
     SaveDB.unlockMap(Math.min(MAPS.length-1,G.mapIndex+1));
     SaveDB.record('campaign',{});
     SaveDB.finishRun({kills:G.kills,time:G.t});
   }else if(G.mode==='daily'){SaveDB.recordDaily(G.survived);SaveDB.finishRun({kills:G.kills,time:G.t});}
-  else SaveDB.finishRun({kills:G.kills,time:G.t});
+  else if(G.mode==='boss'){
+    SaveDB.record('boss',{map:G.mapIndex,time:G.t});
+    SaveDB.finishRun({kills:G.kills,time:G.t});
+  }else SaveDB.finishRun({kills:G.kills,time:G.t});
   SaveDB.save();
   const summary={win:true,mode:G.mode,mapIndex:G.mapIndex,mapName:G.map.nome,kills:G.kills,time:G.t,stars,meta,
     survived:G.survived,lost:G.structures.flat().filter(s=>!s.alive).map(s=>s.nome)};
@@ -1423,7 +1470,7 @@ function openShop(): void {
     const k=pick(MACH_ORDER.filter(x=>x!=='remover'&&x!=='coisa_ze'));
     const free: [number,number][]=[];for(let l=0;l<LANES;l++)for(let c=0;c<COLS;c++)if(!machineAt(l,c))free.push([l,c]);
     if(free.length){const [l,c]=pick(free);placeMachine(k,l,c,true);
-      announce('O ZÉ MONTou '+MACH[k].nome.toUpperCase()+' SOZINHO E SAIU. NÃO PERGUNTA.','ach');}
+      announce('O ZÉ MONTOU '+MACH[k].nome.toUpperCase()+' SOZINHO E SAIU. NÃO PERGUNTA.','ach');}
   }
 }
 Game.chooseOffer=function(i){

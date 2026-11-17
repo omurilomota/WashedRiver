@@ -32,6 +32,8 @@ export function isBanned(k: string): boolean {
 export function isMachUnlocked(k: string): boolean {
   if (!MACH[k]) return false;
   if (isBanned(k)) return false;
+  // Desbloqueio comprado na banca vale para a partida em andamento.
+  if (G && G.unlockedMach && G.unlockedMach[k]) return true;
   if (MACH[k].unlock) return true;
   const e = eff();
   if (e.unlocks && e.unlocks[k]) return true;
@@ -67,7 +69,13 @@ export function availableMachines(): string[] {
   if (!deck) return liberadas;
   // o deck manda, mas só o que está liberado de verdade
   const noDeck = deck.filter((k) => liberadas.includes(k));
-  return noDeck.length ? noDeck : liberadas;
+  if (!noDeck.length) return liberadas;
+  // Exceção de partida: uma peça desbloqueada pelo Zé entra na banca mesmo
+  // fora do deck (é a promessa do evento "PEÇA NOVA").
+  if (!G || !G.unlockedMach) return noDeck;
+  return MACH_ORDER.filter(
+    (k) => noDeck.includes(k) || (G.unlockedMach[k] && liberadas.includes(k)),
+  );
 }
 
 /**

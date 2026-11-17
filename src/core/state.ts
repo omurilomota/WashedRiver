@@ -322,7 +322,7 @@ export interface GameState {
    * tudo que está liberado.
    */
   /** Molho (BLOCO M.6): evento entre ondas e micro-surpresas. */
-  evento: { id: string; t: number } | null;
+  evento: { id: string; t: number; peca?: Machine | null } | null;
   micros: { tipo: string; t: number; dur: number }[];
   microT: number;
   /** Variação da onda da vez (tema/silenciosa/corredor/bonus). */

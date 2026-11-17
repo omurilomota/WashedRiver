@@ -17,10 +17,9 @@ export function drawEnemy(e){
   const flying=e.air&&e.lit<=0;
   const hidden=e.type==='fantasma'&&!e.revealed&&!e.lit;
   ctx.save();ctx.translate(x,y);
-  // sombra projetada uniforme (brush): lê-se a altura e o apoio no chão
-  shadowEllipse(0, 2, (e.r || 12) * (e.air && e.lit <= 0 ? 0.7 : 1), (e.air && e.lit <= 0 ? 3 : 5), 0.32);
-  // sombra separada quando voa: lê-se a altura
-  ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(flying?8:0,2,e.r*(flying?.7:1),flying?3:5,0,0,7);ctx.fill();
+  // Sombra de contato única (brush): a elipse manual duplicava a sombra e
+  // escurecia o chão duas vezes. O deslocamento do voador já está no brush.
+  shadowEllipse(flying?8:0, 2, (e.r || 12) * (flying ? 0.7 : 1), flying ? 3 : 5, 0.32);
   if(hidden){ // invisível: só a pegada e a ondulação
     ctx.fillStyle='rgba(180,200,190,.32)';
     for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(-18+i*16,2+Math.sin(t*8+i),5,2,0,0,7);ctx.fill();}
