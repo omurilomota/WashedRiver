@@ -29,9 +29,15 @@ fino:
   `balance.json`; o teste de alvo aceita `airPierce`.
 - **Peixe-Lata devolve no máximo 3 torradas** (`reflect: 3`). A quarta entra.
   O reflexo continua acontecendo, mas cansa — a dica do bestiário diz isso.
-- **Ventilador espanta a Baleia-Filhote.** Ela continua imune a dano (trait
-  `neutral`), mas o empurrão a marca como `spooked` e ela sai pelo lado
-  direito, devolvendo o caminho. Continua sendo visita, não troféu.
+- **Ventilador espanta a Baleia-Filhote.** O empurrão a marca como `spooked` e
+  ela sai pelo lado direito, devolvendo o caminho.
+
+**Atualização (2026-11-12):** a Baleia-Filhote e o Pescador passaram a ser
+**matáveis** (atualização da ADR 004); as traits `neutral`/`human` saíram. O
+que permanece desta seção é a *contramedida*: a Baleia se espanta com o
+Ventilador (campo `spooked`, hoje declarado em `src/core/state.ts`) e o
+Pescador cobra pedágio em vez de quebrar estrutura. Invencível só a MARÉ
+(`unbeatable`).
 - **O Faroleiro teleporta para `W - 60`**, dentro do campo e do alcance das
   peças. Nenhum chefe pode sair de `x ≤ W`.
 
@@ -77,8 +83,9 @@ Faroleiro dentro do campo na fase 2.
 
 ## Alternativas rejeitadas
 
-- **Tirar o Ventilador do jogo / deixar a baleia morrer** — ela é `neutral`
-  por design (ADR 004). Contramedida é empurrar, não matar.
+- **Tirar o Ventilador do jogo / deixar a baleia morrer** — rejeitado na época
+  (ADR 004); depois **aceito**: a Baleia e o Pescador ficaram matáveis, e o
+  Ventilador continua sendo a resposta barata (espanta sem matar).
 - **Reflexo infinito com dano reduzido** — o jogador continuaria perdendo a
   peça sem entender por quê. Três devoluções é um aviso; a quarta é a regra.
 - **Voador só com Holofote** — uma peça obrigatória por onda aérea não é

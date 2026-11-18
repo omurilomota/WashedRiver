@@ -1,7 +1,13 @@
 # ADR 010 — Barra de cartas do HUD quebra em duas linhas
 
-**Status:** aceito
+**Status:** substituído por [ADR 012](012-barra-de-cartas-linha-unica.md)
 **Data:** 2026-11-11
+
+> **Atualização (2026-11-12):** a quebra descrita aqui era **inalcançável**
+> com o baralho atual (no máximo 19 cartas em 1120 px de área livre), então o
+> ramo nunca executava. A barra voltou a ser linha única — ver ADR 012. Este
+> registro fica como histórico e como gatilho: se o baralho passar de ~22
+> cartas, a quebra volta a ser necessária.
 
 ## Contexto
 

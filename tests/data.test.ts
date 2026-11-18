@@ -104,10 +104,14 @@ describe('mapas', () => {
     }
   });
 
-  it('cada lane tem nome próprio (as 6, sem repetir)', () => {
+  it('todas as lanes do mapa têm o mesmo nome: é um terreno só (ADR 014)', () => {
+    // O campo é um lugar por mapa: rio nas seis, penhasco nas seis, trilho
+    // nas seis. Nome repetido aqui é honestidade, não preguiça.
     for (const map of MAPS) {
       const nomes = map.lanes;
-      expect(new Set(nomes).size, `${map.id} repete nome de lane: ${nomes.join(', ')}`).toBe(LANES);
+      expect(nomes.length).toBe(LANES);
+      expect(new Set(nomes).size, `${map.id} tem mais de um terreno: ${nomes.join(', ')}`).toBe(1);
+      expect(nomes[0].length).toBeGreaterThan(0);
     }
   });
 

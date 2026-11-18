@@ -22,6 +22,10 @@ plantio. Toda contagem de lane/coluna/estrutura deriva de constante; literais
 As lanes 4, 5 e 6 recebem piso dedicado por mapa, props grandes e variantes de
 estrutura.
 
+**Atualização (2026-11-12):** a parte dos pisos dedicados foi substituída pela
+[ADR 011](011-lanes-de-baixo-piso-unico.md) — as lanes de baixo (3–5)
+compartilham um piso único por mapa.
+
 ## Consequências
 
 **Ficou mais fácil:** adicionar lane nova é mudar uma constante e desenhar o

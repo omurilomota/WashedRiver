@@ -84,6 +84,79 @@ describe('save', () => {
     expect(reloaded.SaveDB.hasAch('pirata')).toBe(true);
   });
 
+  it('resetMapa apaga só o progresso daquele mapa (mandato 7)', async () => {
+    const { SaveDB } = await freshSave();
+    SaveDB.setSlot(0);
+    SaveDB.addScrap(500);
+    SaveDB.unlockMap(3);              // campanha no mapa 3
+    SaveDB.setStars(1, 120, 3);
+    SaveDB.setStars(2, 90, 2);
+    SaveDB.achievement('baleia_ok');
+    SaveDB.seenEnemy('baiacu');
+
+    SaveDB.resetMapa(1);
+
+    // o mapa pedido volta a zero
+    expect(SaveDB.slot.stars[1]).toBeUndefined();
+    expect(SaveDB.slot.best[1]).toBeUndefined();
+    // campanha rebobina para o mapa apagado (joga de novo)
+    expect(SaveDB.slot.campaign).toBe(1);
+    // os outros mapas e a meta ficam
+    expect(SaveDB.slot.stars[2]).toBe(2);
+    expect(SaveDB.slot.oldScrap).toBe(500);
+    expect(SaveDB.hasAch('baleia_ok')).toBe(true);
+    expect(Object.keys(SaveDB.slot.seenB)).toContain('baiacu');
+
+    // apagar um mapa que já foi passado também rebobina a campanha
+    SaveDB.unlockMap(4);
+    SaveDB.resetMapa(2);
+    expect(SaveDB.slot.campaign).toBe(2);
+    // apagar o mapa onde a campanha está não mexe nela
+    SaveDB.resetMapa(2);
+    expect(SaveDB.slot.campaign).toBe(2);
+  });
+
+  it('guarda o deck por mapa (BLOCO M.4)', async () => {
+    const { SaveDB } = await freshSave();
+    SaveDB.setSlot(0);
+    SaveDB.unlockMap(2); // campanha no mapa 2
+    SaveDB.setDeck(2, ['boia', 'torradeira', 'geladeira', 'bujao', 'holofote', 'ima', 'radio']);
+    expect(SaveDB.getDeck(2)!.length).toBe(7);
+
+    // deck de outro mapa é independente
+    expect(SaveDB.getDeck(0)).toBeNull();
+    SaveDB.setDeck(0, ['boia']);
+    expect(SaveDB.getDeck(0)).toEqual(['boia']);
+    expect(SaveDB.getDeck(2)!.length).toBe(7);
+
+    // teto de 8: jogador não enfia a banca inteira
+    SaveDB.setDeck(2, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']);
+    expect(SaveDB.getDeck(2)!.length).toBe(8);
+
+    // reset de mapa não apaga o deck (deck é escolha, não progresso)
+    SaveDB.setDeck(1, ['boia', 'torradeira']);
+    SaveDB.resetMapa(1);
+    expect(SaveDB.getDeck(1)).toEqual(['boia', 'torradeira']);
+  });
+
+  it('bestiário abre por morte, não por visão (BLOCO M.5)', async () => {
+    const { SaveDB } = await freshSave();
+    SaveDB.setSlot(0);
+    // viu o bicho: bestiário continua fechado
+    SaveDB.seenEnemy('baiacu');
+    expect(SaveDB.slot.mateiB['baiacu']).toBeUndefined();
+    // matou: abre
+    SaveDB.mateu('baiacu');
+    expect(SaveDB.slot.mateiB['baiacu']).toBe(1);
+    // e não repete
+    SaveDB.mateu('baiacu');
+    expect(SaveDB.slot.mateiB['baiacu']).toBe(1);
+    // chefe derrotado tem registro próprio
+    SaveDB.venci('bento');
+    expect(SaveDB.slot.venciB['bento']).toBe(1);
+    expect(SaveDB.slot.mateiB['bento']).toBeUndefined();
+  });
+
   it('sobe a versão de um save antigo sem quebrar', async () => {
     const { KEY, SAVE_VERSION } = await freshSave();
     // Save v1: formato antigo, com buracos.

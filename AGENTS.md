@@ -18,7 +18,7 @@
 10. **Bug de gameplay vira teste** sempre que couber: dado inválido, contagem errada, economia quebrada.
 11. **Regra de partida vira teste em `tests/gameplay.test.ts`.** O jogo roda de verdade dentro do jsdom (contexto 2D falso, DOM mínimo): dá para plantar, soltar bicho, bater nele e perguntar se é alvo. Bug de *regra* — campo lido que ninguém escreve, bônus que começa em 1, exclusão que vira código morto, dado lido e ignorado, mod que promete e não faz nada — **não** aparece em typecheck, lint nem em teste de dado.
 12. **Texto de gameplay é contrato.** Se o mod promete, implementa ou apaga a promessa. `docs/GAME_DESIGN.md` precisa contar a regra que o jogo executa.
-13. **Combate justo: todo bicho tem contramedida.** Invencível só por trait (`human`, `neutral`, `unbeatable`) e com a dica dizendo o que fazer. Reflexo é **limitado** (Peixe-Lata devolve 3 torradas). Voador tem **cinco** respostas (Holofote, Ventilador, Canhão de Lata, Estilingue, Bujão). A Baleia-Filhote se **espanta** com Ventilador. Chefe teleporta **para dentro do campo** (`x ≤ W`), nunca para fora do alcance das peças. Se um bicho "não dá pra matar", é bug de regra: vira teste em `tests/gameplay.test.ts`.
+13. **Combate justo: todo bicho tem contramedida.** Invencível só por trait (`unbeatable` — só a MARÉ) e com a dica dizendo o que fazer. Reflexo é **limitado** (Peixe-Lata devolve 3 torradas). Voador tem **cinco** respostas (Holofote, Ventilador, Canhão de Lata, Estilingue, Bujão). A Baleia-Filhote e o Pescador são **alvos normais**, mas não quebram estrutura: a Baleia se **espanta** com Ventilador e o Pescador cobra pedágio ao chegar. Chefe teleporta **para dentro do campo** (`x ≤ W`), nunca para fora do alcance das peças. Se um bicho "não dá pra matar", é bug de regra: vira teste em `tests/gameplay.test.ts`.
 
 ## 📊 O PADRÃO MORTAL DESTE PROJETO
 
@@ -45,7 +45,7 @@ O mesmo bug apareceu de três formas:
 ### "HP Mágico"
 
 `hp:9999` já foi usado para dizer "esse bicho não morre". Agora **trait** significa isso
-(`human`, `neutral`, `unbeatable`). HP é só número de combate.
+(`unbeatable`). HP é só número de combate.
 
 **Regra:** inimigo comum tem HP entre 10 e 500. Se precisa de mais, é chefe — e chefe
 declara `unbeatable` explicitamente.

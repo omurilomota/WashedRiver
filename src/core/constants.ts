@@ -71,6 +71,22 @@ export function plantY(lane: number): number {
   return laneY(lane) + PLANT_DY;
 }
 
+/**
+ * Posição dos vizinhos das lanes de baixo (3, 4 e 5).
+ *
+ * Eles são clicáveis e falam (mandato: morador é gente, responde ao clique).
+ * Fica aqui porque `game.ts` (clique) e `render/sprites.ts` (desenho) precisam
+ * do mesmo número — mesmo padrão de `plantY`/`colX`.
+ */
+export function vizinhoX(lane: number): number {
+  return 34 + (lane - 3) * 46;
+}
+
+/** Y do vizinho da lane (pé do sprite). */
+export function vizinhoY(lane: number): number {
+  return plantY(lane) - 18;
+}
+
 /** X do centro de uma coluna. */
 export function colX(col: number): number {
   return VX + col * COLW + COLW / 2;

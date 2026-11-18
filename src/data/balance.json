@@ -7,7 +7,8 @@
       "hp": 80,
       "unlock": true,
       "desc": "Cata sucata da maré. Cospe 25 a cada 9s. Alguém tem que clicar.",
-      "sin": "com Ímã: ele pega sozinho, ela cospe mais rápido."
+      "sin": "com Ímã: ele pega sozinho, ela cospe mais rápido.",
+      "fato": "Já salvou 12 correntes. Nenhuma agradeceu."
     },
     "torradeira": {
       "nome": "Torradeira",
@@ -16,7 +17,8 @@
       "hp": 120,
       "unlock": true,
       "desc": "Era da sogra do Zé. Cospe torrada quente em linha reta.",
-      "sin": "com Holofote: atira mais longe. Com Geladeira na frente: ninguém passa."
+      "sin": "com Holofote: atira mais longe. Com Geladeira na frente: ninguém passa.",
+      "fato": "Era da sogra do Zé. Ele ganhou de bom grado."
     },
     "lancador_lata": {
       "nome": "Canhão de Lata",
@@ -26,7 +28,8 @@
       "unlock": false,
       "air": true,
       "desc": "Cospe latas amassadas em linha reta. Pesada o bastante pra derrubar voador sem holofote.",
-      "sin": "com Holofote: alcance firme. Com Ímã: munição extra de sucata."
+      "sin": "com Holofote: alcance firme. Com Ímã: munição extra de sucata.",
+      "fato": "Pesa 40 kg. O Zé chama de leve."
     },
     "ventilador": {
       "nome": "Ventilador",
@@ -35,7 +38,8 @@
       "hp": 100,
       "unlock": true,
       "desc": "Sopra de volta, derruba o que voa. Não move o Seu Bento quase nada.",
-      "sin": "com Rádio: hipnotiza e empurra. Com Pneu em chamas: espalha o fogo."
+      "sin": "com Rádio: hipnotiza e empurra. Com Pneu em chamas: espalha o fogo.",
+      "fato": "Três velocidades: forte, muito forte e espanta a baleia."
     },
     "geladeira": {
       "nome": "Geladeira",
@@ -44,7 +48,8 @@
       "hp": 450,
       "unlock": true,
       "desc": "Parede. Cheira mal, segura bem. Quando quebra, vira sucata.",
-      "sin": "com Geladeira-Bomba: divide o estrago. Com Gelo: vira geleira."
+      "sin": "com Geladeira-Bomba: divide o estrago. Com Gelo: vira geleira.",
+      "fato": "Cheira mal. Segura mais que opinião."
     },
     "bujao": {
       "nome": "Bujão P13",
@@ -53,7 +58,8 @@
       "hp": 60,
       "unlock": true,
       "desc": "Explode em 3x3 quando encostam. Pega voador, fantasma e quem se esconde.",
-      "sin": "com Aspirador: puxa tudo pra cima dele. Com Batedeira: explode girando."
+      "sin": "com Aspirador: puxa tudo pra cima dele. Com Batedeira: explode girando.",
+      "fato": "Explode com 5 reais de gás. P13 é o nome do botijão."
     },
     "holofote": {
       "nome": "Holofote",
@@ -62,7 +68,8 @@
       "hp": 90,
       "unlock": true,
       "desc": "Acende três colunas: revela, derruba voador, impede escavação e amplia a torradeira.",
-      "sin": "com Mariposa: ela fica boba na luz. Com Estilingue: mira melhor."
+      "sin": "com Mariposa: ela fica boba na luz. Com Estilingue: mira melhor.",
+      "fato": "Ilumina três colunas e a paciência de ninguém."
     },
     "ima": {
       "nome": "Ímã de Geladeira",
@@ -71,7 +78,8 @@
       "hp": 70,
       "unlock": true,
       "desc": "Puxa sozinho a sucata do chão em volta. Não deixa nada pro fantasma.",
-      "sin": "com Boia: a sucata chega sem clique. Preguiça é progresso."
+      "sin": "com Boia: a sucata chega sem clique. Preguiça é progresso.",
+      "fato": "Puxa a sucata do chão. O fantasma odeia."
     },
     "radio": {
       "nome": "Rádio Velho",
@@ -80,7 +88,8 @@
       "hp": 85,
       "unlock": true,
       "desc": "Hipnotiza um bicho por 2s. O Seu Bento só riu. Combina com o ventilador.",
-      "sin": "dois Rádios no corredor = hipnose em área (Rádio-Duet). Redireciona o Pescador."
+      "sin": "dois Rádios no corredor = hipnose em área (Rádio-Duet). Redireciona o Pescador.",
+      "fato": "Pega duas estações. Uma é o Zé cantando no banho."
     },
     "estilingue": {
       "nome": "Estilingue",
@@ -90,7 +99,8 @@
       "unlock": false,
       "air": true,
       "desc": "Atira lata, dano alto, recarga lenta. Silencioso: acerta fantasma, lata e voador sem levar troco.",
-      "sin": "com Holofote: alcance maior. Com Espelho: risca o tiro."
+      "sin": "com Holofote: alcance maior. Com Espelho: risca o tiro.",
+      "fato": "Dois elásticos e fé."
     },
     "aspirador": {
       "nome": "Aspirador Hidráulico",
@@ -99,7 +109,8 @@
       "hp": 110,
       "unlock": false,
       "desc": "Puxa bichos pequenos pra trás. Não empurra: atrai. É um aspirador com pernas.",
-      "sin": "com Bujão: puxa pra cima da bomba. Com Batedeira: segura no liquidificador."
+      "sin": "com Bujão: puxa pra cima da bomba. Com Batedeira: segura no liquidificador.",
+      "fato": "Tem pernas. Não pergunta por quê."
     },
     "batedeira": {
       "nome": "Batedeira Velha",
@@ -108,7 +119,8 @@
       "hp": 120,
       "unlock": false,
       "desc": "Duas facas girando. Dano em área curta. Corpo a corpo: a lata não devolve faca.",
-      "sin": "com Aspirador: junta e tritura. Com Bujão: pica e explode."
+      "sin": "com Aspirador: junta e tritura. Com Bujão: pica e explode.",
+      "fato": "Duas facas. A sogra aprovaria."
     },
     "espelho": {
       "nome": "Espelho",
@@ -117,7 +129,8 @@
       "hp": 100,
       "unlock": false,
       "desc": "Devolve o que o Peixe-Lata mandou de volta. Ninguém sabe de onde veio.",
-      "sin": "com Geladeira: reflexo duplo. Com Estilingue: o tiro passa limpo."
+      "sin": "com Geladeira: reflexo duplo. Com Estilingue: o tiro passa limpo.",
+      "fato": "Ninguém sabe de onde veio. Nem o Zé."
     },
     "pneu": {
       "nome": "Pneu Queimado",
@@ -126,7 +139,8 @@
       "hp": 200,
       "unlock": false,
       "desc": "Barreira que pega fogo devagar. Barra pouco, queima muito. Fumaça atrapalha todo mundo.",
-      "sin": "com Ventilador: fogo soprado pra frente. Chuva apaga por 6s."
+      "sin": "com Ventilador: fogo soprado pra frente. Chuva apaga por 6s.",
+      "fato": "Pegou fogo em 94. Nunca apagou."
     },
     "aranha": {
       "nome": "Aranha-de-Encanamento",
@@ -135,7 +149,8 @@
       "hp": 70,
       "unlock": false,
       "desc": "Não fica numa coluna: atira em TODAS as colunas do corredor. Cara, frágil, pernuda.",
-      "sin": "com Bujão: cobre os buracos. Com Holofote: acerta o que ninguém vê."
+      "sin": "com Bujão: cobre os buracos. Com Holofote: acerta o que ninguém vê.",
+      "fato": "Oito canos. Um dá pra usar."
     },
     "geladeira_bomba": {
       "nome": "Geladeira-Bomba",
@@ -144,7 +159,8 @@
       "hp": 320,
       "unlock": false,
       "desc": "É uma geladeira. Também é uma bomba. Quando quebra, divide o prejuízo.",
-      "sin": "com Geladeira: segura mais. Com Pneu: fogo + estilhaço."
+      "sin": "com Geladeira: segura mais. Com Pneu: fogo + estilhaço.",
+      "fato": "Geladeira com bomba dentro. A ideia foi do Zé."
     },
     "cachorro": {
       "nome": "Cachorro-de-Guarda",
@@ -153,7 +169,8 @@
       "hp": 90,
       "unlock": false,
       "desc": "É um balde com coleira. Late e empurra bicho pequeno. O Zé insiste que é cachorro.",
-      "sin": "com Rádio: o latido redireciona o Pescador. Com qualquer coisa: constrange."
+      "sin": "com Rádio: o latido redireciona o Pescador. Com qualquer coisa: constrange.",
+      "fato": "É um balde. O Zé insiste."
     },
     "coisa_ze": {
       "nome": "Coisa do Zé",
@@ -163,7 +180,8 @@
       "unlock": false,
       "special": true,
       "desc": "O Zé monta uma vez por partida. Ele escolhe. Você aceita. Ninguém sabe o que vem.",
-      "sin": "com você: paciência."
+      "sin": "com você: paciência.",
+      "fato": "O Zé montou. Ninguém perguntou."
     },
     "remover": {
       "nome": "Pé de Cabra",
@@ -313,7 +331,8 @@
       "scrap": 10,
       "r": 22,
       "desc": "Três olhos que piscam em ordem. Espinhos de tampinha de garrafa. Veio remando de barriga.",
-      "hint": "Dano direto. Ele é o básico."
+      "hint": "Dano direto. Ele é o básico.",
+      "fato": "Já foi tainha. Hoje é três olhos e zero paciência."
     },
     "enguia": {
       "nome": "Enguia de Óleo",
@@ -323,7 +342,8 @@
       "scrap": 10,
       "r": 18,
       "desc": "Escorregadia, mergulha, some. Deixa uma mancha preta em forma de má notícia.",
-      "hint": "Torradeira não pega enquanto mergulha. Holofote acende e resolve."
+      "hint": "Torradeira não pega enquanto mergulha. Holofote acende e resolve.",
+      "fato": "Não tem osso. Tem raiva."
     },
     "ova": {
       "nome": "Ova Podre",
@@ -333,7 +353,8 @@
       "scrap": 20,
       "r": 26,
       "desc": "Saco translúcido de ovos com olhos. Pinga. Choca quando morre e cospe pintinhos que fogem.",
-      "hint": "Mate longe da entrada. Ou deixe a geladeira levar os pintinhos."
+      "hint": "Mate longe da entrada. Ou deixe a geladeira levar os pintinhos.",
+      "fato": "Choca em 3 dias se ninguém cutucar. Alguém cutuca."
     },
     "larva": {
       "nome": "Larva do Pintinho",
@@ -343,7 +364,8 @@
       "scrap": 3,
       "r": 10,
       "desc": "Saiu da ova, já está com raiva. Tem dente antes de ter boca.",
-      "hint": "Rápida, frágil. Qualquer coisa resolve."
+      "hint": "Rápida, frágil. Qualquer coisa resolve.",
+      "fato": "Nasceu com pressa. Não teve tempo de ter plano."
     },
     "caranguejo": {
       "nome": "Caranguejo Sindicado",
@@ -353,7 +375,8 @@
       "scrap": 15,
       "r": 22,
       "desc": "Blindado perto de outro caranguejo e com cartaz de greve. Três olhos em hastes: um vigia, dois reclamam.",
-      "hint": "Separe os dois. Isolado, perde a blindagem."
+      "hint": "Separe os dois. Isolado, perde a blindagem.",
+      "fato": "As duas garras pesam 60% do corpo. O resto é opinião."
     },
     "bomba": {
       "nome": "Peixe-Bomba",
@@ -363,7 +386,8 @@
       "scrap": 15,
       "r": 22,
       "desc": "Um peixe com válvula de bujão no lombinho. Segura o espirro. Geme.",
-      "hint": "Estoura na sua peça. Bujão na frente resolve, ou torrada de longe."
+      "hint": "Estoura na sua peça. Bujão na frente resolve, ou torrada de longe.",
+      "fato": "Explode por educação. Não é raiva."
     },
     "gaivota": {
       "nome": "Gaivota-Ladra",
@@ -374,7 +398,8 @@
       "r": 22,
       "air": true,
       "desc": "Passa por cima da linha de frente com uma sacolinha plástica. Voa mal, por opção.",
-      "hint": "Ventilador derruba. Holofote ofusca. Torradeira sozinha não pega."
+      "hint": "Ventilador derruba. Holofote ofusca. Torradeira sozinha não pega.",
+      "fato": "Bota em cima do que não presta. Chamam de limpeza."
     },
     "gaivota_r": {
       "nome": "Gaivota-Rei",
@@ -385,7 +410,8 @@
       "r": 26,
       "air": true,
       "desc": "Carrega uma engenhoca inteira. Já levou a geladeira de um vizinho. Vizinho junto.",
-      "hint": "Abata antes que agarre a peça. Ventilador, holofote, bujão."
+      "hint": "Abata antes que agarre a peça. Ventilador, holofote, bujão.",
+      "fato": "A maior. Leva o que couber na garra. Inclusive o Zé, se der."
     },
     "tatu": {
       "nome": "Tatu de Areia",
@@ -395,7 +421,8 @@
       "scrap": 18,
       "r": 22,
       "desc": "Cava, some, reaparece duas colunas à frente. Coloca uma plaquinha onde afundou.",
-      "hint": "Bujão no fundo do corredor. Holofote impede de cavar."
+      "hint": "Bujão no fundo do corredor. Holofote impede de cavar.",
+      "fato": "Cava mais rápido que a paciência do jogador."
     },
     "lata": {
       "nome": "Peixe-Lata",
@@ -406,7 +433,8 @@
       "r": 22,
       "reflect": 3,
       "desc": "Escamas de lata, espelho no lugar da cara. Reflete a torrada na sua torradeira.",
-      "hint": "Dano corpo a corpo, explosão ou estilingue. Três torradas devolvidas e a lata cansa: a quarta entra."
+      "hint": "Dano corpo a corpo, explosão ou estilingue. Três torradas devolvidas e a lata cansa: a quarta entra.",
+      "fato": "Já foi tampa de fogão. Guarda rancor."
     },
     "fantasma": {
       "nome": "Peixe-Fantasma",
@@ -416,7 +444,8 @@
       "scrap": 25,
       "r": 20,
       "desc": "Não tem nada ali. Tem sim. Rouba sucata do chão e foge pela direita. Olhos em X.",
-      "hint": "Ataque revela. Holofote revela. Estilingue acerta no silêncio."
+      "hint": "Ataque revela. Holofote revela. Estilingue acerta no silêncio.",
+      "fato": "Não existe. Concordo."
     },
     "polvo": {
       "nome": "Polvo-Garrafa",
@@ -426,7 +455,8 @@
       "scrap": 25,
       "r": 24,
       "desc": "Tem garrafas no corpo. Não destrói a peça: se pendura no braço dela e desliga. É sabotagem.",
-      "hint": "Fica parado agarrado à peça. Mate rápido. Explosão não destrói garrafa, só barulho."
+      "hint": "Fica parado agarrado à peça. Mate rápido. Explosão não destrói garrafa, só barulho.",
+      "fato": "Oito braços, zero pressa. Desliga geladeira por esporte."
     },
     "agua": {
       "nome": "Água-Viva-Fantasma",
@@ -436,8 +466,9 @@
       "scrap": 12,
       "r": 20,
       "air": true,
-      "desc": "É intangível: bala atravessa, peça não segura. Vive no breu; contra luz, evapora e deixa o formato no chão.",
-      "hint": "SÓ luz ou explosão. Bala não pega. O Holofote é a arma."
+      "desc": "É intangível: o tiro não encosta e a peça não segura. Vive no breu; contra luz, evapora e deixa o formato no chão.",
+      "hint": "SÓ luz ou explosão. Bala não pega. O Holofote é a arma.",
+      "fato": "Não é peixe. É água com opinião."
     },
     "mariposa": {
       "nome": "Mariposa de Espelho",
@@ -448,7 +479,8 @@
       "r": 22,
       "air": true,
       "desc": "Voa em direção ao farol, cega. As asas são dois pedaços de retrovisor.",
-      "hint": "Na luz ela para e cozinha. Debaixo do holofote, morre de bobeira."
+      "hint": "Na luz ela para e cozinha. Debaixo do holofote, morre de bobeira.",
+      "fato": "Na luz, pensa. No escuro, só vive."
     },
     "sapo": {
       "nome": "Sapo de Óleo",
@@ -458,7 +490,8 @@
       "scrap": 16,
       "r": 20,
       "desc": "Pula duas colunas por vez. Pula em cima de fogo. Se morre no ar, cai no colo do próximo peixe.",
-      "hint": "Não adianta corredor vazio na frente dele. Aranja precisa cobrir atrás."
+      "hint": "Não adianta corredor vazio na frente dele. Aranja precisa cobrir atrás.",
+      "fato": "Salta três colunas. Cobra o combustível depois."
     },
     "piranha": {
       "nome": "Piranha-Coral",
@@ -468,7 +501,8 @@
       "scrap": 8,
       "r": 14,
       "desc": "Nada em cardume. Sozinha é peixe. Com três, vira sindicato com dente.",
-      "hint": "Em grupo fica forte. Área resolve. Bujão adora cardume."
+      "hint": "Em grupo fica forte. Área resolve. Bujão adora cardume.",
+      "fato": "Sozinha é almoço. Em três, é projeto."
     },
     "caranguejo_m": {
       "nome": "Caranguejo-Mártir",
@@ -478,7 +512,8 @@
       "scrap": 18,
       "r": 22,
       "desc": "Carrega a foto de outro caranguejo. Se morre perto de um amigo, o amigo fica furioso.",
-      "hint": "Mate o mártir por último ou longe dos amigos. A fúria é real."
+      "hint": "Mate o mártir por último ou longe dos amigos. A fúria é real.",
+      "fato": "De luto pela própria garra. Ela ainda funciona."
     },
     "baleia": {
       "nome": "Baleia-Filhote",
@@ -487,8 +522,9 @@
       "dps": 0,
       "scrap": 0,
       "r": 50,
-      "desc": "Atravessa o mapa. Não machuca ninguém a não ser pisando nas suas peças. Não devia estar aqui — e agora dá para derrubar.",
-      "hint": "É alvo: tiro, explosão e lâmina funcionam. Ventilador ainda espanta e ela volta pro mar; geladeira fora do caminho evita o esmagamento."
+      "desc": "Atravessa o mapa e só machuca quem ficar no caminho. Não devia estar aqui. Agora dá pra derrubar.",
+      "hint": "É alvo: tiro, explosão e lâmina funcionam. Ventilador ainda espanta e ela volta pro mar; geladeira fora do caminho evita o esmagamento.",
+      "fato": "Não mora aqui. Só visita e pisa."
     },
     "pescador": {
       "nome": "O Pescador",
@@ -497,8 +533,9 @@
       "dps": 0,
       "scrap": 0,
       "r": 24,
-      "desc": "Um homem pela metade. Ainda fala. Ainda reconhece o barco. Agora dá para matar — mas ele não quebra a vila: se chegar, leva sucata e volta pro mar.",
-      "hint": "Rádio hipnotiza, redireciona e ainda rende sucata. Cachorro late e confunde. Sem resposta, ele cobra o pedágio."
+      "desc": "Um homem pela metade. Ainda fala. Agora dá pra matar — mas ele não quebra nada: se chegar na vila, cobra pedágio em sucata e volta pro mar.",
+      "hint": "Rádio hipnotiza, redireciona e ainda rende sucata. Cachorro late e confunde. Sem resposta, ele cobra o pedágio.",
+      "fato": "Metade gente, metade maré. Cobra pedágio nas duas."
     },
     "passageiro": {
       "nome": "Passageiro do Trilho",
@@ -508,7 +545,8 @@
       "scrap": 16,
       "r": 22,
       "desc": "Troca de trilho sem avisar muito. Carrega uma mala que não é dele.",
-      "hint": "Escolha o corredor mais protegido e reze. Holofote prende no trilho."
+      "hint": "Escolha o corredor mais protegido e reze. Holofote prende no trilho.",
+      "fato": "Esperou o trem a vida inteira. O trem veio."
     }
   },
   "enemyOrder": [
@@ -542,7 +580,8 @@
       "r": 44,
       "map": 0,
       "desc": "Era o Bento. O peixe comeu o Bento. O peixe usa as botas e o chapéu de pescador e diz que é o Bento.",
-      "hint": "Fase 1 anda. Fase 2 sem chapéu, mais rápido. Fase 3 chama reforço e cospe sucata."
+      "hint": "Fase 1 anda. Fase 2 sem chapéu, mais rápido. Fase 3 chama reforço e cospe sucata.",
+      "fato": "Comeu o peixe, o irmão e a sobremesa."
     },
     "faroleiro": {
       "nome": "O FAROLEIRO",
@@ -552,7 +591,8 @@
       "r": 40,
       "map": 1,
       "desc": "O faroleiro ficou no posto. Há quanto tempo, ele não sabe. A luz agora sai do peito dele.",
-      "hint": "Ele apaga tudo. Acenda holofotes antes do escuro e sobreviva ao breu."
+      "hint": "Ele apaga tudo. Acenda holofotes antes do escuro e sobreviva ao breu.",
+      "fato": "Fica no escuro desde o apagão. Não desce por teimosia."
     },
     "maquinista": {
       "nome": "O MAQUINISTA",
@@ -562,7 +602,8 @@
       "r": 46,
       "map": 2,
       "desc": "Uma locomotiva com vontade própria, que usa um casaco de maquinista e apita. Ninguém vê o condutor.",
-      "hint": "Ele telegrafa as passagens: saia do trilho antes do apito. Holofote mostra o trilho certo."
+      "hint": "Ele telegrafa as passagens: saia do trilho antes do apito. Holofote mostra o trilho certo.",
+      "fato": "O trem dele não tem parada. Tem hora marcada."
     },
     "peixe_mae": {
       "nome": "A PEIXE-MÃE",
@@ -572,7 +613,8 @@
       "r": 52,
       "map": 3,
       "desc": "Um baiacu grávido do tamanho de uma barraca. Tem medo de você. Tem mais medo de parir.",
-      "hint": "Infla e reflete tiro. Espere murchar ou use fogo/explosão. Fura a barreira."
+      "hint": "Infla e reflete tiro. Espere murchar ou use fogo/explosão. Fura a barreira.",
+      "fato": "Teve 50 filhos. Todos com fome."
     },
     "gerente": {
       "nome": "O GERENTE",
@@ -582,7 +624,8 @@
       "r": 44,
       "map": 4,
       "desc": "Um homem que virou boca de esteira. Sete fases, sete reuniões. Pede metas enquanto morde.",
-      "hint": "As fases se atropelam. Um bujão e uma geladeira atrás de cada esteira."
+      "hint": "As fases se atropelam. Um bujão e uma geladeira atrás de cada esteira.",
+      "fato": "Reúne a linha toda segunda. Ninguém vem."
     },
     "mare": {
       "nome": "A MARÉ",
@@ -593,7 +636,8 @@
       "map": 5,
       "unbeatable": true,
       "desc": "Não é bicho. É o mar com vontade. Não dá para matar: dá para amanhecer.",
-      "hint": "Sobreviva 2 minutos. A maré sobe. O que quebrar, quebrou."
+      "hint": "Sobreviva 2 minutos. A maré sobe. O que quebrar, quebrou.",
+      "fato": "Não é bicho. É o mar com vontade."
     }
   },
   "synergies": [
@@ -954,6 +998,173 @@
       "estrela": 40,
       "laneIntacta": 15,
       "kill": 0.4
+    },
+    "startScrap": 350
+  },
+  "dificuldade": {
+    "ondas": [
+      {
+        "bichos": 7,
+        "espacamento": 6.5,
+        "tipos": 1,
+        "corredores": 2
+      },
+      {
+        "bichos": 13,
+        "espacamento": 5.4,
+        "tipos": 4,
+        "corredores": 4
+      },
+      {
+        "bichos": 22,
+        "espacamento": 4.0,
+        "tipos": 99,
+        "corredores": 6
+      }
+    ],
+    "degrauPorMapa": {
+      "bichos": 1,
+      "espacamento": 0.2,
+      "tipos": 2,
+      "corredores": 1
+    },
+    "noiteInfinita": {
+      "chefeACada": 5,
+      "degrauACada": 3,
+      "bichosPorDegrau": 3,
+      "tetoBichos": 24,
+      "espacamentoMin": 2.2,
+      "hpPorDegrau": 0.1,
+      "tetoHp": 0.6
+    }
+  },
+  "intros": {
+    "baiacu": {
+      "metodo": "nada",
+      "fala": ""
+    },
+    "enguia": {
+      "metodo": "silhueta",
+      "fala": "Tem coisa comprida entrando na água."
+    },
+    "ova": {
+      "metodo": "cartaz",
+      "fala": "Aquilo é ovo. Não deixa chocar."
+    },
+    "larva": {
+      "metodo": "nada",
+      "fala": ""
+    },
+    "caranguejo": {
+      "metodo": "ze",
+      "fala": "Olha o tamanho da garra desse aí."
+    },
+    "bomba": {
+      "metodo": "ze",
+      "fala": "Esse aí estoura. Não oferece torrada."
+    },
+    "gaivota": {
+      "metodo": "silhueta",
+      "fala": "Passou uma sombra grande aí em cima."
+    },
+    "gaivota_r": {
+      "metodo": "silhueta",
+      "fala": "Sombra maior ainda. Ela vem buscar coisa."
+    },
+    "tatu": {
+      "metodo": "ze",
+      "fala": "Esse cava. Buracão fundo."
+    },
+    "lata": {
+      "metodo": "ze",
+      "fala": "Esse aí veio de outra mãe. Devolve tiro."
+    },
+    "fantasma": {
+      "metodo": "nada",
+      "fala": ""
+    },
+    "polvo": {
+      "metodo": "radio",
+      "fala": "Atenção: coisa nova na água. Tem braço."
+    },
+    "agua": {
+      "metodo": "silhueta",
+      "fala": "Isso não é peixe. É ideia errada."
+    },
+    "mariposa": {
+      "metodo": "ze",
+      "fala": "Mariposa. Na luz ela para e pensa."
+    },
+    "sapo": {
+      "metodo": "ze",
+      "fala": "Esse pula. Cuida das costas."
+    },
+    "piranha": {
+      "metodo": "nada",
+      "fala": ""
+    },
+    "caranguejo_m": {
+      "metodo": "silhueta",
+      "fala": "Esse aí tá de luto. E com raiva."
+    },
+    "baleia": {
+      "metodo": "silhueta",
+      "fala": "OLHA A BALEIA."
+    },
+    "pescador": {
+      "metodo": "ze",
+      "fala": "É gente. Não é bicho. Não atira."
+    },
+    "passageiro": {
+      "metodo": "radio",
+      "fala": "Passageiro no trilho. Também não é bicho."
+    }
+  },
+  "molho": {
+    "chanceEvento": 0.8,
+    "micro": {
+      "intervalo": [
+        20,
+        38
+      ],
+      "mare": {
+        "dur": 3,
+        "vel": 0.4
+      },
+      "nevoeiro": {
+        "dur": 5
+      },
+      "chuva": {
+        "dur": 6,
+        "lento": 0.15
+      },
+      "peixe": {
+        "dur": 1.2
+      },
+      "chiado": {
+        "dur": 2
+      },
+      "ferrujem": {
+        "dur": 3
+      }
+    },
+    "variacoes": {
+      "chance": 0.45,
+      "tema": {
+        "ondas": [
+          0,
+          1
+        ]
+      },
+      "silenciosa": {
+        "atraso": 15,
+        "espaco": 0.8
+      },
+      "corredor": {},
+      "bonus": {
+        "sucata": 180,
+        "pilhas": 5
+      }
     }
   }
 }
